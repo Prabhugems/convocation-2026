@@ -1,10 +1,7 @@
-import { ImageResponse } from '@vercel/og';
+import { ImageResponse } from 'next/og';
 import { NextRequest } from 'next/server';
-import QRCode from 'qrcode';
 import { getAirtableDataByConvocationNumber } from '@/lib/airtable';
 import { universalSearch } from '@/lib/tito';
-
-export const runtime = 'edge';
 
 // Badge dimensions: 4×6 inch at 300 DPI = 1200×1800 pixels
 const BADGE_WIDTH = 1200;
@@ -18,33 +15,38 @@ interface GraduateData {
 }
 
 async function getGraduateData(convNumber: string): Promise<GraduateData | null> {
-  const airtableResult = await getAirtableDataByConvocationNumber(convNumber);
-  const airtableName = airtableResult.success && airtableResult.data ? airtableResult.data.name : null;
+  try {
+    const airtableResult = await getAirtableDataByConvocationNumber(convNumber);
+    const airtableName = airtableResult.success && airtableResult.data ? airtableResult.data.name : null;
 
-  const searchResult = await universalSearch(convNumber);
+    const searchResult = await universalSearch(convNumber);
 
-  if (searchResult.success && searchResult.data && searchResult.data.length > 0) {
-    const graduate = searchResult.data.find(
-      g => g.convocationNumber?.toUpperCase() === convNumber.toUpperCase()
-    ) || searchResult.data[0];
+    if (searchResult.success && searchResult.data && searchResult.data.length > 0) {
+      const graduate = searchResult.data.find(
+        g => g.convocationNumber?.toUpperCase() === convNumber.toUpperCase()
+      ) || searchResult.data[0];
 
-    return {
-      name: airtableName || graduate.name,
-      course: graduate.course,
-      convocationNumber: graduate.convocationNumber || convNumber,
-      ticketSlug: graduate.ticketSlug,
-    };
+      return {
+        name: airtableName || graduate.name,
+        course: graduate.course,
+        convocationNumber: graduate.convocationNumber || convNumber,
+        ticketSlug: graduate.ticketSlug,
+      };
+    }
+
+    if (airtableResult.success && airtableResult.data) {
+      return {
+        name: airtableResult.data.name,
+        course: airtableResult.data.courseDetails || 'FMAS',
+        convocationNumber: airtableResult.data.convocationNumber,
+      };
+    }
+
+    return null;
+  } catch (error) {
+    console.error('[Badge Print API] Error fetching graduate data:', error);
+    return null;
   }
-
-  if (airtableResult.success && airtableResult.data) {
-    return {
-      name: airtableResult.data.name,
-      course: airtableResult.data.courseDetails || 'FMAS',
-      convocationNumber: airtableResult.data.convocationNumber,
-    };
-  }
-
-  return null;
 }
 
 export async function GET(
@@ -55,24 +57,26 @@ export async function GET(
     const { convNumber } = await params;
 
     if (!convNumber) {
-      return new Response(JSON.stringify({ error: 'Convocation number required' }), { status: 400 });
+      return new Response(JSON.stringify({ error: 'Convocation number required' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
     const graduate = await getGraduateData(convNumber);
 
     if (!graduate) {
-      return new Response(JSON.stringify({ error: 'Graduate not found' }), { status: 404 });
+      return new Response(JSON.stringify({ error: 'Graduate not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
     const titoUrl = graduate.ticketSlug
       ? `https://ti.to/tickets/${graduate.ticketSlug}`
       : `https://ti.to/amasi/convocation-2026-kolkata/tickets/${graduate.convocationNumber}`;
 
-    const qrDataUrl = await QRCode.toDataURL(titoUrl, {
-      width: 320,
-      margin: 1,
-      color: { dark: '#000000', light: '#FFFFFF' },
-    });
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(titoUrl)}`;
 
     const fontData = await fetch(
       'https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuGKYAZ9hjp-Ek-_EeA.woff'
@@ -104,7 +108,7 @@ export async function GET(
             Dr. {graduate.name}
           </div>
 
-          <img src={qrDataUrl} width={320} height={320} style={{ marginTop: 50 }} />
+          <img src={qrCodeUrl} width={320} height={320} style={{ marginTop: 50 }} />
 
           <div style={{ fontSize: 52, fontWeight: 700, color: '#000000', marginTop: 40 }}>
             {graduate.convocationNumber}
@@ -137,14 +141,13 @@ export async function GET(
             weight: 700,
           },
         ],
-        headers: {
-          'Content-Disposition': `inline; filename="Badge_Print_${convNumber}.png"`,
-          'Cache-Control': 'public, max-age=3600',
-        },
       }
     );
   } catch (error) {
     console.error('[Badge Print API] Error:', error);
-    return new Response(JSON.stringify({ error: 'Failed to generate badge' }), { status: 500 });
+    return new Response(JSON.stringify({ error: 'Failed to generate badge', details: String(error) }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }

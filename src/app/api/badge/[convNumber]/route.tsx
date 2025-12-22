@@ -1,10 +1,7 @@
-import { ImageResponse } from '@vercel/og';
+import { ImageResponse } from 'next/og';
 import { NextRequest } from 'next/server';
-import QRCode from 'qrcode';
 import { getAirtableDataByConvocationNumber } from '@/lib/airtable';
 import { universalSearch } from '@/lib/tito';
-
-export const runtime = 'edge';
 
 // Badge dimensions: 4×6 inch at 300 DPI = 1200×1800 pixels
 const BADGE_WIDTH = 1200;
@@ -18,35 +15,40 @@ interface GraduateData {
 }
 
 async function getGraduateData(convNumber: string): Promise<GraduateData | null> {
-  // First try to get name from Airtable (has full name with middle names)
-  const airtableResult = await getAirtableDataByConvocationNumber(convNumber);
-  const airtableName = airtableResult.success && airtableResult.data ? airtableResult.data.name : null;
+  try {
+    // First try to get name from Airtable (has full name with middle names)
+    const airtableResult = await getAirtableDataByConvocationNumber(convNumber);
+    const airtableName = airtableResult.success && airtableResult.data ? airtableResult.data.name : null;
 
-  // Then try Tito search for ticket info
-  const searchResult = await universalSearch(convNumber);
+    // Then try Tito search for ticket info
+    const searchResult = await universalSearch(convNumber);
 
-  if (searchResult.success && searchResult.data && searchResult.data.length > 0) {
-    const graduate = searchResult.data.find(
-      g => g.convocationNumber?.toUpperCase() === convNumber.toUpperCase()
-    ) || searchResult.data[0];
+    if (searchResult.success && searchResult.data && searchResult.data.length > 0) {
+      const graduate = searchResult.data.find(
+        g => g.convocationNumber?.toUpperCase() === convNumber.toUpperCase()
+      ) || searchResult.data[0];
 
-    return {
-      name: airtableName || graduate.name,
-      course: graduate.course,
-      convocationNumber: graduate.convocationNumber || convNumber,
-      ticketSlug: graduate.ticketSlug,
-    };
+      return {
+        name: airtableName || graduate.name,
+        course: graduate.course,
+        convocationNumber: graduate.convocationNumber || convNumber,
+        ticketSlug: graduate.ticketSlug,
+      };
+    }
+
+    if (airtableResult.success && airtableResult.data) {
+      return {
+        name: airtableResult.data.name,
+        course: airtableResult.data.courseDetails || 'FMAS',
+        convocationNumber: airtableResult.data.convocationNumber,
+      };
+    }
+
+    return null;
+  } catch (error) {
+    console.error('[Badge API] Error fetching graduate data:', error);
+    return null;
   }
-
-  if (airtableResult.success && airtableResult.data) {
-    return {
-      name: airtableResult.data.name,
-      course: airtableResult.data.courseDetails || 'FMAS',
-      convocationNumber: airtableResult.data.convocationNumber,
-    };
-  }
-
-  return null;
 }
 
 export async function GET(
@@ -57,25 +59,32 @@ export async function GET(
     const { convNumber } = await params;
 
     if (!convNumber) {
-      return new Response(JSON.stringify({ error: 'Convocation number required' }), { status: 400 });
+      return new Response(JSON.stringify({ error: 'Convocation number required' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
+
+    console.log(`[Badge API] Generating badge for: ${convNumber}`);
 
     const graduate = await getGraduateData(convNumber);
 
     if (!graduate) {
-      return new Response(JSON.stringify({ error: 'Graduate not found' }), { status: 404 });
+      return new Response(JSON.stringify({ error: 'Graduate not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
-    // Generate QR code as data URL
+    console.log(`[Badge API] Found graduate: ${graduate.name}`);
+
+    // Generate QR code URL (using external service)
     const titoUrl = graduate.ticketSlug
       ? `https://ti.to/tickets/${graduate.ticketSlug}`
       : `https://ti.to/amasi/convocation-2026-kolkata/tickets/${graduate.convocationNumber}`;
 
-    const qrDataUrl = await QRCode.toDataURL(titoUrl, {
-      width: 320,
-      margin: 1,
-      color: { dark: '#000000', light: '#FFFFFF' },
-    });
+    // Use QR code API service
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(titoUrl)}`;
 
     // Load Inter font
     const fontData = await fetch(
@@ -138,8 +147,8 @@ export async function GET(
               Dr. {graduate.name}
             </div>
 
-            {/* QR Code */}
-            <img src={qrDataUrl} width={320} height={320} style={{ marginTop: 50 }} />
+            {/* QR Code from external API */}
+            <img src={qrCodeUrl} width={320} height={320} style={{ marginTop: 50 }} />
 
             <div style={{ fontSize: 52, fontWeight: 700, color: '#000000', marginTop: 40 }}>
               {graduate.convocationNumber}
@@ -174,7 +183,7 @@ export async function GET(
             }}
           >
             <div style={{ fontSize: 32, fontWeight: 700, color: '#FFFFFF' }}>
-              AMASICON 2026 • Kolkata
+              AMASICON 2026 - Kolkata
             </div>
           </div>
         </div>
@@ -190,14 +199,13 @@ export async function GET(
             weight: 700,
           },
         ],
-        headers: {
-          'Content-Disposition': `inline; filename="Badge_${convNumber}.png"`,
-          'Cache-Control': 'public, max-age=3600',
-        },
       }
     );
   } catch (error) {
     console.error('[Badge API] Error:', error);
-    return new Response(JSON.stringify({ error: 'Failed to generate badge' }), { status: 500 });
+    return new Response(JSON.stringify({ error: 'Failed to generate badge', details: String(error) }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }
