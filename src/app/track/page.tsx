@@ -76,7 +76,7 @@ const processSteps = [
     id: 'convocation',
     icon: GraduationCap,
     title: 'Convocation Day',
-    description: '27 Aug 2026, 6:00 PM',
+    description: '27 Aug 2026, 5:30 PM',
     color: 'blue',
   },
   {

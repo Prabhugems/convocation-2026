@@ -12,8 +12,8 @@ interface TimeLeft {
   seconds: number;
 }
 
-// Convocation date: 27th August 2026, 6:00 PM IST
-const CONVOCATION_DATE = new Date('2026-08-27T18:00:00+05:30');
+// Convocation date: 27th August 2026, 5:30 PM IST
+const CONVOCATION_DATE = new Date('2026-08-27T17:30:00+05:30');
 
 function useCountdown(targetTimestamp: number): TimeLeft {
   const [timeLeft, setTimeLeft] = useState<TimeLeft>({
@@ -142,8 +142,8 @@ export default function Home() {
           <div className="flex items-center gap-3 p-4 bg-white/5 rounded-xl">
             <Clock className="w-5 h-5 text-purple-400 shrink-0" />
             <div>
-              <p className="text-white font-medium">6:00 PM IST</p>
-              <p className="text-white/50 text-sm">Gates open at 4:30 PM</p>
+              <p className="text-white font-medium">5:30 PM IST</p>
+              <p className="text-white/50 text-sm">Reporting at 5:00 PM</p>
             </div>
           </div>
           <div className="flex items-center gap-3 p-4 bg-white/5 rounded-xl">

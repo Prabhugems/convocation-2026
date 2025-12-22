@@ -40,7 +40,12 @@ const faqData: FAQCategory[] = [
     faqs: [
       {
         question: 'When is the Convocation Ceremony?',
-        answer: '27th August 2026 at 6:00 PM',
+        answer: [
+          '27th August 2026 at 5:30 PM',
+          'Gown Distribution: 2:00 PM - 4:30 PM',
+          'Reporting Time: 5:00 PM',
+          'Registration Deadline: 5:15 PM',
+        ],
       },
       {
         question: 'Where is the venue?',
@@ -333,7 +338,7 @@ export default function FAQPage() {
               Convocation Date
             </p>
             <p className="text-white font-semibold text-lg">27th August 2026</p>
-            <p className="text-white/60 text-xs mt-1">6:00 PM at Kolkata</p>
+            <p className="text-white/60 text-xs mt-1">5:30 PM at Kolkata</p>
           </div>
         </div>
       </div>
@@ -356,7 +361,7 @@ export default function FAQPage() {
             </div>
             <div>
               <p className="text-white/50 text-xs">Time</p>
-              <p className="text-white font-medium">6:00 PM</p>
+              <p className="text-white font-medium">5:30 PM</p>
             </div>
           </div>
           <div className="flex items-center gap-3">

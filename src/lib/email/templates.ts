@@ -287,8 +287,8 @@ export function certificateReadyAttending(data: CertificateReadyAttendingData): 
         <div class="event-item">
           <span class="event-icon">📅</span>
           <div class="event-text">
-            <strong>27th August 2026, 6:00 PM</strong>
-            Gates open at 4:30 PM
+            <strong>27th August 2026, 5:30 PM</strong>
+            Reporting Time: 5:00 PM
           </div>
         </div>
         <div class="event-item">

@@ -33,14 +33,17 @@ export const config = {
   // Convocation details
   convocation: {
     date: '27th August 2026',
-    time: '6:00 PM IST',
-    gatesOpen: '4:30 PM',
+    time: '5:30 PM IST',
+    reportingTime: '5:00 PM',
+    registrationDeadline: '5:15 PM',
+    gownDistribution: '2:00 PM - 4:30 PM',
     venue: 'Biswa Bangla Convention Center',
     city: 'Kolkata, West Bengal',
     gownRent: 500,
     gownDeposit: 500, // Refundable upon return
     gownTotal: 1000, // Rent + Deposit
-    certificateCollectionDate: '28th - 30th August 2026',
+    certificateCollectionDate: '28th August 2026',
+    certificateCollectionTime: '10:00 AM - 5:00 PM',
     addressDeadline: '28th July 2026',
   },
 
