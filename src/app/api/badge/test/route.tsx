@@ -1,4 +1,4 @@
-import { ImageResponse } from '@vercel/og';
+import { ImageResponse } from 'next/og';
 
 export async function GET() {
   return new ImageResponse(
@@ -12,7 +12,6 @@ export async function GET() {
           justifyContent: 'center',
           backgroundColor: '#FFFFFF',
           fontSize: 48,
-          fontFamily: 'sans-serif',
         }}
       >
         Test Badge
