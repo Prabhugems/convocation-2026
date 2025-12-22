@@ -645,31 +645,29 @@ export default function TrackPage() {
                 )}
               </GlassCard>
 
-              {/* Download Badge */}
-              {graduate.status.registered && (
-                <GlassCard className="p-6 mb-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center">
-                        <IdCard className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="text-white font-semibold">Your Badge</h3>
-                        <p className="text-white/60 text-sm">Download your convocation badge</p>
-                      </div>
+              {/* Download Badge - Always available */}
+              <GlassCard className="p-6 mb-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center">
+                      <IdCard className="w-6 h-6 text-white" />
                     </div>
-                    <a
-                      href={`/api/badge/${graduate.convocationNumber}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg transition-all shadow-lg hover:shadow-orange-500/25"
-                    >
-                      <Download className="w-4 h-4" />
-                      View Badge
-                    </a>
+                    <div>
+                      <h3 className="text-white font-semibold">Your Badge</h3>
+                      <p className="text-white/60 text-sm">Download your convocation badge</p>
+                    </div>
                   </div>
-                </GlassCard>
-              )}
+                  <a
+                    href={`/api/badge/${graduate.convocationNumber}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg transition-all shadow-lg hover:shadow-orange-500/25"
+                  >
+                    <Download className="w-4 h-4" />
+                    View Badge
+                  </a>
+                </div>
+              </GlassCard>
 
               {/* Timeline */}
               <GlassCard className="p-6">
