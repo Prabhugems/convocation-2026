@@ -1,9 +1,14 @@
+// This file is now mostly for local state management during a session
+// The main data comes from Tito API
+
 import { Graduate, ScanRecord, ScanStatus, StationId, DashboardStats } from '@/types';
 import { getStationStatus } from './stations';
 
-// In-memory store for demo purposes
-// In production, replace with a database (PostgreSQL, MongoDB, etc.)
-const graduates: Map<string, Graduate> = new Map();
+// In-memory store for tracking scans during a session
+// Note: This is cleared on server restart - production should use a database
+const sessionScans: Map<string, ScanRecord[]> = new Map();
+const sessionAddresses: Map<string, Graduate['address']> = new Map();
+const sessionTracking: Map<string, { trackingNumber: string; dispatchMethod: 'DTDC' | 'India Post' }> = new Map();
 
 function createEmptyStatus(): ScanStatus {
   return {
@@ -19,61 +24,19 @@ function createEmptyStatus(): ScanStatus {
   };
 }
 
-export function getOrCreateGraduate(registrationNumber: string, name?: string, email?: string, phone?: string): Graduate {
-  let graduate = graduates.get(registrationNumber);
-
-  if (!graduate) {
-    graduate = {
-      id: registrationNumber,
-      registrationNumber,
-      name: name || 'Unknown',
-      email: email || '',
-      phone: phone || '',
-      course: 'FMAS',
-      batch: '2026',
-      status: createEmptyStatus(),
-      scans: [],
-    };
-    graduates.set(registrationNumber, graduate);
-  } else if (name || email || phone) {
-    // Update info if provided
-    if (name) graduate.name = name;
-    if (email) graduate.email = email;
-    if (phone) graduate.phone = phone;
-  }
-
-  return graduate;
+export function getSessionScans(registrationNumber: string): ScanRecord[] {
+  return sessionScans.get(registrationNumber) || [];
 }
 
-export function getGraduate(registrationNumber: string): Graduate | undefined {
-  return graduates.get(registrationNumber);
-}
-
-export function getAllGraduates(): Graduate[] {
-  return Array.from(graduates.values());
-}
-
-export function recordScan(
+export function addSessionScan(
   registrationNumber: string,
   stationId: StationId,
   scannedBy?: string,
   notes?: string,
   metadata?: Record<string, unknown>
-): { success: boolean; graduate?: Graduate; error?: string } {
-  const graduate = graduates.get(registrationNumber);
+): ScanRecord {
+  const scans = sessionScans.get(registrationNumber) || [];
 
-  if (!graduate) {
-    return { success: false, error: 'Graduate not found. Please ensure the certificate is registered in the system.' };
-  }
-
-  const statusKey = getStationStatus(stationId);
-
-  // Check if already scanned at this station
-  if (graduate.status[statusKey]) {
-    return { success: false, error: `Already scanned at ${stationId} station` };
-  }
-
-  // Create scan record
   const scanRecord: ScanRecord = {
     station: stationId,
     timestamp: new Date().toISOString(),
@@ -82,72 +45,57 @@ export function recordScan(
     metadata,
   };
 
-  // Update graduate
-  graduate.scans.push(scanRecord);
-  graduate.status[statusKey] = true;
+  scans.push(scanRecord);
+  sessionScans.set(registrationNumber, scans);
 
-  // Handle special cases
-  if (stationId === 'final-dispatch' && metadata?.trackingNumber) {
-    graduate.trackingNumber = metadata.trackingNumber as string;
-    graduate.dispatchMethod = metadata.dispatchMethod as 'DTDC' | 'India Post';
-  }
-
-  return { success: true, graduate };
+  return scanRecord;
 }
 
-export function updateGraduateAddress(registrationNumber: string, address: Graduate['address']): boolean {
-  const graduate = graduates.get(registrationNumber);
-  if (graduate) {
-    graduate.address = address;
-    return true;
+export function getSessionStatus(registrationNumber: string): ScanStatus {
+  const scans = getSessionScans(registrationNumber);
+  const status = createEmptyStatus();
+
+  for (const scan of scans) {
+    const statusKey = getStationStatus(scan.station);
+    status[statusKey] = true;
   }
-  return false;
+
+  return status;
 }
 
+export function setSessionAddress(registrationNumber: string, address: Graduate['address']): void {
+  sessionAddresses.set(registrationNumber, address);
+}
+
+export function getSessionAddress(registrationNumber: string): Graduate['address'] | undefined {
+  return sessionAddresses.get(registrationNumber);
+}
+
+export function setSessionTracking(
+  registrationNumber: string,
+  trackingNumber: string,
+  dispatchMethod: 'DTDC' | 'India Post'
+): void {
+  sessionTracking.set(registrationNumber, { trackingNumber, dispatchMethod });
+}
+
+export function getSessionTracking(registrationNumber: string): { trackingNumber: string; dispatchMethod: 'DTDC' | 'India Post' } | undefined {
+  return sessionTracking.get(registrationNumber);
+}
+
+// Dashboard stats - to be populated from Tito API
 export function getDashboardStats(): DashboardStats {
-  const allGraduates = getAllGraduates();
-
   return {
-    totalGraduates: allGraduates.length,
-    packed: allGraduates.filter((g) => g.status.packed).length,
-    dispatchedToVenue: allGraduates.filter((g) => g.status.dispatchedToVenue).length,
-    registered: allGraduates.filter((g) => g.status.registered).length,
-    gownIssued: allGraduates.filter((g) => g.status.gownIssued).length,
-    gownReturned: allGraduates.filter((g) => g.status.gownReturned).length,
-    certificateCollected: allGraduates.filter((g) => g.status.certificateCollected).length,
-    returnedToHO: allGraduates.filter((g) => g.status.returnedToHO).length,
-    addressLabeled: allGraduates.filter((g) => g.status.addressLabeled).length,
-    finalDispatched: allGraduates.filter((g) => g.status.finalDispatched).length,
-    pendingGownDeposit: allGraduates.filter((g) => g.status.gownIssued && !g.status.gownReturned).length,
+    totalGraduates: 0,
+    packed: 0,
+    dispatchedToVenue: 0,
+    registered: 0,
+    gownIssued: 0,
+    gownReturned: 0,
+    certificateCollected: 0,
+    returnedToHO: 0,
+    addressLabeled: 0,
+    finalDispatched: 0,
+    pendingGownDeposit: 0,
   };
-}
-
-export function searchGraduates(query: string): Graduate[] {
-  const lowerQuery = query.toLowerCase();
-  return getAllGraduates().filter(
-    (g) =>
-      g.name.toLowerCase().includes(lowerQuery) ||
-      g.registrationNumber.toLowerCase().includes(lowerQuery) ||
-      g.email.toLowerCase().includes(lowerQuery)
-  );
-}
-
-// Initialize with some demo data
-export function initializeDemoData(): void {
-  const demoGraduates = [
-    { reg: 'FMAS2026001', name: 'Arun Kumar', email: 'arun@example.com', phone: '+91 98765 43210' },
-    { reg: 'FMAS2026002', name: 'Priya Sharma', email: 'priya@example.com', phone: '+91 98765 43211' },
-    { reg: 'FMAS2026003', name: 'Rahul Verma', email: 'rahul@example.com', phone: '+91 98765 43212' },
-    { reg: 'FMAS2026004', name: 'Sneha Patel', email: 'sneha@example.com', phone: '+91 98765 43213' },
-    { reg: 'FMAS2026005', name: 'Vikram Singh', email: 'vikram@example.com', phone: '+91 98765 43214' },
-  ];
-
-  demoGraduates.forEach((g) => {
-    getOrCreateGraduate(g.reg, g.name, g.email, g.phone);
-  });
-
-  // Add some scan records for demo
-  recordScan('FMAS2026001', 'packing');
-  recordScan('FMAS2026001', 'dispatch-venue');
-  recordScan('FMAS2026002', 'packing');
 }

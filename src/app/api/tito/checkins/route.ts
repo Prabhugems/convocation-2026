@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCheckins, searchCheckins, checkInGuest } from '@/lib/tito';
+import { getCheckinLists, searchRegistrations, createCheckin } from '@/lib/tito';
 
 export async function GET(request: NextRequest) {
   try {
@@ -7,11 +7,11 @@ export async function GET(request: NextRequest) {
     const query = searchParams.get('q');
 
     if (query) {
-      const result = await searchCheckins(query);
+      const result = await searchRegistrations(query);
       return NextResponse.json(result);
     }
 
-    const result = await getCheckins();
+    const result = await getCheckinLists();
     return NextResponse.json(result);
   } catch (error) {
     console.error('Tito API error:', error);
@@ -25,21 +25,21 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { checkinId } = body;
+    const { checkinListSlug, ticketSlug } = body;
 
-    if (!checkinId) {
+    if (!checkinListSlug || !ticketSlug) {
       return NextResponse.json(
-        { success: false, error: 'Check-in ID is required' },
+        { success: false, error: 'Check-in list slug and ticket slug are required' },
         { status: 400 }
       );
     }
 
-    const result = await checkInGuest(checkinId);
+    const result = await createCheckin(checkinListSlug, ticketSlug);
     return NextResponse.json(result);
   } catch (error) {
     console.error('Tito API error:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to check in guest' },
+      { success: false, error: 'Failed to create check-in' },
       { status: 500 }
     );
   }

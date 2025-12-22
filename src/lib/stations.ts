@@ -27,18 +27,18 @@ export const stations: Station[] = [
   {
     id: 'gown-issue',
     name: 'Gown Issue',
-    description: 'Collect ₹1000 deposit and issue academic gown',
+    description: 'Collect ₹1000 (₹500 rent + ₹500 deposit) and issue academic gown',
     icon: 'Shirt',
-    action: 'Collect Deposit',
+    action: 'Collect Payment',
     collectMoney: 1000,
   },
   {
     id: 'gown-return',
     name: 'Gown Return',
-    description: 'Accept gown return and refund ₹1000 deposit',
+    description: 'Accept gown return and refund ₹500 deposit',
     icon: 'Undo2',
     action: 'Refund Deposit',
-    refundMoney: 1000,
+    refundMoney: 500,
   },
   {
     id: 'certificate-collection',
