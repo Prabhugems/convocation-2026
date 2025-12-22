@@ -2,10 +2,8 @@ import { ImageResponse } from 'next/og';
 import { NextRequest } from 'next/server';
 import { getAirtableDataByConvocationNumber } from '@/lib/airtable';
 import { universalSearch } from '@/lib/tito';
-import { readFile } from 'fs/promises';
-import { join } from 'path';
 
-// Badge dimensions: 4×6 inch at 300 DPI = 1200×1800 pixels
+// Badge dimensions
 const BADGE_WIDTH = 1200;
 const BADGE_HEIGHT = 1800;
 
@@ -14,26 +12,6 @@ interface GraduateData {
   course: string;
   convocationNumber: string;
   ticketSlug?: string;
-}
-
-// Load font once and cache
-let interBold: ArrayBuffer | null = null;
-
-async function loadFont(): Promise<ArrayBuffer> {
-  if (interBold) return interBold;
-
-  // Try loading from public folder
-  try {
-    const fontPath = join(process.cwd(), 'public', 'fonts', 'Inter-Bold.woff2');
-    const fontBuffer = await readFile(fontPath);
-    interBold = fontBuffer.buffer.slice(fontBuffer.byteOffset, fontBuffer.byteOffset + fontBuffer.byteLength);
-    return interBold;
-  } catch {
-    // Fallback: fetch from Google Fonts
-    const res = await fetch('https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuGKYAZ9hjp-Ek-_EeA.woff');
-    interBold = await res.arrayBuffer();
-    return interBold;
-  }
 }
 
 async function getGraduateData(convNumber: string): Promise<GraduateData | null> {
@@ -85,8 +63,6 @@ export async function GET(
       });
     }
 
-    console.log(`[Badge API] Generating badge for: ${convNumber}`);
-
     const graduate = await getGraduateData(convNumber);
 
     if (!graduate) {
@@ -96,16 +72,18 @@ export async function GET(
       });
     }
 
-    console.log(`[Badge API] Found graduate: ${graduate.name}`);
+    // Fetch Inter Bold font from Google Fonts
+    const fontRes = await fetch('https://fonts.gstatic.com/s/inter/v18/UcCo3FwrK3iLTcviYwYZ8UA3J58.woff2');
+    if (!fontRes.ok) {
+      throw new Error('Failed to fetch font');
+    }
+    const fontData = await fontRes.arrayBuffer();
 
-    // Load font
-    const fontData = await loadFont();
-
-    // Generate QR code URL
+    // QR code URL
     const titoUrl = graduate.ticketSlug
       ? `https://ti.to/tickets/${graduate.ticketSlug}`
       : `https://ti.to/amasi/convocation-2026-kolkata/tickets/${graduate.convocationNumber}`;
-    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&format=png&data=${encodeURIComponent(titoUrl)}`;
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=280x280&format=png&data=${encodeURIComponent(titoUrl)}`;
 
     const orangeColor = '#E85A00';
 
@@ -113,8 +91,8 @@ export async function GET(
       (
         <div
           style={{
-            width: BADGE_WIDTH,
-            height: BADGE_HEIGHT,
+            width: '100%',
+            height: '100%',
             display: 'flex',
             flexDirection: 'column',
             backgroundColor: '#FFFFFF',
@@ -133,55 +111,46 @@ export async function GET(
               justifyContent: 'center',
             }}
           >
-            <div style={{ fontSize: 64, fontWeight: 700, color: '#FFFFFF' }}>AMASI</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: '#FFFFFF', marginTop: 8 }}>
+            <span style={{ fontSize: 64, color: '#FFFFFF' }}>AMASI</span>
+            <span style={{ fontSize: 22, color: '#FFFFFF', marginTop: 8 }}>
               Association of Minimal Access Surgeons of India
-            </div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: '#FFFFFF', marginTop: 4 }}>
+            </span>
+            <span style={{ fontSize: 18, color: '#FFFFFF', marginTop: 4 }}>
               College of Minimal Access Surgery
-            </div>
+            </span>
           </div>
 
-          {/* Content Area */}
+          {/* Content */}
           <div
             style={{
               flex: 1,
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              justifyContent: 'flex-start',
-              paddingTop: 60,
+              paddingTop: 50,
             }}
           >
-            <div style={{ fontSize: 56, fontWeight: 700, color: '#000000' }}>
-              CONVOCATION 2026
-            </div>
-            <div style={{ fontSize: 42, fontWeight: 700, color: '#000000', marginTop: 40 }}>
-              {graduate.course}
-            </div>
-            <div style={{ fontSize: 48, fontWeight: 700, color: '#000000', marginTop: 50, textAlign: 'center', maxWidth: 1000 }}>
+            <span style={{ fontSize: 52, color: '#000000' }}>CONVOCATION 2026</span>
+            <span style={{ fontSize: 38, color: '#000000', marginTop: 35 }}>{graduate.course}</span>
+            <span style={{ fontSize: 44, color: '#000000', marginTop: 45, textAlign: 'center', maxWidth: 1000 }}>
               Dr. {graduate.name}
-            </div>
+            </span>
 
-            {/* QR Code */}
-            <img src={qrCodeUrl} width={280} height={280} style={{ marginTop: 40 }} />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qrCodeUrl} width={260} height={260} style={{ marginTop: 35 }} alt="QR" />
 
-            <div style={{ fontSize: 44, fontWeight: 700, color: '#000000', marginTop: 30 }}>
-              {graduate.convocationNumber}
-            </div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: '#333333', marginTop: 40 }}>
+            <span style={{ fontSize: 40, color: '#000000', marginTop: 25 }}>{graduate.convocationNumber}</span>
+            <span style={{ fontSize: 22, color: '#333333', marginTop: 35 }}>
               Collect your certificate on 28th August 2026
-            </div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: '#333333', marginTop: 8 }}>
-              at AMASI Office (Venue)
-            </div>
+            </span>
+            <span style={{ fontSize: 22, color: '#333333', marginTop: 6 }}>at AMASI Office (Venue)</span>
 
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#666666', marginTop: 40 }}>
+            <span style={{ fontSize: 15, color: '#666666', marginTop: 35 }}>
               This badge is valid for Convocation Ceremony only,
-            </div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#666666', marginTop: 4 }}>
+            </span>
+            <span style={{ fontSize: 15, color: '#666666', marginTop: 4 }}>
               not for AMASICON 2026 conference registration.
-            </div>
+            </span>
           </div>
 
           {/* Orange Footer */}
@@ -195,9 +164,7 @@ export async function GET(
               justifyContent: 'center',
             }}
           >
-            <div style={{ fontSize: 28, fontWeight: 700, color: '#FFFFFF' }}>
-              AMASICON 2026 - Kolkata
-            </div>
+            <span style={{ fontSize: 26, color: '#FFFFFF' }}>AMASICON 2026 - Kolkata</span>
           </div>
         </div>
       ),
