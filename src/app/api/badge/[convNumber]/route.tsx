@@ -1,9 +1,8 @@
-import { ImageResponse } from 'next/og';
+import { ImageResponse } from '@vercel/og';
 import { NextRequest } from 'next/server';
 import { getAirtableDataByConvocationNumber } from '@/lib/airtable';
 import { universalSearch } from '@/lib/tito';
 
-// Badge dimensions
 const BADGE_WIDTH = 1200;
 const BADGE_HEIGHT = 1800;
 
@@ -72,14 +71,6 @@ export async function GET(
       });
     }
 
-    // Fetch Inter Bold font from Google Fonts
-    const fontRes = await fetch('https://fonts.gstatic.com/s/inter/v18/UcCo3FwrK3iLTcviYwYZ8UA3J58.woff2');
-    if (!fontRes.ok) {
-      throw new Error('Failed to fetch font');
-    }
-    const fontData = await fontRes.arrayBuffer();
-
-    // QR code URL
     const titoUrl = graduate.ticketSlug
       ? `https://ti.to/tickets/${graduate.ticketSlug}`
       : `https://ti.to/amasi/convocation-2026-kolkata/tickets/${graduate.convocationNumber}`;
@@ -96,10 +87,9 @@ export async function GET(
             display: 'flex',
             flexDirection: 'column',
             backgroundColor: '#FFFFFF',
-            fontFamily: 'Inter',
+            fontFamily: 'sans-serif',
           }}
         >
-          {/* Orange Header */}
           <div
             style={{
               width: '100%',
@@ -111,7 +101,7 @@ export async function GET(
               justifyContent: 'center',
             }}
           >
-            <span style={{ fontSize: 64, color: '#FFFFFF' }}>AMASI</span>
+            <span style={{ fontSize: 64, color: '#FFFFFF', fontWeight: 700 }}>AMASI</span>
             <span style={{ fontSize: 22, color: '#FFFFFF', marginTop: 8 }}>
               Association of Minimal Access Surgeons of India
             </span>
@@ -120,7 +110,6 @@ export async function GET(
             </span>
           </div>
 
-          {/* Content */}
           <div
             style={{
               flex: 1,
@@ -130,9 +119,9 @@ export async function GET(
               paddingTop: 50,
             }}
           >
-            <span style={{ fontSize: 52, color: '#000000' }}>CONVOCATION 2026</span>
+            <span style={{ fontSize: 52, color: '#000000', fontWeight: 700 }}>CONVOCATION 2026</span>
             <span style={{ fontSize: 38, color: '#000000', marginTop: 35 }}>{graduate.course}</span>
-            <span style={{ fontSize: 44, color: '#000000', marginTop: 45, textAlign: 'center', maxWidth: 1000 }}>
+            <span style={{ fontSize: 44, color: '#000000', marginTop: 45, textAlign: 'center', maxWidth: 1000, fontWeight: 700 }}>
               Dr. {graduate.name}
             </span>
 
@@ -153,7 +142,6 @@ export async function GET(
             </span>
           </div>
 
-          {/* Orange Footer */}
           <div
             style={{
               width: '100%',
@@ -171,14 +159,6 @@ export async function GET(
       {
         width: BADGE_WIDTH,
         height: BADGE_HEIGHT,
-        fonts: [
-          {
-            name: 'Inter',
-            data: fontData,
-            style: 'normal',
-            weight: 700,
-          },
-        ],
       }
     );
   } catch (error) {
