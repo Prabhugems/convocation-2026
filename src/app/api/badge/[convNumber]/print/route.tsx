@@ -80,25 +80,25 @@ export async function GET(
             justifyContent: 'center',
           }}
         >
-          <span style={{ fontSize: 52, color: '#000000', fontWeight: 700 }}>CONVOCATION 2026</span>
-          <span style={{ fontSize: 38, color: '#000000', marginTop: 35 }}>{graduate.course}</span>
-          <span style={{ fontSize: 44, color: '#000000', marginTop: 45, textAlign: 'center', maxWidth: 1000, fontWeight: 700 }}>
+          <span style={{ fontSize: 72, color: '#000000', fontWeight: 700 }}>CONVOCATION 2026</span>
+          <span style={{ fontSize: 52, color: '#000000', marginTop: 40 }}>{graduate.course}</span>
+          <span style={{ fontSize: 64, color: '#000000', marginTop: 50, textAlign: 'center', maxWidth: 1000, fontWeight: 700 }}>
             Dr. {graduate.name}
           </span>
 
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={qrCodeUrl} width={260} height={260} style={{ marginTop: 35 }} alt="QR" />
+          <img src={qrCodeUrl} width={320} height={320} style={{ marginTop: 45 }} alt="QR" />
 
-          <span style={{ fontSize: 40, color: '#000000', marginTop: 25 }}>{graduate.convocationNumber}</span>
-          <span style={{ fontSize: 22, color: '#333333', marginTop: 35 }}>
+          <span style={{ fontSize: 56, color: '#000000', marginTop: 35 }}>{graduate.convocationNumber}</span>
+          <span style={{ fontSize: 32, color: '#333333', marginTop: 45 }}>
             Collect your certificate on 28th August 2026
           </span>
-          <span style={{ fontSize: 22, color: '#333333', marginTop: 6 }}>at AMASI Office (Venue)</span>
+          <span style={{ fontSize: 32, color: '#333333', marginTop: 8 }}>at AMASI Office (Venue)</span>
 
-          <span style={{ fontSize: 15, color: '#666666', marginTop: 35 }}>
+          <span style={{ fontSize: 22, color: '#666666', marginTop: 45 }}>
             This badge is valid for Convocation Ceremony only,
           </span>
-          <span style={{ fontSize: 15, color: '#666666', marginTop: 4 }}>
+          <span style={{ fontSize: 22, color: '#666666', marginTop: 6 }}>
             not for AMASICON 2026 conference registration.
           </span>
         </div>

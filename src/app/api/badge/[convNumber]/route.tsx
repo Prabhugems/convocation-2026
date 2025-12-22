@@ -93,7 +93,7 @@ export async function GET(
           <div
             style={{
               width: '100%',
-              height: 220,
+              height: 280,
               backgroundColor: orangeColor,
               display: 'flex',
               flexDirection: 'column',
@@ -101,11 +101,11 @@ export async function GET(
               justifyContent: 'center',
             }}
           >
-            <span style={{ fontSize: 64, color: '#FFFFFF', fontWeight: 700 }}>AMASI</span>
-            <span style={{ fontSize: 22, color: '#FFFFFF', marginTop: 8 }}>
+            <span style={{ fontSize: 96, color: '#FFFFFF', fontWeight: 700 }}>AMASI</span>
+            <span style={{ fontSize: 32, color: '#FFFFFF', marginTop: 12 }}>
               Association of Minimal Access Surgeons of India
             </span>
-            <span style={{ fontSize: 18, color: '#FFFFFF', marginTop: 4 }}>
+            <span style={{ fontSize: 26, color: '#FFFFFF', marginTop: 6 }}>
               College of Minimal Access Surgery
             </span>
           </div>
@@ -116,28 +116,28 @@ export async function GET(
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              paddingTop: 50,
+              paddingTop: 60,
             }}
           >
-            <span style={{ fontSize: 52, color: '#000000', fontWeight: 700 }}>CONVOCATION 2026</span>
-            <span style={{ fontSize: 38, color: '#000000', marginTop: 35 }}>{graduate.course}</span>
-            <span style={{ fontSize: 44, color: '#000000', marginTop: 45, textAlign: 'center', maxWidth: 1000, fontWeight: 700 }}>
+            <span style={{ fontSize: 72, color: '#000000', fontWeight: 700 }}>CONVOCATION 2026</span>
+            <span style={{ fontSize: 52, color: '#000000', marginTop: 40 }}>{graduate.course}</span>
+            <span style={{ fontSize: 64, color: '#000000', marginTop: 50, textAlign: 'center', maxWidth: 1000, fontWeight: 700 }}>
               Dr. {graduate.name}
             </span>
 
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qrCodeUrl} width={260} height={260} style={{ marginTop: 35 }} alt="QR" />
+            <img src={qrCodeUrl} width={320} height={320} style={{ marginTop: 45 }} alt="QR" />
 
-            <span style={{ fontSize: 40, color: '#000000', marginTop: 25 }}>{graduate.convocationNumber}</span>
-            <span style={{ fontSize: 22, color: '#333333', marginTop: 35 }}>
+            <span style={{ fontSize: 56, color: '#000000', marginTop: 35 }}>{graduate.convocationNumber}</span>
+            <span style={{ fontSize: 32, color: '#333333', marginTop: 45 }}>
               Collect your certificate on 28th August 2026
             </span>
-            <span style={{ fontSize: 22, color: '#333333', marginTop: 6 }}>at AMASI Office (Venue)</span>
+            <span style={{ fontSize: 32, color: '#333333', marginTop: 8 }}>at AMASI Office (Venue)</span>
 
-            <span style={{ fontSize: 15, color: '#666666', marginTop: 35 }}>
+            <span style={{ fontSize: 22, color: '#666666', marginTop: 45 }}>
               This badge is valid for Convocation Ceremony only,
             </span>
-            <span style={{ fontSize: 15, color: '#666666', marginTop: 4 }}>
+            <span style={{ fontSize: 22, color: '#666666', marginTop: 6 }}>
               not for AMASICON 2026 conference registration.
             </span>
           </div>
@@ -145,14 +145,14 @@ export async function GET(
           <div
             style={{
               width: '100%',
-              height: 100,
+              height: 120,
               backgroundColor: orangeColor,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <span style={{ fontSize: 26, color: '#FFFFFF' }}>AMASICON 2026 - Kolkata</span>
+            <span style={{ fontSize: 38, color: '#FFFFFF' }}>AMASICON 2026 - Kolkata</span>
           </div>
         </div>
       ),
