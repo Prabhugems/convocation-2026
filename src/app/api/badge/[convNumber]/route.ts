@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import sharp from 'sharp';
 import QRCode from 'qrcode';
 import satori from 'satori';
+import { Resvg } from '@resvg/resvg-js';
 import path from 'path';
 import fs from 'fs';
 import { getAirtableDataByConvocationNumber } from '@/lib/airtable';
@@ -75,7 +76,7 @@ async function getGraduateData(convNumber: string): Promise<GraduateData | null>
 }
 
 // Create badge using satori (React-like JSX to SVG with embedded fonts)
-async function createBadgeSvg(graduate: GraduateData, qrDataUrl: string, useOverlay: boolean): Promise<string> {
+async function createBadgeSvg(graduate: GraduateData, qrDataUrl: string): Promise<string> {
   const { fontData, fontBoldData } = await loadFonts();
 
   const orangeColor = '#E85A00';
@@ -318,31 +319,33 @@ export async function GET(
       },
     });
 
-    // Check for overlay image
+    // Generate badge SVG using satori (text is converted to paths)
+    const badgeSvg = await createBadgeSvg(graduate, qrDataUrl);
+
+    // Convert SVG to PNG using resvg (properly handles SVG paths from satori)
+    const resvg = new Resvg(badgeSvg, {
+      fitTo: {
+        mode: 'width',
+        value: BADGE_WIDTH,
+      },
+    });
+    const pngData = resvg.render();
+    let badge = Buffer.from(pngData.asPng());
+
+    // If overlay exists and not plain mode, composite the generated badge with overlay
     const overlayPath = path.join(process.cwd(), 'public/images/badge-overlay.png');
     const hasOverlay = fs.existsSync(overlayPath);
 
-    // Generate badge SVG using satori
-    const badgeSvg = await createBadgeSvg(graduate, qrDataUrl, hasOverlay && !plain);
-
-    // Convert SVG to PNG using sharp
-    let badge: Buffer;
-
     if (hasOverlay && !plain) {
-      // Composite with overlay
-      const svgBuffer = Buffer.from(badgeSvg);
+      // Composite: overlay as base, generated badge content on top
       badge = await sharp(overlayPath)
         .resize(BADGE_WIDTH, BADGE_HEIGHT, { fit: 'fill' })
         .composite([
           {
-            input: await sharp(svgBuffer).png().toBuffer(),
+            input: badge,
             blend: 'over',
           },
         ])
-        .png()
-        .toBuffer();
-    } else {
-      badge = await sharp(Buffer.from(badgeSvg))
         .png()
         .toBuffer();
     }

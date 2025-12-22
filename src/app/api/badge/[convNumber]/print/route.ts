@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import sharp from 'sharp';
 import QRCode from 'qrcode';
 import satori from 'satori';
+import { Resvg } from '@resvg/resvg-js';
 import { getAirtableDataByConvocationNumber } from '@/lib/airtable';
 import { universalSearch } from '@/lib/tito';
 
@@ -236,10 +236,15 @@ export async function GET(
     // Generate print badge SVG using satori
     const badgeSvg = await createPrintBadgeSvg(graduate, qrDataUrl);
 
-    // Convert SVG to PNG using sharp
-    const badge = await sharp(Buffer.from(badgeSvg))
-      .png()
-      .toBuffer();
+    // Convert SVG to PNG using resvg (properly handles SVG paths from satori)
+    const resvg = new Resvg(badgeSvg, {
+      fitTo: {
+        mode: 'width',
+        value: BADGE_WIDTH,
+      },
+    });
+    const pngData = resvg.render();
+    const badge = Buffer.from(pngData.asPng());
 
     console.log(`[Badge Print API] Print badge generated, size: ${badge.length} bytes`);
 
