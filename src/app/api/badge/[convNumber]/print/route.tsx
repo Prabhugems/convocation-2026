@@ -1,4 +1,4 @@
-import { ImageResponse } from '@vercel/og';
+import { ImageResponse } from 'next/og';
 import { NextRequest } from 'next/server';
 import { getAirtableDataByConvocationNumber } from '@/lib/airtable';
 import { universalSearch } from '@/lib/tito';
