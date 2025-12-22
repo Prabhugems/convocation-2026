@@ -88,16 +88,17 @@ function createPrintBadgeSvg(graduate: GraduateData): string {
   const convNum = escapeXml(graduate.convocationNumber);
 
   // EXACT SAME layout as digital badge - only difference is no background
+  // Using DejaVu Sans which is available on Vercel/Linux servers
   return `
     <svg width="${BADGE_WIDTH}" height="${BADGE_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <style>
-          .title { font-family: Arial, Helvetica, sans-serif; font-weight: bold; }
-          .course { font-family: Arial, Helvetica, sans-serif; font-weight: bold; }
-          .name { font-family: Arial, Helvetica, sans-serif; font-weight: bold; }
-          .conv { font-family: Arial, Helvetica, sans-serif; font-weight: bold; }
-          .info { font-family: Arial, Helvetica, sans-serif; }
-          .note { font-family: Arial, Helvetica, sans-serif; }
+          .title { font-family: 'DejaVu Sans', 'Liberation Sans', sans-serif; font-weight: bold; }
+          .course { font-family: 'DejaVu Sans', 'Liberation Sans', sans-serif; font-weight: bold; }
+          .name { font-family: 'DejaVu Sans', 'Liberation Sans', sans-serif; font-weight: bold; }
+          .conv { font-family: 'DejaVu Sans', 'Liberation Sans', sans-serif; font-weight: bold; }
+          .info { font-family: 'DejaVu Sans', 'Liberation Sans', sans-serif; }
+          .note { font-family: 'DejaVu Sans', 'Liberation Sans', sans-serif; }
         </style>
       </defs>
 

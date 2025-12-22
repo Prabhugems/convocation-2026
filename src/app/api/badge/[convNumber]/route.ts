@@ -96,16 +96,17 @@ function createTextOverlaySvg(graduate: GraduateData): string {
   const convNum = escapeXml(graduate.convocationNumber);
 
   // All text is BLACK on WHITE background - no filled rectangles (saves ink on ribbon printer)
+  // Using DejaVu Sans which is available on Vercel/Linux servers
   return `
     <svg width="${BADGE_WIDTH}" height="${BADGE_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <style>
-          .title { font-family: Arial, Helvetica, sans-serif; font-weight: bold; }
-          .course { font-family: Arial, Helvetica, sans-serif; font-weight: bold; }
-          .name { font-family: Arial, Helvetica, sans-serif; font-weight: bold; }
-          .conv { font-family: Arial, Helvetica, sans-serif; font-weight: bold; }
-          .info { font-family: Arial, Helvetica, sans-serif; }
-          .note { font-family: Arial, Helvetica, sans-serif; }
+          .title { font-family: 'DejaVu Sans', 'Liberation Sans', sans-serif; font-weight: bold; }
+          .course { font-family: 'DejaVu Sans', 'Liberation Sans', sans-serif; font-weight: bold; }
+          .name { font-family: 'DejaVu Sans', 'Liberation Sans', sans-serif; font-weight: bold; }
+          .conv { font-family: 'DejaVu Sans', 'Liberation Sans', sans-serif; font-weight: bold; }
+          .info { font-family: 'DejaVu Sans', 'Liberation Sans', sans-serif; }
+          .note { font-family: 'DejaVu Sans', 'Liberation Sans', sans-serif; }
         </style>
       </defs>
 
@@ -214,18 +215,19 @@ function createFullBadgeSvg(graduate: GraduateData): string {
   // Orange color from AMASI branding
   const orangeColor = '#E85A00';
 
+  // Using DejaVu Sans which is available on Vercel/Linux servers
   return `
     <svg width="${BADGE_WIDTH}" height="${BADGE_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <style>
-          .header-text { font-family: Arial, Helvetica, sans-serif; font-weight: bold; }
-          .title { font-family: Arial, Helvetica, sans-serif; font-weight: bold; }
-          .course { font-family: Arial, Helvetica, sans-serif; font-weight: bold; }
-          .name { font-family: Arial, Helvetica, sans-serif; font-weight: bold; }
-          .conv { font-family: Arial, Helvetica, sans-serif; font-weight: bold; }
-          .info { font-family: Arial, Helvetica, sans-serif; }
-          .note { font-family: Arial, Helvetica, sans-serif; }
-          .footer { font-family: Arial, Helvetica, sans-serif; font-weight: bold; }
+          .header-text { font-family: 'DejaVu Sans', 'Liberation Sans', sans-serif; font-weight: bold; }
+          .title { font-family: 'DejaVu Sans', 'Liberation Sans', sans-serif; font-weight: bold; }
+          .course { font-family: 'DejaVu Sans', 'Liberation Sans', sans-serif; font-weight: bold; }
+          .name { font-family: 'DejaVu Sans', 'Liberation Sans', sans-serif; font-weight: bold; }
+          .conv { font-family: 'DejaVu Sans', 'Liberation Sans', sans-serif; font-weight: bold; }
+          .info { font-family: 'DejaVu Sans', 'Liberation Sans', sans-serif; }
+          .note { font-family: 'DejaVu Sans', 'Liberation Sans', sans-serif; }
+          .footer { font-family: 'DejaVu Sans', 'Liberation Sans', sans-serif; font-weight: bold; }
         </style>
       </defs>
 
@@ -245,7 +247,7 @@ function createFullBadgeSvg(graduate: GraduateData): string {
         Academy of Medical Aesthetic Sciences of India
       </text>
       <text x="${BADGE_WIDTH / 2}" y="190" text-anchor="middle"
-            font-size="18" fill="#FFFFFF" font-family="Arial, sans-serif">
+            font-size="18" fill="#FFFFFF" font-family="'DejaVu Sans', 'Liberation Sans', sans-serif">
         College of Medical Aesthetic Sciences
       </text>
 
@@ -360,16 +362,17 @@ function createPlainBadgeSvg(graduate: GraduateData): string {
   const course = escapeXml(graduate.course);
   const convNum = escapeXml(graduate.convocationNumber);
 
+  // Using DejaVu Sans which is available on Vercel/Linux servers
   return `
     <svg width="${BADGE_WIDTH}" height="${BADGE_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <style>
-          .title { font-family: Arial, Helvetica, sans-serif; font-weight: bold; }
-          .course { font-family: Arial, Helvetica, sans-serif; font-weight: bold; }
-          .name { font-family: Arial, Helvetica, sans-serif; font-weight: bold; }
-          .conv { font-family: Arial, Helvetica, sans-serif; font-weight: bold; }
-          .info { font-family: Arial, Helvetica, sans-serif; }
-          .note { font-family: Arial, Helvetica, sans-serif; }
+          .title { font-family: 'DejaVu Sans', 'Liberation Sans', sans-serif; font-weight: bold; }
+          .course { font-family: 'DejaVu Sans', 'Liberation Sans', sans-serif; font-weight: bold; }
+          .name { font-family: 'DejaVu Sans', 'Liberation Sans', sans-serif; font-weight: bold; }
+          .conv { font-family: 'DejaVu Sans', 'Liberation Sans', sans-serif; font-weight: bold; }
+          .info { font-family: 'DejaVu Sans', 'Liberation Sans', sans-serif; }
+          .note { font-family: 'DejaVu Sans', 'Liberation Sans', sans-serif; }
         </style>
       </defs>
 
