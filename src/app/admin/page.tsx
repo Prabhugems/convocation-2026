@@ -451,7 +451,7 @@ export default function AdminPage() {
               <Menu className="w-5 h-5 text-slate-400" />
             </button>
             <div>
-              <h1 className="text-xl font-bold text-white">Dashboard</h1>
+              <h1 className="text-xl font-bold text-white capitalize">{activeNav}</h1>
               <p className="text-xs text-slate-400">
                 {lastRefresh && `Last sync: ${lastRefresh.toLocaleTimeString()}`}
               </p>
@@ -487,6 +487,9 @@ export default function AdminPage() {
 
         {/* Dashboard Content */}
         <div className="p-4 lg:p-8 space-y-6">
+          {/* Conditionally render based on activeNav */}
+          {activeNav === 'dashboard' && (
+            <>
           {/* Stats Cards Row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
@@ -831,9 +834,12 @@ export default function AdminPage() {
               })}
             </div>
           </div>
+            </>
+          )}
 
-          {/* Graduates List */}
-          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 hover:border-slate-600 transition-all duration-300 animate-fade-in-up" style={{ animationDelay: '600ms' }}>
+          {/* Graduates View - Only shown when Graduates is selected in sidebar */}
+          {activeNav === 'graduates' && (
+          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 hover:border-slate-600 transition-all duration-300 animate-fade-in-up">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                 <UsersIcon className="w-5 h-5 text-indigo-400" />
@@ -968,6 +974,29 @@ export default function AdminPage() {
               )}
             </div>
           </div>
+          )}
+
+          {/* Stations View - Placeholder for future */}
+          {activeNav === 'stations' && (
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 animate-fade-in-up">
+              <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-cyan-400" />
+                Station Management
+              </h2>
+              <p className="text-slate-400">Station management features coming soon...</p>
+            </div>
+          )}
+
+          {/* Settings View - Placeholder for future */}
+          {activeNav === 'settings' && (
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 animate-fade-in-up">
+              <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <Settings className="w-5 h-5 text-purple-400" />
+                Settings
+              </h2>
+              <p className="text-slate-400">Settings and configuration coming soon...</p>
+            </div>
+          )}
         </div>
       </main>
 
