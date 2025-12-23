@@ -632,11 +632,14 @@ export default function AdminPage() {
                   <div className={`absolute -top-4 -right-4 w-24 h-24 rounded-full bg-gradient-to-br ${stat.gradient} opacity-10 group-hover:opacity-20 transition-all duration-500 group-hover:scale-125`} />
 
                   <div className="relative z-10">
-                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center mb-4 shadow-lg ${stat.shadow} group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
-                      <Icon className="w-6 h-6 text-white animate-float" style={{ animationDelay: `${index * 0.5}s` }} />
+                    <div className="flex items-start justify-between mb-4">
+                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-lg ${stat.shadow} group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
+                        <Icon className="w-6 h-6 text-white" />
+                      </div>
+                      <div className={`absolute top-4 right-4 w-20 h-20 rounded-full bg-gradient-to-br ${stat.gradient} opacity-20`} />
                     </div>
-                    <p className="text-slate-400 text-sm mb-1">{stat.label}</p>
-                    <p className="text-3xl font-bold text-white group-hover:scale-105 transition-transform duration-300 origin-left">{stat.value}</p>
+                    <p className="text-slate-300 text-sm font-medium mb-1">{stat.label}</p>
+                    <p className="text-4xl font-bold text-white group-hover:scale-105 transition-transform duration-300 origin-left">{stat.value}</p>
                   </div>
                 </div>
               );
