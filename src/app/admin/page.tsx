@@ -387,15 +387,16 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-gray-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
-          <p className="text-white/60">
+          <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
+          <p className="text-gray-500">
             Overview of certificate management
             {lastRefresh && (
-              <span className="ml-2 text-white/40">
+              <span className="ml-2 text-gray-400">
                 • Last sync: {lastRefresh.toLocaleTimeString()}
               </span>
             )}
@@ -405,7 +406,7 @@ export default function AdminPage() {
           <button
             onClick={fetchData}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-white"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 transition-colors text-white"
             title="Sync with Tito"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -413,10 +414,10 @@ export default function AdminPage() {
           </button>
           <button
             onClick={exportCSV}
-            className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+            className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition-colors"
             title="Export CSV"
           >
-            <Download className="w-5 h-5 text-white" />
+            <Download className="w-5 h-5 text-gray-600" />
           </button>
         </div>
       </div>
@@ -425,7 +426,7 @@ export default function AdminPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         {/* Main Progress Card */}
         <GlassCard className="p-6 lg:col-span-2">
-          <h2 className="text-lg font-semibold text-white mb-6">Overall Progress</h2>
+          <h2 className="text-lg font-semibold text-gray-800 mb-6">Overall Progress</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
             <CircularProgress
               value={stats?.certificateCollected || 0}
@@ -460,40 +461,40 @@ export default function AdminPage() {
 
         {/* Quick Stats Card */}
         <GlassCard className="p-6">
-          <h2 className="text-lg font-semibold text-white mb-4">Quick Stats</h2>
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">Quick Stats</h2>
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <div className="flex items-center gap-3">
-                <Users className="w-5 h-5 text-blue-400" />
-                <span className="text-white/70">Total Graduates</span>
+                <Users className="w-5 h-5 text-blue-500" />
+                <span className="text-gray-600">Total Graduates</span>
               </div>
-              <span className="text-xl font-bold text-white">{stats?.totalGraduates || 0}</span>
+              <span className="text-xl font-bold text-gray-800">{stats?.totalGraduates || 0}</span>
             </div>
-            <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <div className="flex items-center gap-3">
-                <CheckCircle2 className="w-5 h-5 text-green-400" />
-                <span className="text-white/70">Completed</span>
+                <CheckCircle2 className="w-5 h-5 text-green-500" />
+                <span className="text-gray-600">Completed</span>
               </div>
-              <span className="text-xl font-bold text-green-400">
+              <span className="text-xl font-bold text-green-600">
                 {(stats?.certificateCollected || 0) + (stats?.finalDispatched || 0)}
               </span>
             </div>
-            <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <div className="flex items-center gap-3">
-                <Clock className="w-5 h-5 text-yellow-400" />
-                <span className="text-white/70">Pending</span>
+                <Clock className="w-5 h-5 text-amber-500" />
+                <span className="text-gray-600">Pending</span>
               </div>
-              <span className="text-xl font-bold text-yellow-400">
+              <span className="text-xl font-bold text-amber-600">
                 {(stats?.totalGraduates || 0) - (stats?.certificateCollected || 0) - (stats?.finalDispatched || 0)}
               </span>
             </div>
             {(stats?.pendingGownDeposit || 0) > 0 && (
-              <div className="flex items-center justify-between p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+              <div className="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-lg">
                 <div className="flex items-center gap-3">
-                  <Shirt className="w-5 h-5 text-yellow-400" />
-                  <span className="text-yellow-400">Gown Returns</span>
+                  <Shirt className="w-5 h-5 text-amber-600" />
+                  <span className="text-amber-700">Gown Returns</span>
                 </div>
-                <span className="text-xl font-bold text-yellow-400">{stats?.pendingGownDeposit || 0}</span>
+                <span className="text-xl font-bold text-amber-600">{stats?.pendingGownDeposit || 0}</span>
               </div>
             )}
           </div>
@@ -502,7 +503,7 @@ export default function AdminPage() {
 
       {/* Certificate Pipeline Flow */}
       <GlassCard className="p-6 mb-8">
-        <h2 className="text-lg font-semibold text-white mb-6">Certificate Pipeline</h2>
+        <h2 className="text-lg font-semibold text-gray-800 mb-6">Certificate Pipeline</h2>
         <div className="overflow-x-auto">
           <div className="flex items-center justify-between min-w-[800px] gap-2">
             {[
@@ -518,17 +519,17 @@ export default function AdminPage() {
               return (
                 <div key={step.label} className="flex items-center flex-1">
                   <div className="flex-1 text-center">
-                    <div className={`w-16 h-16 mx-auto rounded-full ${step.color}/20 flex items-center justify-center mb-2 relative`}>
+                    <div className={`w-16 h-16 mx-auto rounded-full ${step.color.replace('bg-', 'bg-')}/10 flex items-center justify-center mb-2 relative`}>
                       <Icon className={`w-7 h-7 ${step.color.replace('bg-', 'text-')}`} />
-                      <div className="absolute -bottom-1 -right-1 bg-gray-900 rounded-full px-1.5 py-0.5">
-                        <span className="text-xs font-bold text-white">{percentage}%</span>
+                      <div className="absolute -bottom-1 -right-1 bg-white border border-gray-200 rounded-full px-1.5 py-0.5 shadow-sm">
+                        <span className="text-xs font-bold text-gray-700">{percentage}%</span>
                       </div>
                     </div>
-                    <p className="text-2xl font-bold text-white">{step.value}</p>
-                    <p className="text-xs text-white/50">{step.label}</p>
+                    <p className="text-2xl font-bold text-gray-800">{step.value}</p>
+                    <p className="text-xs text-gray-500">{step.label}</p>
                   </div>
                   {index < arr.length - 1 && (
-                    <ArrowRight className="w-5 h-5 text-white/20 shrink-0 mx-1" />
+                    <ArrowRight className="w-5 h-5 text-gray-300 shrink-0 mx-1" />
                   )}
                 </div>
               );
@@ -536,8 +537,8 @@ export default function AdminPage() {
           </div>
         </div>
         {/* Post-event pipeline */}
-        <div className="mt-6 pt-6 border-t border-white/10">
-          <p className="text-sm text-white/40 mb-4">Post-Event Dispatch</p>
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <p className="text-sm text-gray-500 mb-4">Post-Event Dispatch</p>
           <div className="flex items-center justify-start gap-2">
             {[
               { label: 'At Head Office', value: stats?.returnedToHO || 0, color: 'bg-yellow-500', icon: Building2 },
@@ -548,22 +549,22 @@ export default function AdminPage() {
               return (
                 <div key={step.label} className="flex items-center">
                   <div className="text-center min-w-[100px]">
-                    <div className={`w-12 h-12 mx-auto rounded-full ${step.color}/20 flex items-center justify-center mb-2`}>
+                    <div className={`w-12 h-12 mx-auto rounded-full ${step.color.replace('bg-', 'bg-')}/10 flex items-center justify-center mb-2`}>
                       <Icon className={`w-5 h-5 ${step.color.replace('bg-', 'text-')}`} />
                     </div>
-                    <p className="text-lg font-bold text-white">{step.value}</p>
-                    <p className="text-xs text-white/50">{step.label}</p>
+                    <p className="text-lg font-bold text-gray-800">{step.value}</p>
+                    <p className="text-xs text-gray-500">{step.label}</p>
                   </div>
                   {index < arr.length - 1 && (
-                    <ArrowRight className="w-4 h-4 text-white/20 shrink-0 mx-2" />
+                    <ArrowRight className="w-4 h-4 text-gray-300 shrink-0 mx-2" />
                   )}
                 </div>
               );
             })}
             {dispatchMeta && (stats?.finalDispatched || 0) > 0 && (
-              <div className="ml-4 pl-4 border-l border-white/10 text-sm">
-                <p className="text-white/50">DTDC: <span className="text-white font-medium">{dispatchMeta.dispatchedDTDC}</span></p>
-                <p className="text-white/50">India Post: <span className="text-white font-medium">{dispatchMeta.dispatchedIndiaPost}</span></p>
+              <div className="ml-4 pl-4 border-l border-gray-200 text-sm">
+                <p className="text-gray-500">DTDC: <span className="text-gray-800 font-medium">{dispatchMeta.dispatchedDTDC}</span></p>
+                <p className="text-gray-500">India Post: <span className="text-gray-800 font-medium">{dispatchMeta.dispatchedIndiaPost}</span></p>
               </div>
             )}
           </div>
@@ -572,29 +573,29 @@ export default function AdminPage() {
 
       {/* Alerts */}
       {(stats?.pendingGownDeposit || 0) > 0 && (
-        <GlassCard className="p-4 mb-8 border-yellow-500/30 bg-yellow-500/10">
+        <div className="p-4 mb-8 border border-amber-200 bg-amber-50 rounded-xl">
           <div className="flex items-center gap-3">
-            <AlertTriangle className="w-6 h-6 text-yellow-400" />
+            <AlertTriangle className="w-6 h-6 text-amber-500" />
             <div>
-              <p className="font-semibold text-yellow-400">Pending Gown Returns</p>
-              <p className="text-sm text-white/70">
+              <p className="font-semibold text-amber-700">Pending Gown Returns</p>
+              <p className="text-sm text-amber-600">
                 {stats?.pendingGownDeposit} graduates have pending gown returns (₹
                 {(stats?.pendingGownDeposit || 0) * 500} refundable deposits)
               </p>
             </div>
           </div>
-        </GlassCard>
+        </div>
       )}
 
       {/* Station Progress - Material Dashboard Style */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {[
-          { id: 'packing', name: 'Packing', icon: Package, gradient: 'from-gray-600 to-gray-800', color: '#6b7280' },
-          { id: 'dispatch-venue', name: 'Dispatch to Venue', icon: Truck, gradient: 'from-purple-500 to-purple-700', color: '#a855f7' },
-          { id: 'registration', name: 'Registration', icon: UserCheck, gradient: 'from-cyan-500 to-cyan-700', color: '#06b6d4' },
-          { id: 'gown-issue', name: 'Gown Issue', icon: Shirt, gradient: 'from-orange-500 to-orange-700', color: '#f97316' },
-          { id: 'gown-return', name: 'Gown Return', icon: Undo2, gradient: 'from-amber-500 to-amber-700', color: '#f59e0b' },
-          { id: 'certificate-collection', name: 'Certificate Collection', icon: Award, gradient: 'from-green-500 to-green-700', color: '#22c55e' },
+          { id: 'packing', name: 'Packing', icon: Package, gradient: 'from-gray-500 to-gray-600', color: '#6b7280' },
+          { id: 'dispatch-venue', name: 'Dispatch to Venue', icon: Truck, gradient: 'from-purple-500 to-purple-600', color: '#a855f7' },
+          { id: 'registration', name: 'Registration', icon: UserCheck, gradient: 'from-cyan-500 to-cyan-600', color: '#06b6d4' },
+          { id: 'gown-issue', name: 'Gown Issue', icon: Shirt, gradient: 'from-orange-500 to-orange-600', color: '#f97316' },
+          { id: 'gown-return', name: 'Gown Return', icon: Undo2, gradient: 'from-amber-500 to-amber-600', color: '#f59e0b' },
+          { id: 'certificate-collection', name: 'Certificate Collection', icon: Award, gradient: 'from-green-500 to-green-600', color: '#22c55e' },
         ].map((station) => {
           const count = (() => {
             switch (station.id) {
@@ -622,27 +623,27 @@ export default function AdminPage() {
                 {/* Stats */}
                 <div className="flex justify-end mb-4">
                   <div className="text-right">
-                    <p className="text-white/50 text-sm">{station.name}</p>
-                    <p className="text-2xl font-bold text-white">{count}</p>
+                    <p className="text-gray-500 text-sm">{station.name}</p>
+                    <p className="text-2xl font-bold text-gray-800">{count}</p>
                   </div>
                 </div>
 
                 {/* Divider */}
-                <div className="h-px bg-white/10 mb-4" />
+                <div className="h-px bg-gray-100 mb-4" />
 
                 {/* Progress */}
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-white/50">Progress</span>
+                    <span className="text-gray-500">Progress</span>
                     <span className="font-medium" style={{ color: station.color }}>{percentage}%</span>
                   </div>
-                  <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full bg-gradient-to-r ${station.gradient} transition-all duration-700 ease-out`}
                       style={{ width: `${percentage}%` }}
                     />
                   </div>
-                  <p className="text-xs text-white/40 text-right">{count} of {total}</p>
+                  <p className="text-xs text-gray-400 text-right">{count} of {total}</p>
                 </div>
               </GlassCard>
             </div>
@@ -653,8 +654,8 @@ export default function AdminPage() {
       {/* Station Links - Shareable URLs */}
       <GlassCard className="p-6 mb-8">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-white">Station Links</h2>
-          <p className="text-xs text-white/40">Share with staff for multi-device check-in</p>
+          <h2 className="text-lg font-semibold text-gray-800">Station Links</h2>
+          <p className="text-xs text-gray-400">Share with staff for multi-device check-in</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {stations.map((station) => {
@@ -678,16 +679,16 @@ export default function AdminPage() {
             return (
               <div
                 key={station.id}
-                className="flex items-center justify-between p-3 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition-colors"
+                className="flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
-                    <Icon className="w-4 h-4 text-white/70" />
+                  <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                    <Icon className="w-4 h-4 text-blue-600" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-white truncate">{station.name}</p>
+                    <p className="text-sm font-medium text-gray-800 truncate">{station.name}</p>
                     {checkinList && (
-                      <p className="text-xs text-white/40">
+                      <p className="text-xs text-gray-400">
                         {checkinList.checked_in}/{checkinList.total}
                       </p>
                     )}
@@ -696,30 +697,30 @@ export default function AdminPage() {
                 <div className="flex items-center gap-1 shrink-0">
                   <button
                     onClick={() => copyStationUrl(station.id)}
-                    className="p-2 rounded hover:bg-white/10 transition-colors"
+                    className="p-2 rounded hover:bg-gray-200 transition-colors"
                     title="Copy link"
                   >
                     {copiedStation === station.id ? (
-                      <Check className="w-4 h-4 text-green-400" />
+                      <Check className="w-4 h-4 text-green-500" />
                     ) : (
-                      <Copy className="w-4 h-4 text-white/50" />
+                      <Copy className="w-4 h-4 text-gray-400" />
                     )}
                   </button>
                   <button
                     onClick={() => setShowQRModal(station.id)}
-                    className="p-2 rounded hover:bg-white/10 transition-colors"
+                    className="p-2 rounded hover:bg-gray-200 transition-colors"
                     title="Show QR code"
                   >
-                    <QrCode className="w-4 h-4 text-white/50" />
+                    <QrCode className="w-4 h-4 text-gray-400" />
                   </button>
                   <a
                     href={`/stations/${station.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-2 rounded hover:bg-white/10 transition-colors"
+                    className="p-2 rounded hover:bg-gray-200 transition-colors"
                     title="Open in new tab"
                   >
-                    <ExternalLink className="w-4 h-4 text-white/50" />
+                    <ExternalLink className="w-4 h-4 text-gray-400" />
                   </a>
                 </div>
               </div>
@@ -765,66 +766,66 @@ export default function AdminPage() {
       {/* Graduate Detail Modal */}
       {selectedGraduate && (
         <div
-          className="fixed inset-0 bg-black/70 flex items-start justify-end z-50 p-4"
+          className="fixed inset-0 bg-black/50 flex items-start justify-end z-50 p-4"
           onClick={closeGraduateDetail}
         >
           <div
-            className="bg-slate-900 border border-white/20 rounded-2xl w-full max-w-lg max-h-[calc(100vh-2rem)] overflow-y-auto shadow-2xl animate-slide-in-right"
+            className="bg-white border border-gray-200 rounded-2xl w-full max-w-lg max-h-[calc(100vh-2rem)] overflow-y-auto shadow-2xl animate-slide-in-right"
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="sticky top-0 bg-slate-900 border-b border-white/10 p-5 flex items-start justify-between z-10">
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-5 flex items-start justify-between z-10">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
                   <User className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-white">Dr. {selectedGraduate.name}</h2>
-                  <p className="text-white/50 text-sm">{selectedGraduate.course}</p>
+                  <h2 className="text-xl font-bold text-gray-800">Dr. {selectedGraduate.name}</h2>
+                  <p className="text-gray-500 text-sm">{selectedGraduate.course}</p>
                 </div>
               </div>
               <button
                 onClick={closeGraduateDetail}
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <X className="w-5 h-5 text-white/50" />
+                <X className="w-5 h-5 text-gray-400" />
               </button>
             </div>
 
             <div className="p-5 space-y-6">
               {/* Graduate Info */}
               <div>
-                <h3 className="text-sm font-semibold text-white/40 uppercase tracking-wide mb-3 flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-2">
                   <User className="w-4 h-4" />
                   Graduate Info
                 </h3>
-                <div className="bg-white/5 rounded-xl p-4 space-y-3">
+                <div className="bg-gray-50 rounded-xl p-4 space-y-3">
                   {selectedGraduate.convocationNumber && (
                     <div className="flex justify-between items-center">
-                      <span className="text-white/50">Conv. No.</span>
-                      <span className="font-mono font-bold text-blue-400">{selectedGraduate.convocationNumber}</span>
+                      <span className="text-gray-500">Conv. No.</span>
+                      <span className="font-mono font-bold text-blue-600">{selectedGraduate.convocationNumber}</span>
                     </div>
                   )}
                   <div className="flex justify-between items-center">
-                    <span className="text-white/50">Course</span>
-                    <span className="text-white">{selectedGraduate.course}</span>
+                    <span className="text-gray-500">Course</span>
+                    <span className="text-gray-800">{selectedGraduate.course}</span>
                   </div>
                   {selectedGraduate.email && (
                     <div className="flex justify-between items-center">
-                      <span className="text-white/50 flex items-center gap-2">
+                      <span className="text-gray-500 flex items-center gap-2">
                         <Mail className="w-3 h-3" />
                         Email
                       </span>
-                      <span className="text-white text-sm">{selectedGraduate.email}</span>
+                      <span className="text-gray-800 text-sm">{selectedGraduate.email}</span>
                     </div>
                   )}
                   {selectedGraduate.phone && (
                     <div className="flex justify-between items-center">
-                      <span className="text-white/50 flex items-center gap-2">
+                      <span className="text-gray-500 flex items-center gap-2">
                         <Phone className="w-3 h-3" />
                         Phone
                       </span>
-                      <span className="text-white">{selectedGraduate.phone}</span>
+                      <span className="text-gray-800">{selectedGraduate.phone}</span>
                     </div>
                   )}
                 </div>
@@ -832,25 +833,25 @@ export default function AdminPage() {
 
               {/* Shipping Address */}
               <div>
-                <h3 className="text-sm font-semibold text-white/40 uppercase tracking-wide mb-3 flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-2">
                   <MapPin className="w-4 h-4" />
                   Shipping Address
                 </h3>
-                <div className="bg-white/5 rounded-xl p-4">
+                <div className="bg-gray-50 rounded-xl p-4">
                   {addressLoading ? (
                     <div className="flex items-center justify-center py-4">
-                      <Loader2 className="w-5 h-5 text-white/40 animate-spin" />
+                      <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
                     </div>
                   ) : graduateAddress && graduateAddress.line1 ? (
-                    <div className="space-y-1 text-white/70">
+                    <div className="space-y-1 text-gray-600">
                       <p>{graduateAddress.line1}</p>
                       {graduateAddress.line2 && <p>{graduateAddress.line2}</p>}
                       <p>{graduateAddress.city}, {graduateAddress.state}</p>
-                      <p className="font-bold text-white">{graduateAddress.pincode}</p>
+                      <p className="font-bold text-gray-800">{graduateAddress.pincode}</p>
                       <p>{graduateAddress.country}</p>
                     </div>
                   ) : (
-                    <p className="text-white/40 text-center py-2">Address not available</p>
+                    <p className="text-gray-400 text-center py-2">Address not available</p>
                   )}
                 </div>
               </div>
@@ -861,48 +862,48 @@ export default function AdminPage() {
                 const StatusIcon = status.icon;
                 return (
                   <div className={`p-4 rounded-xl border-2 ${
-                    status.color === 'green' ? 'border-green-500/50 bg-green-500/10' :
-                    status.color === 'indigo' ? 'border-indigo-500/50 bg-indigo-500/10' :
-                    status.color === 'blue' ? 'border-blue-500/50 bg-blue-500/10' :
-                    status.color === 'yellow' ? 'border-yellow-500/50 bg-yellow-500/10' :
-                    status.color === 'amber' ? 'border-amber-500/50 bg-amber-500/10' :
-                    status.color === 'orange' ? 'border-orange-500/50 bg-orange-500/10' :
-                    status.color === 'cyan' ? 'border-cyan-500/50 bg-cyan-500/10' :
-                    status.color === 'purple' ? 'border-purple-500/50 bg-purple-500/10' :
-                    'border-white/20 bg-white/5'
+                    status.color === 'green' ? 'border-green-200 bg-green-50' :
+                    status.color === 'indigo' ? 'border-indigo-200 bg-indigo-50' :
+                    status.color === 'blue' ? 'border-blue-200 bg-blue-50' :
+                    status.color === 'yellow' ? 'border-yellow-200 bg-yellow-50' :
+                    status.color === 'amber' ? 'border-amber-200 bg-amber-50' :
+                    status.color === 'orange' ? 'border-orange-200 bg-orange-50' :
+                    status.color === 'cyan' ? 'border-cyan-200 bg-cyan-50' :
+                    status.color === 'purple' ? 'border-purple-200 bg-purple-50' :
+                    'border-gray-200 bg-gray-50'
                   }`}>
                     <div className="flex items-center gap-3">
                       <StatusIcon className={`w-6 h-6 ${
-                        status.color === 'green' ? 'text-green-400' :
-                        status.color === 'indigo' ? 'text-indigo-400' :
-                        status.color === 'blue' ? 'text-blue-400' :
-                        status.color === 'yellow' ? 'text-yellow-400' :
-                        status.color === 'amber' ? 'text-amber-400' :
-                        status.color === 'orange' ? 'text-orange-400' :
-                        status.color === 'cyan' ? 'text-cyan-400' :
-                        status.color === 'purple' ? 'text-purple-400' :
-                        'text-white/50'
+                        status.color === 'green' ? 'text-green-600' :
+                        status.color === 'indigo' ? 'text-indigo-600' :
+                        status.color === 'blue' ? 'text-blue-600' :
+                        status.color === 'yellow' ? 'text-yellow-600' :
+                        status.color === 'amber' ? 'text-amber-600' :
+                        status.color === 'orange' ? 'text-orange-600' :
+                        status.color === 'cyan' ? 'text-cyan-600' :
+                        status.color === 'purple' ? 'text-purple-600' :
+                        'text-gray-500'
                       }`} />
                       <div>
-                        <p className="text-white/50 text-xs uppercase">Current Status</p>
+                        <p className="text-gray-500 text-xs uppercase">Current Status</p>
                         <p className={`font-semibold ${
-                          status.color === 'green' ? 'text-green-400' :
-                          status.color === 'indigo' ? 'text-indigo-400' :
-                          status.color === 'blue' ? 'text-blue-400' :
-                          status.color === 'yellow' ? 'text-yellow-400' :
-                          status.color === 'amber' ? 'text-amber-400' :
-                          status.color === 'orange' ? 'text-orange-400' :
-                          status.color === 'cyan' ? 'text-cyan-400' :
-                          status.color === 'purple' ? 'text-purple-400' :
-                          'text-white'
+                          status.color === 'green' ? 'text-green-700' :
+                          status.color === 'indigo' ? 'text-indigo-700' :
+                          status.color === 'blue' ? 'text-blue-700' :
+                          status.color === 'yellow' ? 'text-yellow-700' :
+                          status.color === 'amber' ? 'text-amber-700' :
+                          status.color === 'orange' ? 'text-orange-700' :
+                          status.color === 'cyan' ? 'text-cyan-700' :
+                          status.color === 'purple' ? 'text-purple-700' :
+                          'text-gray-700'
                         }`}>{status.text}</p>
                       </div>
                     </div>
                     {/* Show tracking info if dispatched */}
                     {selectedGraduate.status.finalDispatched && selectedGraduate.trackingNumber && (
-                      <div className="mt-3 pt-3 border-t border-white/10">
-                        <p className="text-white/50 text-sm">
-                          {selectedGraduate.dispatchMethod}: <span className="font-mono text-white">{selectedGraduate.trackingNumber}</span>
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <p className="text-gray-500 text-sm">
+                          {selectedGraduate.dispatchMethod}: <span className="font-mono text-gray-800">{selectedGraduate.trackingNumber}</span>
                         </p>
                       </div>
                     )}
@@ -912,13 +913,13 @@ export default function AdminPage() {
 
               {/* Certificate Journey Timeline */}
               <div>
-                <h3 className="text-sm font-semibold text-white/40 uppercase tracking-wide mb-3 flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-2">
                   <TrendingUp className="w-4 h-4" />
                   Certificate Journey
                 </h3>
-                <div className="bg-white/5 rounded-xl p-4">
+                <div className="bg-gray-50 rounded-xl p-4">
                   <div className="relative">
-                    <div className="absolute left-4 top-0 bottom-0 w-px bg-white/10" />
+                    <div className="absolute left-4 top-0 bottom-0 w-px bg-gray-200" />
                     <div className="space-y-4">
                       {stations.map((station, index) => {
                         const Icon = stationIconMap[station.icon] || Package;
@@ -928,25 +929,25 @@ export default function AdminPage() {
                         return (
                           <div key={station.id} className="relative flex items-start gap-3 pl-1">
                             <div className={`relative z-10 w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
-                              isCompleted ? 'bg-green-500' : 'bg-white/10'
+                              isCompleted ? 'bg-green-500' : 'bg-gray-200'
                             }`}>
                               {isCompleted ? (
                                 <CheckCircle className="w-4 h-4 text-white" />
                               ) : (
-                                <span className="text-xs text-white/40">{index + 1}</span>
+                                <span className="text-xs text-gray-400">{index + 1}</span>
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
-                                <Icon className={`w-4 h-4 ${isCompleted ? 'text-green-400' : 'text-white/30'}`} />
-                                <span className={`text-sm font-medium ${isCompleted ? 'text-white' : 'text-white/40'}`}>
+                                <Icon className={`w-4 h-4 ${isCompleted ? 'text-green-500' : 'text-gray-400'}`} />
+                                <span className={`text-sm font-medium ${isCompleted ? 'text-gray-800' : 'text-gray-400'}`}>
                                   {station.name}
                                 </span>
                               </div>
                               {scanTime ? (
-                                <p className="text-xs text-green-400/70 mt-0.5 ml-6">{scanTime}</p>
+                                <p className="text-xs text-green-600 mt-0.5 ml-6">{scanTime}</p>
                               ) : (
-                                <p className="text-xs text-white/20 mt-0.5 ml-6">Pending</p>
+                                <p className="text-xs text-gray-300 mt-0.5 ml-6">Pending</p>
                               )}
                             </div>
                           </div>
@@ -964,7 +965,7 @@ export default function AdminPage() {
                     href={`/api/badge/${selectedGraduate.convocationNumber}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 py-3 px-4 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-colors text-sm font-medium"
+                    className="flex items-center justify-center gap-2 py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors text-sm font-medium"
                   >
                     <Printer className="w-4 h-4" />
                     Print Badge
@@ -975,7 +976,7 @@ export default function AdminPage() {
                     href={`/api/badge/${selectedGraduate.convocationNumber}/print`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 py-3 px-4 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-colors text-sm font-medium"
+                    className="flex items-center justify-center gap-2 py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors text-sm font-medium"
                   >
                     <MapPin className="w-4 h-4" />
                     Print Label
@@ -986,7 +987,7 @@ export default function AdminPage() {
                     <button
                       onClick={() => setShowEmailModal(!showEmailModal)}
                       disabled={emailSending}
-                      className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white rounded-xl transition-colors text-sm font-medium"
+                      className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white rounded-xl transition-colors text-sm font-medium"
                     >
                       {emailSending ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -997,30 +998,30 @@ export default function AdminPage() {
                     </button>
                     {/* Email Template Dropdown */}
                     {showEmailModal && (
-                      <div className="absolute bottom-full left-0 right-0 mb-2 bg-slate-800 border border-white/20 rounded-xl shadow-xl overflow-hidden z-20">
-                        <div className="p-2 border-b border-white/10">
-                          <p className="text-xs text-white/50 px-2">Select Email Template</p>
+                      <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden z-20">
+                        <div className="p-2 border-b border-gray-100">
+                          <p className="text-xs text-gray-500 px-2">Select Email Template</p>
                         </div>
                         <button
                           onClick={() => sendEmailToGraduate('CERTIFICATE_READY_ATTENDING')}
-                          className="w-full p-3 text-left hover:bg-white/10 transition-colors border-b border-white/5"
+                          className="w-full p-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100"
                         >
-                          <p className="text-sm font-medium text-white">Certificate Ready (Attending)</p>
-                          <p className="text-xs text-white/50">For graduates attending convocation</p>
+                          <p className="text-sm font-medium text-gray-800">Certificate Ready (Attending)</p>
+                          <p className="text-xs text-gray-500">For graduates attending convocation</p>
                         </button>
                         <button
                           onClick={() => sendEmailToGraduate('CERTIFICATE_READY_NOT_ATTENDING')}
-                          className="w-full p-3 text-left hover:bg-white/10 transition-colors border-b border-white/5"
+                          className="w-full p-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100"
                         >
-                          <p className="text-sm font-medium text-white">Certificate Ready (Not Attending)</p>
-                          <p className="text-xs text-white/50">For graduates receiving by courier</p>
+                          <p className="text-sm font-medium text-gray-800">Certificate Ready (Not Attending)</p>
+                          <p className="text-xs text-gray-500">For graduates receiving by courier</p>
                         </button>
                         <button
                           onClick={() => sendEmailToGraduate('DISPATCHED_COURIER')}
-                          className="w-full p-3 text-left hover:bg-white/10 transition-colors"
+                          className="w-full p-3 text-left hover:bg-gray-50 transition-colors"
                         >
-                          <p className="text-sm font-medium text-white">Dispatched via Courier</p>
-                          <p className="text-xs text-white/50">With tracking information</p>
+                          <p className="text-sm font-medium text-gray-800">Dispatched via Courier</p>
+                          <p className="text-xs text-gray-500">With tracking information</p>
                         </button>
                       </div>
                     )}
@@ -1032,8 +1033,8 @@ export default function AdminPage() {
               {emailResult && (
                 <div className={`p-3 rounded-xl text-sm ${
                   emailResult.success
-                    ? 'bg-green-500/20 border border-green-500/30 text-green-400'
-                    : 'bg-red-500/20 border border-red-500/30 text-red-400'
+                    ? 'bg-green-50 border border-green-200 text-green-700'
+                    : 'bg-red-50 border border-red-200 text-red-700'
                 }`}>
                   <div className="flex items-center gap-2">
                     {emailResult.success ? (
@@ -1053,21 +1054,21 @@ export default function AdminPage() {
       {/* Graduates List */}
       <GlassCard className="p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <h2 className="text-lg font-semibold text-white">Graduates</h2>
+          <h2 className="text-lg font-semibold text-gray-800">Graduates</h2>
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/40" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search name, conv. no, email, mobile..."
-                className="pl-10 pr-10 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm placeholder:text-white/40 focus:outline-none focus:border-blue-500 w-full sm:w-80"
+                className="pl-10 pr-10 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-800 text-sm placeholder:text-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 w-full sm:w-80"
               />
               {searchQuery && (
                 <button
                   onClick={clearSearch}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/40 hover:text-white"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1076,7 +1077,7 @@ export default function AdminPage() {
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+              className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-800 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             >
               <option value="all">All Status</option>
               <option value="collected">Collected</option>
@@ -1090,19 +1091,19 @@ export default function AdminPage() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-white/10">
-                <th className="text-left py-3 px-4 text-white/60 font-medium text-sm">Conv. No.</th>
-                <th className="text-left py-3 px-4 text-white/60 font-medium text-sm">Name</th>
-                <th className="text-left py-3 px-4 text-white/60 font-medium text-sm hidden md:table-cell">Contact</th>
-                <th className="text-left py-3 px-4 text-white/60 font-medium text-sm">Course</th>
-                <th className="text-left py-3 px-4 text-white/60 font-medium text-sm">Status</th>
+              <tr className="border-b border-gray-200">
+                <th className="text-left py-3 px-4 text-gray-500 font-medium text-sm">Conv. No.</th>
+                <th className="text-left py-3 px-4 text-gray-500 font-medium text-sm">Name</th>
+                <th className="text-left py-3 px-4 text-gray-500 font-medium text-sm hidden md:table-cell">Contact</th>
+                <th className="text-left py-3 px-4 text-gray-500 font-medium text-sm">Course</th>
+                <th className="text-left py-3 px-4 text-gray-500 font-medium text-sm">Status</th>
               </tr>
             </thead>
             <tbody>
               {loading && graduates.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="text-center py-8">
-                    <div className="flex flex-col items-center justify-center gap-2 text-white/40">
+                    <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
                       <Loader2 className="w-6 h-6 animate-spin" />
                       <span>Loading {stats?.totalGraduates || ''} graduates from Tito...</span>
                       <span className="text-xs">This may take a moment for large datasets</span>
@@ -1112,12 +1113,12 @@ export default function AdminPage() {
               ) : filteredGraduates.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="text-center py-8">
-                    <div className="text-white/40 space-y-2">
+                    <div className="text-gray-400 space-y-2">
                       <p className="font-medium">No graduates found</p>
                       {searchQuery && (
                         <div className="text-sm space-y-1">
                           <p>Try searching by:</p>
-                          <ul className="text-white/30">
+                          <ul className="text-gray-400">
                             <li>Name (e.g., &quot;Sanjay&quot;)</li>
                             <li>Convocation Number (e.g., &quot;118AEC&quot;)</li>
                             <li>Mobile Number (e.g., &quot;98765&quot;)</li>
@@ -1133,23 +1134,23 @@ export default function AdminPage() {
                   <tr
                     key={graduate.id}
                     onClick={() => openGraduateDetail(graduate)}
-                    className="border-b border-white/5 hover:bg-white/10 cursor-pointer transition-colors"
+                    className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
                   >
                     <td className="py-3 px-4">
-                      <div className="text-white font-mono text-sm">
+                      <div className="text-gray-800 font-mono text-sm">
                         {graduate.convocationNumber || '-'}
                       </div>
                     </td>
                     <td className="py-3 px-4">
-                      <div className="text-white">{graduate.name}</div>
+                      <div className="text-gray-800">{graduate.name}</div>
                     </td>
                     <td className="py-3 px-4 hidden md:table-cell">
-                      <div className="text-white/60 text-xs">{graduate.email}</div>
+                      <div className="text-gray-500 text-xs">{graduate.email}</div>
                       {graduate.phone && (
-                        <div className="text-white/40 text-xs">{graduate.phone}</div>
+                        <div className="text-gray-400 text-xs">{graduate.phone}</div>
                       )}
                     </td>
-                    <td className="py-3 px-4 text-white/70 text-sm">{graduate.course}</td>
+                    <td className="py-3 px-4 text-gray-600 text-sm">{graduate.course}</td>
                     <td className="py-3 px-4">
                       {graduate.status.certificateCollected ? (
                         <StatusBadge status="completed" label="Collected" />
@@ -1168,19 +1169,20 @@ export default function AdminPage() {
           </table>
         </div>
 
-        <div className="mt-4 flex items-center justify-between text-sm text-white/40">
+        <div className="mt-4 flex items-center justify-between text-sm text-gray-400">
           <span>
             Showing {filteredGraduates.length} of {graduates.length} graduates
             {searchQuery && ` matching "${searchQuery}"`}
           </span>
           {loading && graduates.length > 0 && (
-            <span className="flex items-center gap-2 text-blue-400">
+            <span className="flex items-center gap-2 text-blue-500">
               <Loader2 className="w-4 h-4 animate-spin" />
               Refreshing...
             </span>
           )}
         </div>
       </GlassCard>
+    </div>
     </div>
   );
 }

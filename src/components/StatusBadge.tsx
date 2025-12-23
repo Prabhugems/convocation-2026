@@ -11,21 +11,21 @@ interface StatusBadgeProps {
 export default function StatusBadge({ status, label, className = '' }: StatusBadgeProps) {
   const config = {
     completed: {
-      bg: 'bg-green-500/20',
-      border: 'border-green-500/30',
-      text: 'text-green-400',
+      bg: 'bg-green-100',
+      border: 'border-green-200',
+      text: 'text-green-700',
       icon: CheckCircle,
     },
     pending: {
-      bg: 'bg-gray-500/20',
-      border: 'border-gray-500/30',
-      text: 'text-gray-400',
+      bg: 'bg-gray-100',
+      border: 'border-gray-200',
+      text: 'text-gray-600',
       icon: Circle,
     },
     'in-progress': {
-      bg: 'bg-yellow-500/20',
-      border: 'border-yellow-500/30',
-      text: 'text-yellow-400',
+      bg: 'bg-amber-100',
+      border: 'border-amber-200',
+      text: 'text-amber-700',
       icon: Clock,
     },
   };
