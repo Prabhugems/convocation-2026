@@ -606,34 +606,34 @@ export default function AdminPage() {
         </header>
 
         {/* Dashboard Content */}
-        <div className="p-4 lg:p-8 space-y-6">
+        <div className="p-4 lg:p-8 space-y-6 mesh-gradient">
           {/* Conditionally render based on activeNav */}
           {activeNav === 'dashboard' && (
             <>
           {/* Stats Cards Row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: 'Total Graduates', value: stats?.totalGraduates || 0, icon: Users, gradient: 'from-blue-500 to-blue-600', shadow: 'shadow-blue-500/20' },
-              { label: 'Collected', value: stats?.certificateCollected || 0, icon: Award, gradient: 'from-green-500 to-green-600', shadow: 'shadow-green-500/20' },
-              { label: 'Dispatched', value: stats?.finalDispatched || 0, icon: Send, gradient: 'from-purple-500 to-purple-600', shadow: 'shadow-purple-500/20' },
-              { label: 'Pending', value: (stats?.totalGraduates || 0) - (stats?.certificateCollected || 0) - (stats?.finalDispatched || 0), icon: Clock, gradient: 'from-amber-500 to-amber-600', shadow: 'shadow-amber-500/20' },
+              { label: 'Total Graduates', value: stats?.totalGraduates || 0, icon: Users, gradient: 'from-blue-500 to-blue-600', shadow: 'shadow-blue-500/20', glow: 'glow-blue' },
+              { label: 'Collected', value: stats?.certificateCollected || 0, icon: Award, gradient: 'from-green-500 to-green-600', shadow: 'shadow-green-500/20', glow: 'glow-green' },
+              { label: 'Dispatched', value: stats?.finalDispatched || 0, icon: Send, gradient: 'from-purple-500 to-purple-600', shadow: 'shadow-purple-500/20', glow: 'glow-purple' },
+              { label: 'Pending', value: (stats?.totalGraduates || 0) - (stats?.certificateCollected || 0) - (stats?.finalDispatched || 0), icon: Clock, gradient: 'from-amber-500 to-amber-600', shadow: 'shadow-amber-500/20', glow: 'glow-amber' },
             ].map((stat, index) => {
               const Icon = stat.icon;
               return (
                 <div
                   key={stat.label}
-                  className={`relative group overflow-hidden bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 hover:border-slate-600 transition-all duration-500 hover:scale-[1.02] hover:shadow-xl ${stat.shadow} cursor-pointer animate-fade-in-up`}
+                  className={`relative group overflow-hidden bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 transition-all duration-500 cursor-pointer animate-fade-in-up card-3d card-shine ${stat.glow}`}
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
                   {/* Gradient background on hover */}
                   <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500`} />
 
-                  {/* Floating icon */}
-                  <div className={`absolute -top-4 -right-4 w-24 h-24 rounded-full bg-gradient-to-br ${stat.gradient} opacity-10 group-hover:opacity-20 transition-all duration-500 group-hover:scale-110`} />
+                  {/* Floating decorative circle */}
+                  <div className={`absolute -top-4 -right-4 w-24 h-24 rounded-full bg-gradient-to-br ${stat.gradient} opacity-10 group-hover:opacity-20 transition-all duration-500 group-hover:scale-125`} />
 
                   <div className="relative z-10">
-                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center mb-4 shadow-lg ${stat.shadow} group-hover:scale-110 transition-transform duration-300`}>
-                      <Icon className="w-6 h-6 text-white" />
+                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center mb-4 shadow-lg ${stat.shadow} group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
+                      <Icon className="w-6 h-6 text-white animate-float" style={{ animationDelay: `${index * 0.5}s` }} />
                     </div>
                     <p className="text-slate-400 text-sm mb-1">{stat.label}</p>
                     <p className="text-3xl font-bold text-white group-hover:scale-105 transition-transform duration-300 origin-left">{stat.value}</p>
@@ -681,16 +681,16 @@ export default function AdminPage() {
               </h2>
               <div className="space-y-3">
                 {[
-                  { label: 'Total Graduates', value: stats?.totalGraduates || 0, icon: Users, color: 'blue' },
-                  { label: 'Completed', value: (stats?.certificateCollected || 0) + (stats?.finalDispatched || 0), icon: CheckCircle2, color: 'green' },
-                  { label: 'Pending', value: (stats?.totalGraduates || 0) - (stats?.certificateCollected || 0) - (stats?.finalDispatched || 0), icon: Clock, color: 'amber' },
+                  { label: 'Total Graduates', value: stats?.totalGraduates || 0, icon: Users, color: 'blue', indicatorColor: '#3b82f6' },
+                  { label: 'Completed', value: (stats?.certificateCollected || 0) + (stats?.finalDispatched || 0), icon: CheckCircle2, color: 'green', indicatorColor: '#22c55e' },
+                  { label: 'Pending', value: (stats?.totalGraduates || 0) - (stats?.certificateCollected || 0) - (stats?.finalDispatched || 0), icon: Clock, color: 'amber', indicatorColor: '#f59e0b' },
                 ].map((item, index) => {
                   const Icon = item.icon;
                   return (
                     <div
                       key={item.label}
-                      className={`flex items-center justify-between p-3 rounded-xl bg-slate-700/30 hover:bg-slate-700/50 transition-all duration-300 hover:translate-x-1 cursor-pointer group`}
-                      style={{ animationDelay: `${350 + index * 50}ms` }}
+                      className="flex items-center justify-between p-3 rounded-xl bg-slate-700/30 hover:bg-slate-700/50 transition-all duration-300 cursor-pointer group slide-indicator"
+                      style={{ animationDelay: `${350 + index * 50}ms`, '--indicator-color': item.indicatorColor } as React.CSSProperties}
                     >
                       <div className="flex items-center gap-3">
                         <Icon className={`w-5 h-5 text-${item.color}-400 group-hover:scale-110 transition-transform duration-300`} />
@@ -723,20 +723,20 @@ export default function AdminPage() {
             <div className="overflow-x-auto">
               <div className="flex items-center justify-between min-w-[800px] gap-2">
                 {[
-                  { label: 'Packed', value: stats?.packed || 0, color: 'gray', icon: Package },
-                  { label: 'At Venue', value: stats?.dispatchedToVenue || 0, color: 'purple', icon: Truck },
-                  { label: 'Registered', value: stats?.registered || 0, color: 'cyan', icon: UserCheck },
-                  { label: 'Gown Issued', value: stats?.gownIssued || 0, color: 'orange', icon: Shirt },
-                  { label: 'Gown Return', value: stats?.gownReturned || 0, color: 'amber', icon: Shirt },
-                  { label: 'Collected', value: stats?.certificateCollected || 0, color: 'green', icon: Award },
+                  { label: 'Packed', value: stats?.packed || 0, color: 'gray', icon: Package, tooltip: 'Certificates packed and ready' },
+                  { label: 'At Venue', value: stats?.dispatchedToVenue || 0, color: 'purple', icon: Truck, tooltip: 'Dispatched to convocation venue' },
+                  { label: 'Registered', value: stats?.registered || 0, color: 'cyan', icon: UserCheck, tooltip: 'Graduates registered at venue' },
+                  { label: 'Gown Issued', value: stats?.gownIssued || 0, color: 'orange', icon: Shirt, tooltip: 'Academic gowns issued' },
+                  { label: 'Gown Return', value: stats?.gownReturned || 0, color: 'amber', icon: Shirt, tooltip: 'Gowns returned after ceremony' },
+                  { label: 'Collected', value: stats?.certificateCollected || 0, color: 'green', icon: Award, tooltip: 'Certificates collected by graduates' },
                 ].map((step, index, arr) => {
                   const percentage = stats?.totalGraduates ? Math.round((step.value / stats.totalGraduates) * 100) : 0;
                   const Icon = step.icon;
                   return (
                     <div key={step.label} className="flex items-center flex-1 group">
-                      <div className="flex-1 text-center">
-                        <div className={`w-16 h-16 mx-auto rounded-2xl bg-${step.color}-500/20 flex items-center justify-center mb-3 relative group-hover:scale-110 transition-transform duration-300 cursor-pointer`}>
-                          <Icon className={`w-7 h-7 text-${step.color}-400`} />
+                      <div className="flex-1 text-center tooltip-hover" data-tooltip={step.tooltip}>
+                        <div className={`w-16 h-16 mx-auto rounded-2xl bg-${step.color}-500/20 flex items-center justify-center mb-3 relative group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-300 cursor-pointer`}>
+                          <Icon className={`w-7 h-7 text-${step.color}-400 group-hover:animate-bounce-soft`} />
                           <div className="absolute -bottom-1 -right-1 bg-slate-900 border border-slate-700 rounded-full px-1.5 py-0.5 shadow-lg">
                             <span className="text-xs font-bold text-slate-300">{percentage}%</span>
                           </div>
@@ -790,28 +790,31 @@ export default function AdminPage() {
 
           {/* Alerts */}
           {(stats?.pendingGownDeposit || 0) > 0 && (
-            <div className="p-4 border border-amber-500/30 bg-amber-500/10 rounded-xl animate-fade-in-up flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center animate-bounce-soft">
-                <AlertTriangle className="w-6 h-6 text-amber-400" />
+            <div className="p-4 border border-amber-500/30 bg-amber-500/10 rounded-xl animate-fade-in-up animate-attention-pulse flex items-center gap-4 hover:animate-none transition-all duration-300 cursor-pointer group">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/30 group-hover:scale-110 transition-transform duration-300">
+                <AlertTriangle className="w-6 h-6 text-white animate-float" />
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="font-semibold text-amber-300">Pending Gown Returns</p>
                 <p className="text-sm text-amber-400/80">
                   {stats?.pendingGownDeposit} graduates have pending gown returns (₹{(stats?.pendingGownDeposit || 0) * 500} refundable deposits)
                 </p>
               </div>
+              <button className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium text-sm transition-all duration-300 hover:scale-105 active:scale-95 btn-ripple">
+                View Details
+              </button>
             </div>
           )}
 
           {/* Station Progress Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
-              { id: 'packing', name: 'Packing', icon: Package, gradient: 'from-slate-500 to-slate-600', color: '#64748b' },
-              { id: 'dispatch-venue', name: 'Dispatch to Venue', icon: Truck, gradient: 'from-purple-500 to-purple-600', color: '#a855f7' },
-              { id: 'registration', name: 'Registration', icon: UserCheck, gradient: 'from-cyan-500 to-cyan-600', color: '#06b6d4' },
-              { id: 'gown-issue', name: 'Gown Issue', icon: Shirt, gradient: 'from-orange-500 to-orange-600', color: '#f97316' },
-              { id: 'gown-return', name: 'Gown Return', icon: Undo2, gradient: 'from-amber-500 to-amber-600', color: '#f59e0b' },
-              { id: 'certificate-collection', name: 'Certificate Collection', icon: Award, gradient: 'from-green-500 to-green-600', color: '#22c55e' },
+              { id: 'packing', name: 'Packing', icon: Package, gradient: 'from-slate-500 to-slate-600', color: '#64748b', glow: 'glow-blue' },
+              { id: 'dispatch-venue', name: 'Dispatch to Venue', icon: Truck, gradient: 'from-purple-500 to-purple-600', color: '#a855f7', glow: 'glow-purple' },
+              { id: 'registration', name: 'Registration', icon: UserCheck, gradient: 'from-cyan-500 to-cyan-600', color: '#06b6d4', glow: 'glow-cyan' },
+              { id: 'gown-issue', name: 'Gown Issue', icon: Shirt, gradient: 'from-orange-500 to-orange-600', color: '#f97316', glow: 'glow-orange' },
+              { id: 'gown-return', name: 'Gown Return', icon: Undo2, gradient: 'from-amber-500 to-amber-600', color: '#f59e0b', glow: 'glow-amber' },
+              { id: 'certificate-collection', name: 'Certificate Collection', icon: Award, gradient: 'from-green-500 to-green-600', color: '#22c55e', glow: 'glow-green' },
             ].map((station, index) => {
               const count = (() => {
                 switch (station.id) {
@@ -834,10 +837,10 @@ export default function AdminPage() {
                   className="relative group animate-fade-in-up"
                   style={{ animationDelay: `${400 + index * 50}ms` }}
                 >
-                  <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl pt-10 pb-6 px-6 border border-slate-700/50 hover:border-slate-600 transition-all duration-500 hover:scale-[1.02] hover:shadow-xl cursor-pointer">
+                  <div className={`bg-slate-800/50 backdrop-blur-sm rounded-2xl pt-10 pb-6 px-6 border border-slate-700/50 transition-all duration-500 hover:scale-[1.02] cursor-pointer card-shine gradient-border-animated ${station.glow}`}>
                     {/* Floating Icon Badge */}
-                    <div className={`absolute -top-5 left-6 w-16 h-16 rounded-xl bg-gradient-to-br ${station.gradient} shadow-lg flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
-                      <Icon className="w-8 h-8 text-white" />
+                    <div className={`absolute -top-5 left-6 w-16 h-16 rounded-xl bg-gradient-to-br ${station.gradient} shadow-lg flex items-center justify-center group-hover:scale-110 group-hover:rotate-6 transition-all duration-300`}>
+                      <Icon className="w-8 h-8 text-white animate-float" style={{ animationDelay: `${index * 0.3}s` }} />
                     </div>
 
                     {/* Hover glow */}
@@ -1583,6 +1586,7 @@ export default function AdminPage() {
 
       {/* Custom CSS for animations */}
       <style jsx global>{`
+        /* Base Animations */
         @keyframes fade-in {
           from { opacity: 0; }
           to { opacity: 1; }
@@ -1591,7 +1595,7 @@ export default function AdminPage() {
         @keyframes fade-in-up {
           from {
             opacity: 0;
-            transform: translateY(10px);
+            transform: translateY(20px);
           }
           to {
             opacity: 1;
@@ -1602,7 +1606,7 @@ export default function AdminPage() {
         @keyframes scale-in {
           from {
             opacity: 0;
-            transform: scale(0.95);
+            transform: scale(0.9);
           }
           to {
             opacity: 1;
@@ -1631,16 +1635,97 @@ export default function AdminPage() {
           50% { opacity: 0.7; }
         }
 
+        /* Floating Animation for Icons */
+        @keyframes float {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-8px); }
+        }
+
+        /* Pulse Glow Effect */
+        @keyframes pulse-glow {
+          0%, 100% {
+            box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+          }
+          50% {
+            box-shadow: 0 0 20px 10px rgba(59, 130, 246, 0);
+          }
+        }
+
+        @keyframes pulse-glow-green {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+          50% { box-shadow: 0 0 20px 10px rgba(34, 197, 94, 0); }
+        }
+
+        @keyframes pulse-glow-purple {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.4); }
+          50% { box-shadow: 0 0 20px 10px rgba(168, 85, 247, 0); }
+        }
+
+        @keyframes pulse-glow-amber {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+          50% { box-shadow: 0 0 20px 10px rgba(245, 158, 11, 0); }
+        }
+
+        /* Attention Pulse for Alerts */
+        @keyframes attention-pulse {
+          0%, 100% {
+            box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
+          }
+          50% {
+            box-shadow: 0 0 0 8px rgba(245, 158, 11, 0);
+          }
+        }
+
+        /* Shine Effect */
+        @keyframes shine {
+          from { left: -100%; }
+          to { left: 100%; }
+        }
+
+        /* Draw Circle Animation */
+        @keyframes draw-circle {
+          from { stroke-dashoffset: 264; }
+          to { stroke-dashoffset: var(--progress-offset, 0); }
+        }
+
+        /* Fill Progress Bar */
+        @keyframes fill-progress {
+          from { width: 0; }
+          to { width: var(--target-width, 0%); }
+        }
+
+        /* Gradient Border Rotation */
+        @keyframes gradient-rotate {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+
+        /* Ripple Effect */
+        @keyframes ripple {
+          0% {
+            width: 0;
+            height: 0;
+            opacity: 0.5;
+          }
+          100% {
+            width: 300px;
+            height: 300px;
+            opacity: 0;
+          }
+        }
+
+        /* Base Animation Classes */
         .animate-fade-in {
-          animation: fade-in 0.3s ease-out forwards;
+          animation: fade-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
         .animate-fade-in-up {
-          animation: fade-in-up 0.4s ease-out forwards;
+          animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
         .animate-scale-in {
-          animation: scale-in 0.3s ease-out forwards;
+          animation: scale-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
         .animate-slide-in-right {
@@ -1653,6 +1738,231 @@ export default function AdminPage() {
 
         .animate-pulse-soft {
           animation: pulse-soft 2s ease-in-out infinite;
+        }
+
+        .animate-float {
+          animation: float 3s ease-in-out infinite;
+        }
+
+        .animate-attention-pulse {
+          animation: attention-pulse 2s ease-in-out infinite;
+        }
+
+        /* 3D Card Effect */
+        .card-3d {
+          transform-style: preserve-3d;
+          perspective: 1000px;
+          transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .card-3d:hover {
+          transform: translateY(-8px) rotateX(5deg) rotateY(-5deg);
+        }
+
+        /* Shine Effect on Cards */
+        .card-shine {
+          position: relative;
+          overflow: hidden;
+        }
+
+        .card-shine::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.15),
+            transparent
+          );
+          transition: left 0.5s ease;
+          pointer-events: none;
+        }
+
+        .card-shine:hover::after {
+          left: 100%;
+        }
+
+        /* Station Card Glow Effects */
+        .glow-blue:hover {
+          box-shadow: 0 10px 40px rgba(59, 130, 246, 0.3), 0 0 0 1px rgba(59, 130, 246, 0.2);
+        }
+
+        .glow-purple:hover {
+          box-shadow: 0 10px 40px rgba(168, 85, 247, 0.3), 0 0 0 1px rgba(168, 85, 247, 0.2);
+        }
+
+        .glow-cyan:hover {
+          box-shadow: 0 10px 40px rgba(6, 182, 212, 0.3), 0 0 0 1px rgba(6, 182, 212, 0.2);
+        }
+
+        .glow-orange:hover {
+          box-shadow: 0 10px 40px rgba(249, 115, 22, 0.3), 0 0 0 1px rgba(249, 115, 22, 0.2);
+        }
+
+        .glow-amber:hover {
+          box-shadow: 0 10px 40px rgba(245, 158, 11, 0.3), 0 0 0 1px rgba(245, 158, 11, 0.2);
+        }
+
+        .glow-green:hover {
+          box-shadow: 0 10px 40px rgba(34, 197, 94, 0.3), 0 0 0 1px rgba(34, 197, 94, 0.2);
+        }
+
+        /* Slide Indicator Effect */
+        .slide-indicator {
+          position: relative;
+          overflow: hidden;
+        }
+
+        .slide-indicator::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 4px;
+          height: 100%;
+          background: var(--indicator-color, #3b82f6);
+          transform: scaleY(0);
+          transition: transform 0.3s ease;
+          border-radius: 0 4px 4px 0;
+        }
+
+        .slide-indicator:hover::before {
+          transform: scaleY(1);
+        }
+
+        .slide-indicator:hover {
+          transform: translateX(8px);
+        }
+
+        /* Gradient Border Animation */
+        .gradient-border-animated {
+          position: relative;
+        }
+
+        .gradient-border-animated::before {
+          content: '';
+          position: absolute;
+          inset: -2px;
+          border-radius: inherit;
+          background: linear-gradient(
+            45deg,
+            #3b82f6,
+            #8b5cf6,
+            #ec4899,
+            #3b82f6
+          );
+          background-size: 300% 300%;
+          animation: gradient-rotate 4s linear infinite;
+          z-index: -1;
+          opacity: 0;
+          transition: opacity 0.3s ease;
+        }
+
+        .gradient-border-animated:hover::before {
+          opacity: 1;
+        }
+
+        /* Button Ripple Effect */
+        .btn-ripple {
+          position: relative;
+          overflow: hidden;
+        }
+
+        .btn-ripple .ripple {
+          position: absolute;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.4);
+          transform: translate(-50%, -50%) scale(0);
+          animation: ripple 0.6s ease-out;
+          pointer-events: none;
+        }
+
+        /* Icon Bounce on Hover */
+        .icon-bounce:hover {
+          animation: bounce-soft 0.5s ease;
+        }
+
+        /* Progress Circle Draw */
+        .progress-draw {
+          stroke-dasharray: 264;
+          stroke-dashoffset: 264;
+          animation: draw-circle 1.5s ease-out forwards;
+        }
+
+        /* Number Counter Smooth */
+        .counter-animate {
+          transition: all 0.3s ease;
+        }
+
+        /* Tooltip Styles */
+        .tooltip-hover {
+          position: relative;
+        }
+
+        .tooltip-hover::before {
+          content: attr(data-tooltip);
+          position: absolute;
+          bottom: 100%;
+          left: 50%;
+          transform: translateX(-50%) translateY(-8px);
+          background: rgba(15, 23, 42, 0.95);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          padding: 8px 12px;
+          border-radius: 8px;
+          font-size: 0.75rem;
+          white-space: nowrap;
+          opacity: 0;
+          visibility: hidden;
+          transition: all 0.2s ease;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+          z-index: 100;
+          color: white;
+        }
+
+        .tooltip-hover:hover::before {
+          opacity: 1;
+          visibility: visible;
+          transform: translateX(-50%) translateY(0);
+        }
+
+        /* Mesh Gradient Background */
+        .mesh-gradient {
+          background:
+            radial-gradient(at 40% 20%, rgba(59, 130, 246, 0.08) 0px, transparent 50%),
+            radial-gradient(at 80% 0%, rgba(168, 85, 247, 0.06) 0px, transparent 50%),
+            radial-gradient(at 0% 50%, rgba(6, 182, 212, 0.06) 0px, transparent 50%),
+            radial-gradient(at 80% 50%, rgba(236, 72, 153, 0.05) 0px, transparent 50%),
+            radial-gradient(at 0% 100%, rgba(34, 197, 94, 0.06) 0px, transparent 50%);
+        }
+
+        /* Skeleton Loading */
+        .skeleton-shimmer {
+          background: linear-gradient(
+            90deg,
+            rgba(255, 255, 255, 0.05) 25%,
+            rgba(255, 255, 255, 0.1) 50%,
+            rgba(255, 255, 255, 0.05) 75%
+          );
+          background-size: 200% 100%;
+          animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+
+        /* Reduced motion support */
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+          }
         }
       `}</style>
     </div>
