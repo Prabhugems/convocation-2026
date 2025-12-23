@@ -1,8 +1,22 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Dark theme as default */
+  --background: #0c1222;
+  --foreground: #f1f5f9;
+
+  /* Card backgrounds */
+  --bg-card: #1a2332;
+  --bg-card-hover: #1f2937;
+
+  /* Text colors */
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+
+  /* Borders */
+  --border: #2d3a4f;
+  --border-light: #1e293b;
 }
 
 @theme inline {
@@ -12,15 +26,27 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Light theme only if explicitly set */
+[data-theme="light"] {
+  --background: #ffffff;
+  --foreground: #171717;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f8fafc;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --border: #e2e8f0;
+  --border-light: #f1f5f9;
 }
 
-body {
+html, body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+}
+
+/* Ensure dark backgrounds throughout */
+body {
+  background-color: #0c1222;
 }
