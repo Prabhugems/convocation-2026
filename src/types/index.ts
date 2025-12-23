@@ -140,6 +140,7 @@ export interface AirtableRecord {
     'Category'?: string;
     'Tracking Number'?: string;
     'DTDC Service available'?: string; // YES or NO
+    'Form A'?: string; // Fillout form URL for address update
   };
 }
 
@@ -153,6 +154,7 @@ export interface AirtableGraduateData {
   courseDetails?: string;
   trackingNumber?: string;
   dtdcAvailable?: boolean; // true if DTDC Service available = YES
+  formAUrl?: string; // Fillout form URL for address update
 }
 
 export interface ApiResponse<T> {

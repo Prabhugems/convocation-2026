@@ -101,6 +101,7 @@ function parseAirtableRecord(record: AirtableRecord): AirtableGraduateData | nul
     courseDetails: fields['Skill Course Details'],
     trackingNumber: (fields['Tracking Number'] || '').trim() || undefined,
     dtdcAvailable,
+    formAUrl: (fields['Form A'] || '').trim() || undefined,
   };
 }
 
