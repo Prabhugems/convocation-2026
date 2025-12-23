@@ -46,7 +46,64 @@ html, body {
   min-height: 100vh;
 }
 
-/* Ensure dark backgrounds throughout */
+/* ========================================
+   FORCE DARK THEME - Override all styles
+   ======================================== */
+
+/* Force Dark Theme */
 body {
-  background-color: #0c1222;
+  background: #0c1222 !important;  /* Dark blue, NOT grey */
+}
+
+.main-content,
+main {
+  background: #0c1222 !important;
+}
+
+/* All cards should be dark slate */
+[class*="card"],
+[class*="Card"] {
+  background: #1a2332 !important;  /* Dark slate, NOT white */
+  border-color: #2d3a4f !important;
+}
+
+/* Specific card overrides */
+.bg-white,
+.bg-gray-50,
+.bg-gray-100,
+.bg-slate-50,
+.bg-slate-100 {
+  background: #1a2332 !important;
+}
+
+/* Text should be light */
+.card-label,
+.station-label,
+.stage-label,
+.stat-label {
+  color: #cbd5e1 !important;  /* Light grey text */
+}
+
+/* Ensure slate colors are visible */
+.text-slate-400 {
+  color: #94a3b8 !important;
+}
+
+.text-slate-500 {
+  color: #64748b !important;
+}
+
+.text-slate-300 {
+  color: #cbd5e1 !important;
+}
+
+/* Border colors */
+.border-slate-700,
+.border-slate-600 {
+  border-color: #334155 !important;
+}
+
+.border-gray-200,
+.border-gray-300 {
+  border-color: #2d3a4f !important;
 }
