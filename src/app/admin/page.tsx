@@ -5,7 +5,7 @@ import StatusBadge from '@/components/StatusBadge';
 import CircularProgress from '@/components/CircularProgress';
 import { DashboardStats, Graduate, Address } from '@/types';
 import { stations } from '@/lib/stations';
-import { ArrowRight, CheckCircle2, Clock, TrendingUp, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, LayoutDashboard, Users as UsersIcon, BarChart3, Settings, Bell, Menu, GraduationCap, List, ArrowUpDown } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Clock, TrendingUp, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, LayoutDashboard, Users as UsersIcon, BarChart3, Settings, Bell, Menu, GraduationCap, List, ArrowUpDown, Sun, Moon } from 'lucide-react';
 import {
   Users,
   Package,
@@ -70,6 +70,7 @@ export default function AdminPage() {
   const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set());
   const [sortField, setSortField] = useState<'name' | 'convocationNumber' | 'course' | 'status'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
   // Get base URL for station links
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
@@ -418,11 +419,28 @@ export default function AdminPage() {
     return statusMap[stationId] || false;
   }
 
+  // Theme-aware class helper
+  const themeClasses = {
+    bg: theme === 'dark' ? 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900' : 'bg-gray-100',
+    sidebar: theme === 'dark' ? 'bg-slate-900/95 border-slate-700/50' : 'bg-white border-gray-200',
+    header: theme === 'dark' ? 'bg-slate-900/80 border-slate-700/50' : 'bg-white/80 border-gray-200',
+    card: theme === 'dark' ? 'bg-slate-800/50 border-slate-700/50 hover:border-slate-600' : 'bg-white border-gray-200 hover:border-gray-300 shadow-sm',
+    cardInner: theme === 'dark' ? 'bg-slate-700/30' : 'bg-gray-50',
+    text: theme === 'dark' ? 'text-white' : 'text-gray-900',
+    textMuted: theme === 'dark' ? 'text-slate-400' : 'text-gray-500',
+    textSubtle: theme === 'dark' ? 'text-slate-500' : 'text-gray-400',
+    navItem: theme === 'dark' ? 'text-slate-400 hover:text-white hover:bg-slate-800/50' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100',
+    navActive: theme === 'dark' ? 'bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-white' : 'bg-blue-50 text-blue-600',
+    input: theme === 'dark' ? 'bg-slate-700/50 border-slate-600/50 text-white placeholder:text-slate-400' : 'bg-white border-gray-300 text-gray-900 placeholder:text-gray-400',
+    tableHeader: theme === 'dark' ? 'border-slate-700/50 text-slate-400' : 'border-gray-200 text-gray-500',
+    tableRow: theme === 'dark' ? 'border-slate-700/30 hover:bg-slate-700/30' : 'border-gray-100 hover:bg-gray-50',
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex">
+    <div className={`min-h-screen ${themeClasses.bg} flex transition-colors duration-300`}>
       {/* Sidebar */}
       <aside
-        className={`fixed lg:relative z-40 h-screen bg-slate-900/95 backdrop-blur-xl border-r border-slate-700/50 transition-all duration-300 ease-in-out ${
+        className={`fixed lg:relative z-40 h-screen backdrop-blur-xl border-r transition-all duration-300 ease-in-out ${themeClasses.sidebar} ${
           sidebarCollapsed ? 'w-20' : 'w-64'
         } ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
@@ -522,7 +540,7 @@ export default function AdminPage() {
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
         {/* Top Header */}
-        <header className="sticky top-0 z-20 h-16 bg-slate-900/80 backdrop-blur-xl border-b border-slate-700/50 flex items-center justify-between px-4 lg:px-8">
+        <header className={`sticky top-0 z-20 h-16 backdrop-blur-xl border-b flex items-center justify-between px-4 lg:px-8 transition-colors duration-300 ${themeClasses.header}`}>
           <div className="flex items-center gap-4">
             <button
               onClick={() => setMobileMenuOpen(true)}
@@ -531,14 +549,30 @@ export default function AdminPage() {
               <Menu className="w-5 h-5 text-slate-400" />
             </button>
             <div>
-              <h1 className="text-xl font-bold text-white capitalize">{activeNav}</h1>
-              <p className="text-xs text-slate-400">
+              <h1 className={`text-xl font-bold capitalize ${themeClasses.text}`}>{activeNav}</h1>
+              <p className={`text-xs ${themeClasses.textMuted}`}>
                 {lastRefresh && `Last sync: ${lastRefresh.toLocaleTimeString()}`}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Theme Toggle */}
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className={`p-2 rounded-xl transition-all duration-300 hover:scale-105 active:scale-95 ${
+                theme === 'dark'
+                  ? 'bg-slate-800 hover:bg-slate-700'
+                  : 'bg-gray-100 hover:bg-gray-200'
+              }`}
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              {theme === 'dark' ? (
+                <Sun className="w-5 h-5 text-amber-400" />
+              ) : (
+                <Moon className="w-5 h-5 text-slate-600" />
+              )}
+            </button>
             <button
               onClick={fetchData}
               disabled={loading}
@@ -549,10 +583,16 @@ export default function AdminPage() {
             </button>
             <button
               onClick={exportCSV}
-              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition-all duration-300 hover:scale-105 active:scale-95 group"
+              className={`p-2 rounded-xl transition-all duration-300 hover:scale-105 active:scale-95 group ${
+                theme === 'dark'
+                  ? 'bg-slate-800 hover:bg-slate-700'
+                  : 'bg-gray-100 hover:bg-gray-200'
+              }`}
               title="Export CSV"
             >
-              <Download className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
+              <Download className={`w-5 h-5 transition-colors ${
+                theme === 'dark' ? 'text-slate-400 group-hover:text-white' : 'text-gray-500 group-hover:text-gray-800'
+              }`} />
             </button>
             <button className="relative p-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition-all duration-300 hover:scale-105 active:scale-95 group">
               <Bell className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
