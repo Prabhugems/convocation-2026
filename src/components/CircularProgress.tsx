@@ -34,7 +34,7 @@ export default function CircularProgress({
 
   // Determine text colors based on theme
   const textPrimary = dark ? 'text-white' : 'text-gray-800';
-  const textSecondary = dark ? 'text-slate-400' : 'text-gray-500';
+  const textSecondary = dark ? 'text-slate-300' : 'text-gray-500';
 
   return (
     <div className="flex flex-col items-center">

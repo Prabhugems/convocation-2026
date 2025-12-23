@@ -745,7 +745,7 @@ export default function AdminPage() {
                           </div>
                         </div>
                         <p className="text-2xl font-bold text-white group-hover:scale-110 transition-transform duration-300">{step.value}</p>
-                        <p className="text-xs text-slate-400">{step.label}</p>
+                        <p className="text-sm text-slate-300 font-medium mt-1">{step.label}</p>
                       </div>
                       {index < arr.length - 1 && (
                         <ArrowRight className="w-5 h-5 text-slate-600 shrink-0 mx-1 animate-pulse" />
@@ -757,8 +757,8 @@ export default function AdminPage() {
             </div>
 
             {/* Post-event pipeline */}
-            <div className="mt-6 pt-6 border-t border-slate-700/50">
-              <p className="text-sm text-slate-400 mb-4">Post-Event Dispatch</p>
+            <div className="mt-6 pt-6 border-t border-slate-600/50">
+              <p className="text-sm text-slate-300 font-medium mb-4">Post-Event Dispatch</p>
               <div className="flex items-center justify-start gap-4 flex-wrap">
                 {[
                   { label: 'At Head Office', value: stats?.returnedToHO || 0, color: 'yellow', icon: Building2 },
@@ -773,18 +773,18 @@ export default function AdminPage() {
                           <Icon className={`w-5 h-5 text-${step.color}-400`} />
                         </div>
                         <p className="text-lg font-bold text-white">{step.value}</p>
-                        <p className="text-xs text-slate-400">{step.label}</p>
+                        <p className="text-xs text-slate-300 font-medium">{step.label}</p>
                       </div>
                       {index < arr.length - 1 && (
-                        <ArrowRight className="w-4 h-4 text-slate-600 shrink-0 mx-2" />
+                        <ArrowRight className="w-4 h-4 text-slate-500 shrink-0 mx-2" />
                       )}
                     </div>
                   );
                 })}
                 {dispatchMeta && (stats?.finalDispatched || 0) > 0 && (
-                  <div className="ml-4 pl-4 border-l border-slate-700 text-sm">
-                    <p className="text-slate-400">DTDC: <span className="text-white font-medium">{dispatchMeta.dispatchedDTDC}</span></p>
-                    <p className="text-slate-400">India Post: <span className="text-white font-medium">{dispatchMeta.dispatchedIndiaPost}</span></p>
+                  <div className="ml-4 pl-4 border-l border-slate-600 text-sm">
+                    <p className="text-slate-300">DTDC: <span className="text-white font-medium">{dispatchMeta.dispatchedDTDC}</span></p>
+                    <p className="text-slate-300">India Post: <span className="text-white font-medium">{dispatchMeta.dispatchedIndiaPost}</span></p>
                   </div>
                 )}
               </div>
@@ -852,19 +852,19 @@ export default function AdminPage() {
                     {/* Stats */}
                     <div className="flex justify-end mb-4 relative z-10">
                       <div className="text-right">
-                        <p className="text-slate-400 text-sm">{station.name}</p>
-                        <p className="text-2xl font-bold text-white group-hover:scale-105 transition-transform duration-300 origin-right">{count}</p>
+                        <p className="text-slate-300 text-sm font-medium">{station.name}</p>
+                        <p className="text-3xl font-bold text-white group-hover:scale-105 transition-transform duration-300 origin-right">{count}</p>
                       </div>
                     </div>
 
                     {/* Divider */}
-                    <div className="h-px bg-slate-700/50 mb-4" />
+                    <div className="h-px bg-slate-600/50 mb-4" />
 
                     {/* Progress */}
                     <div className="space-y-2 relative z-10">
                       <div className="flex justify-between text-sm">
-                        <span className="text-slate-400">Progress</span>
-                        <span className="font-medium" style={{ color: station.color }}>{percentage}%</span>
+                        <span className="text-slate-300">Progress</span>
+                        <span className="font-semibold" style={{ color: station.color }}>{percentage}%</span>
                       </div>
                       <div className="h-2 bg-slate-700/50 rounded-full overflow-hidden">
                         <div
@@ -872,7 +872,7 @@ export default function AdminPage() {
                           style={{ width: `${percentage}%` }}
                         />
                       </div>
-                      <p className="text-xs text-slate-500 text-right">{count} of {total}</p>
+                      <p className="text-xs text-slate-400 text-right">{count} of {total}</p>
                     </div>
                   </div>
                 </div>
