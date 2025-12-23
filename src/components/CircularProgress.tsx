@@ -11,6 +11,7 @@ interface CircularProgressProps {
   showValue?: boolean;
   label?: string;
   sublabel?: string;
+  dark?: boolean;
 }
 
 export default function CircularProgress({
@@ -24,11 +25,16 @@ export default function CircularProgress({
   showValue = false,
   label,
   sublabel,
+  dark = false,
 }: CircularProgressProps) {
   const percentage = max > 0 ? Math.round((value / max) * 100) : 0;
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const offset = circumference - (percentage / 100) * circumference;
+
+  // Determine text colors based on theme
+  const textPrimary = dark ? 'text-white' : 'text-gray-800';
+  const textSecondary = dark ? 'text-slate-400' : 'text-gray-500';
 
   return (
     <div className="flex flex-col items-center">
@@ -64,20 +70,20 @@ export default function CircularProgress({
         {/* Center text */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           {showPercentage && (
-            <span className="text-2xl font-bold text-gray-800">{percentage}%</span>
+            <span className={`text-2xl font-bold ${textPrimary}`}>{percentage}%</span>
           )}
           {showValue && !showPercentage && (
-            <span className="text-2xl font-bold text-gray-800">{value}</span>
+            <span className={`text-2xl font-bold ${textPrimary}`}>{value}</span>
           )}
           {showValue && showPercentage && (
-            <span className="text-xs text-gray-500">{value}/{max}</span>
+            <span className={`text-xs ${textSecondary}`}>{value}/{max}</span>
           )}
         </div>
       </div>
       {label && (
         <div className="mt-2 text-center">
-          <p className="text-sm font-medium text-gray-800">{label}</p>
-          {sublabel && <p className="text-xs text-gray-500">{sublabel}</p>}
+          <p className={`text-sm font-medium ${textPrimary}`}>{label}</p>
+          {sublabel && <p className={`text-xs ${textSecondary}`}>{sublabel}</p>}
         </div>
       )}
     </div>
