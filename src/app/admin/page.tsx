@@ -718,7 +718,7 @@ export default function AdminPage() {
           </div>
 
           {/* Certificate Pipeline */}
-          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 hover:border-slate-600 transition-all duration-300 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
+          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 mb-4 border border-slate-700/50 hover:border-slate-600 transition-all duration-300 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
             <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
               <Package className="w-5 h-5 text-cyan-400" />
               Certificate Pipeline
@@ -810,7 +810,7 @@ export default function AdminPage() {
           )}
 
           {/* Station Progress Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
             {[
               { id: 'packing', name: 'Packing', icon: Package, gradient: 'from-slate-500 to-slate-600', color: '#64748b', glow: 'glow-blue' },
               { id: 'dispatch-venue', name: 'Dispatch to Venue', icon: Truck, gradient: 'from-purple-500 to-purple-600', color: '#a855f7', glow: 'glow-purple' },
