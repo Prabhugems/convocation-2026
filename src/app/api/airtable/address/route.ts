@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAddressByRegistrationNumber, getRecordByEmail, getAirtableDataByConvocationNumber } from '@/lib/airtable';
+import { getAddressByRegistrationNumber, getRecordByEmail, getAirtableDataByConvocationNumber, clearAirtableCache } from '@/lib/airtable';
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,6 +8,12 @@ export async function GET(request: NextRequest) {
     const email = searchParams.get('email');
     const course = (searchParams.get('course') as 'FMAS' | 'MMAS') || 'FMAS';
     const fullData = searchParams.get('fullData') === 'true';
+    const refresh = searchParams.get('refresh') === 'true';
+
+    // Clear cache if refresh requested
+    if (refresh) {
+      clearAirtableCache();
+    }
 
     if (registrationNumber) {
       // If fullData is requested, return all Airtable fields including tracking/DTDC

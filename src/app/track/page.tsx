@@ -54,6 +54,7 @@ interface AddressData {
   mobile?: string;
   trackingNumber?: string;
   dtdcAvailable?: boolean;
+  formAUrl?: string;
 }
 
 // Process steps for the sidebar
@@ -132,6 +133,7 @@ export default function TrackPage() {
             mobile: data.data.mobile,
             trackingNumber: data.data.trackingNumber,
             dtdcAvailable: data.data.dtdcAvailable,
+            formAUrl: data.data.formAUrl,
           });
         } else {
           setAddressData(null);
@@ -564,9 +566,9 @@ export default function TrackPage() {
                       <Lock className="w-3.5 h-3.5" />
                       Locked
                     </div>
-                  ) : (
+                  ) : addressData?.formAUrl ? (
                     <a
-                      href={`https://amasi.fillout.com/address-update?conv=${graduate.convocationNumber || ''}`}
+                      href={addressData.formAUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-blue-400 hover:text-blue-300 border border-blue-400/30 hover:border-blue-400/50 rounded-lg transition-colors"
@@ -575,7 +577,11 @@ export default function TrackPage() {
                       Update Address
                       <ExternalLink className="w-3 h-3" />
                     </a>
-                  )}
+                  ) : addressLoading ? (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-white/40">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    </div>
+                  ) : null}
                 </div>
 
                 {addressLoading ? (
@@ -629,16 +635,18 @@ export default function TrackPage() {
                     ) : (
                       <>
                         <p className="text-white/60 mb-4">Address not found. Please update your shipping address.</p>
-                        <a
-                          href={`https://amasi.fillout.com/address-update?conv=${graduate.convocationNumber || ''}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
-                        >
-                          <Pencil className="w-4 h-4" />
-                          Update Address
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
+                        {addressData?.formAUrl && (
+                          <a
+                            href={addressData.formAUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+                          >
+                            <Pencil className="w-4 h-4" />
+                            Update Address
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        )}
                       </>
                     )}
                   </div>
