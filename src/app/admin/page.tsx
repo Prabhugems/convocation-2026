@@ -5,7 +5,7 @@ import StatusBadge from '@/components/StatusBadge';
 import CircularProgress from '@/components/CircularProgress';
 import { DashboardStats, Graduate, Address } from '@/types';
 import { stations } from '@/lib/stations';
-import { ArrowRight, CheckCircle2, Clock, TrendingUp, ChevronLeft, ChevronRight, LayoutDashboard, Users as UsersIcon, BarChart3, Settings, Bell, Menu } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Clock, TrendingUp, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, LayoutDashboard, Users as UsersIcon, BarChart3, Settings, Bell, Menu, GraduationCap, List, ArrowUpDown, Sun, Moon } from 'lucide-react';
 import {
   Users,
   Package,
@@ -66,6 +66,11 @@ export default function AdminPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeNav, setActiveNav] = useState('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [graduatesView, setGraduatesView] = useState<'all' | 'by-course'>('all');
+  const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set());
+  const [sortField, setSortField] = useState<'name' | 'convocationNumber' | 'course' | 'status'>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
   // Get base URL for station links
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
@@ -192,6 +197,82 @@ export default function AdminPage() {
 
     return result;
   }, [graduates, searchQuery, filterStatus, searchGraduates]);
+
+  // Group graduates by course
+  const graduatesByCourse = useMemo(() => {
+    const grouped: Record<string, Graduate[]> = {};
+    filteredGraduates.forEach((g) => {
+      const course = g.course || 'Unknown';
+      if (!grouped[course]) {
+        grouped[course] = [];
+      }
+      grouped[course].push(g);
+    });
+    // Sort courses alphabetically
+    const sortedEntries = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
+    return sortedEntries;
+  }, [filteredGraduates]);
+
+  // Toggle course expansion
+  const toggleCourseExpansion = (course: string) => {
+    setExpandedCourses((prev) => {
+      const next = new Set(prev);
+      if (next.has(course)) {
+        next.delete(course);
+      } else {
+        next.add(course);
+      }
+      return next;
+    });
+  };
+
+  // Sort graduates
+  const sortedGraduates = useMemo(() => {
+    const sorted = [...filteredGraduates];
+    sorted.sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case 'name':
+          comparison = a.name.localeCompare(b.name);
+          break;
+        case 'convocationNumber':
+          comparison = (a.convocationNumber || '').localeCompare(b.convocationNumber || '');
+          break;
+        case 'course':
+          comparison = a.course.localeCompare(b.course);
+          break;
+        case 'status':
+          const getStatusPriority = (g: Graduate) => {
+            if (g.status.certificateCollected) return 1;
+            if (g.status.finalDispatched) return 2;
+            if (g.status.gownIssued && !g.status.gownReturned) return 3;
+            return 4;
+          };
+          comparison = getStatusPriority(a) - getStatusPriority(b);
+          break;
+      }
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+    return sorted;
+  }, [filteredGraduates, sortField, sortOrder]);
+
+  // Handle sort click
+  const handleSort = (field: 'name' | 'convocationNumber' | 'course' | 'status') => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
+  // Get sort icon for column
+  const getSortIcon = (field: 'name' | 'convocationNumber' | 'course' | 'status') => {
+    if (sortField !== field) return <ArrowUpDown className="w-3 h-3 text-slate-500" />;
+    return sortOrder === 'asc'
+      ? <ChevronUp className="w-3 h-3 text-blue-400" />
+      : <ChevronDown className="w-3 h-3 text-blue-400" />;
+  };
 
   function exportCSV() {
     const headers = ['Convocation Number', 'Name', 'Email', 'Phone', 'Course', 'Status', 'Tracking Number'];
@@ -338,11 +419,28 @@ export default function AdminPage() {
     return statusMap[stationId] || false;
   }
 
+  // Theme-aware class helper
+  const themeClasses = {
+    bg: theme === 'dark' ? 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900' : 'bg-gray-100',
+    sidebar: theme === 'dark' ? 'bg-slate-900/95 border-slate-700/50' : 'bg-white border-gray-200',
+    header: theme === 'dark' ? 'bg-slate-900/80 border-slate-700/50' : 'bg-white/80 border-gray-200',
+    card: theme === 'dark' ? 'bg-slate-800/50 border-slate-700/50 hover:border-slate-600' : 'bg-white border-gray-200 hover:border-gray-300 shadow-sm',
+    cardInner: theme === 'dark' ? 'bg-slate-700/30' : 'bg-gray-50',
+    text: theme === 'dark' ? 'text-white' : 'text-gray-900',
+    textMuted: theme === 'dark' ? 'text-slate-400' : 'text-gray-500',
+    textSubtle: theme === 'dark' ? 'text-slate-500' : 'text-gray-400',
+    navItem: theme === 'dark' ? 'text-slate-400 hover:text-white hover:bg-slate-800/50' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100',
+    navActive: theme === 'dark' ? 'bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-white' : 'bg-blue-50 text-blue-600',
+    input: theme === 'dark' ? 'bg-slate-700/50 border-slate-600/50 text-white placeholder:text-slate-400' : 'bg-white border-gray-300 text-gray-900 placeholder:text-gray-400',
+    tableHeader: theme === 'dark' ? 'border-slate-700/50 text-slate-400' : 'border-gray-200 text-gray-500',
+    tableRow: theme === 'dark' ? 'border-slate-700/30 hover:bg-slate-700/30' : 'border-gray-100 hover:bg-gray-50',
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex">
+    <div className={`min-h-screen ${themeClasses.bg} flex transition-colors duration-300`}>
       {/* Sidebar */}
       <aside
-        className={`fixed lg:relative z-40 h-screen bg-slate-900/95 backdrop-blur-xl border-r border-slate-700/50 transition-all duration-300 ease-in-out ${
+        className={`fixed lg:relative z-40 h-screen backdrop-blur-xl border-r transition-all duration-300 ease-in-out ${themeClasses.sidebar} ${
           sidebarCollapsed ? 'w-20' : 'w-64'
         } ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
@@ -442,7 +540,7 @@ export default function AdminPage() {
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
         {/* Top Header */}
-        <header className="sticky top-0 z-20 h-16 bg-slate-900/80 backdrop-blur-xl border-b border-slate-700/50 flex items-center justify-between px-4 lg:px-8">
+        <header className={`sticky top-0 z-20 h-16 backdrop-blur-xl border-b flex items-center justify-between px-4 lg:px-8 transition-colors duration-300 ${themeClasses.header}`}>
           <div className="flex items-center gap-4">
             <button
               onClick={() => setMobileMenuOpen(true)}
@@ -451,14 +549,30 @@ export default function AdminPage() {
               <Menu className="w-5 h-5 text-slate-400" />
             </button>
             <div>
-              <h1 className="text-xl font-bold text-white">Dashboard</h1>
-              <p className="text-xs text-slate-400">
+              <h1 className={`text-xl font-bold capitalize ${themeClasses.text}`}>{activeNav}</h1>
+              <p className={`text-xs ${themeClasses.textMuted}`}>
                 {lastRefresh && `Last sync: ${lastRefresh.toLocaleTimeString()}`}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Theme Toggle */}
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className={`p-2 rounded-xl transition-all duration-300 hover:scale-105 active:scale-95 ${
+                theme === 'dark'
+                  ? 'bg-slate-800 hover:bg-slate-700'
+                  : 'bg-gray-100 hover:bg-gray-200'
+              }`}
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              {theme === 'dark' ? (
+                <Sun className="w-5 h-5 text-amber-400" />
+              ) : (
+                <Moon className="w-5 h-5 text-slate-600" />
+              )}
+            </button>
             <button
               onClick={fetchData}
               disabled={loading}
@@ -469,10 +583,16 @@ export default function AdminPage() {
             </button>
             <button
               onClick={exportCSV}
-              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition-all duration-300 hover:scale-105 active:scale-95 group"
+              className={`p-2 rounded-xl transition-all duration-300 hover:scale-105 active:scale-95 group ${
+                theme === 'dark'
+                  ? 'bg-slate-800 hover:bg-slate-700'
+                  : 'bg-gray-100 hover:bg-gray-200'
+              }`}
               title="Export CSV"
             >
-              <Download className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
+              <Download className={`w-5 h-5 transition-colors ${
+                theme === 'dark' ? 'text-slate-400 group-hover:text-white' : 'text-gray-500 group-hover:text-gray-800'
+              }`} />
             </button>
             <button className="relative p-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition-all duration-300 hover:scale-105 active:scale-95 group">
               <Bell className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
@@ -487,6 +607,9 @@ export default function AdminPage() {
 
         {/* Dashboard Content */}
         <div className="p-4 lg:p-8 space-y-6">
+          {/* Conditionally render based on activeNav */}
+          {activeNav === 'dashboard' && (
+            <>
           {/* Stats Cards Row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
@@ -751,93 +874,43 @@ export default function AdminPage() {
             })}
           </div>
 
-          {/* Station Links */}
-          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 hover:border-slate-600 transition-all duration-300 animate-fade-in-up" style={{ animationDelay: '500ms' }}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                <QrCode className="w-5 h-5 text-green-400" />
-                Station Links
-              </h2>
-              <p className="text-xs text-slate-400">Share with staff for multi-device check-in</p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {stations.map((station, index) => {
-                const Icon = stationIconMap[station.icon] || Package;
-                const checkinList = checkinLists.find(l => {
-                  const mapping: Record<string, string> = {
-                    'packing': 'Packing',
-                    'dispatch-venue': 'Dispatch to Convocation',
-                    'registration': 'Registration',
-                    'gown-issue': 'Gown Issued',
-                    'gown-return': 'Gown Returned',
-                    'certificate-collection': 'Certificate Collected',
-                    'return-ho': 'Dispatch to Head Office',
-                    'address-label': 'Address Label Printed',
-                    'final-dispatch': 'Dispatched DTDC',
-                  };
-                  return l.title === mapping[station.id];
-                });
+            </>
+          )}
 
-                return (
-                  <div
-                    key={station.id}
-                    className="flex items-center justify-between p-3 bg-slate-700/30 hover:bg-slate-700/50 rounded-xl border border-slate-600/30 hover:border-slate-500/50 transition-all duration-300 hover:translate-x-1 group"
-                    style={{ animationDelay: `${550 + index * 30}ms` }}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">
-                        <Icon className="w-4 h-4 text-blue-400" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-white truncate">{station.name}</p>
-                        {checkinList && (
-                          <p className="text-xs text-slate-400">
-                            {checkinList.checked_in}/{checkinList.total}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={() => copyStationUrl(station.id)}
-                        className="p-2 rounded-lg hover:bg-slate-600/50 transition-all duration-200 hover:scale-110"
-                        title="Copy link"
-                      >
-                        {copiedStation === station.id ? (
-                          <Check className="w-4 h-4 text-green-400" />
-                        ) : (
-                          <Copy className="w-4 h-4 text-slate-400 hover:text-white" />
-                        )}
-                      </button>
-                      <button
-                        onClick={() => setShowQRModal(station.id)}
-                        className="p-2 rounded-lg hover:bg-slate-600/50 transition-all duration-200 hover:scale-110"
-                        title="Show QR code"
-                      >
-                        <QrCode className="w-4 h-4 text-slate-400 hover:text-white" />
-                      </button>
-                      <a
-                        href={`/stations/${station.id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-2 rounded-lg hover:bg-slate-600/50 transition-all duration-200 hover:scale-110"
-                        title="Open in new tab"
-                      >
-                        <ExternalLink className="w-4 h-4 text-slate-400 hover:text-white" />
-                      </a>
-                    </div>
-                  </div>
-                );
-              })}
+          {/* Graduates View - Only shown when Graduates is selected in sidebar */}
+          {activeNav === 'graduates' && (
+          <div className="space-y-6 animate-fade-in-up">
+            {/* View Toggle Tabs */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setGraduatesView('all')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all duration-300 ${
+                  graduatesView === 'all'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                    : 'bg-slate-800/50 text-slate-400 hover:text-white hover:bg-slate-700/50'
+                }`}
+              >
+                <List className="w-4 h-4" />
+                All Graduates
+              </button>
+              <button
+                onClick={() => setGraduatesView('by-course')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all duration-300 ${
+                  graduatesView === 'by-course'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                    : 'bg-slate-800/50 text-slate-400 hover:text-white hover:bg-slate-700/50'
+                }`}
+              >
+                <GraduationCap className="w-4 h-4" />
+                By Course
+              </button>
             </div>
-          </div>
 
-          {/* Graduates List */}
-          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 hover:border-slate-600 transition-all duration-300 animate-fade-in-up" style={{ animationDelay: '600ms' }}>
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 hover:border-slate-600 transition-all duration-300">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                 <UsersIcon className="w-5 h-5 text-indigo-400" />
-                Graduates
+                {graduatesView === 'all' ? 'All Graduates' : 'Graduates by Course'}
               </h2>
               <div className="flex flex-col sm:flex-row gap-3">
                 <div className="relative group">
@@ -872,15 +945,50 @@ export default function AdminPage() {
               </div>
             </div>
 
+            {/* All Graduates Table View */}
+            {graduatesView === 'all' && (
+            <>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-slate-700/50">
-                    <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Conv. No.</th>
-                    <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Name</th>
+                    <th
+                      className="text-left py-3 px-4 text-slate-400 font-medium text-sm cursor-pointer hover:text-white transition-colors group"
+                      onClick={() => handleSort('convocationNumber')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Conv. No.
+                        {getSortIcon('convocationNumber')}
+                      </div>
+                    </th>
+                    <th
+                      className="text-left py-3 px-4 text-slate-400 font-medium text-sm cursor-pointer hover:text-white transition-colors"
+                      onClick={() => handleSort('name')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Name
+                        {getSortIcon('name')}
+                      </div>
+                    </th>
                     <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm hidden md:table-cell">Contact</th>
-                    <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Course</th>
-                    <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Status</th>
+                    <th
+                      className="text-left py-3 px-4 text-slate-400 font-medium text-sm cursor-pointer hover:text-white transition-colors"
+                      onClick={() => handleSort('course')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Course
+                        {getSortIcon('course')}
+                      </div>
+                    </th>
+                    <th
+                      className="text-left py-3 px-4 text-slate-400 font-medium text-sm cursor-pointer hover:text-white transition-colors"
+                      onClick={() => handleSort('status')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Status
+                        {getSortIcon('status')}
+                      </div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -894,7 +1002,7 @@ export default function AdminPage() {
                         </div>
                       </td>
                     </tr>
-                  ) : filteredGraduates.length === 0 ? (
+                  ) : sortedGraduates.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="text-center py-12">
                         <div className="text-slate-400 space-y-2">
@@ -903,7 +1011,7 @@ export default function AdminPage() {
                       </td>
                     </tr>
                   ) : (
-                    filteredGraduates.slice(0, 50).map((graduate, index) => (
+                    sortedGraduates.slice(0, 50).map((graduate, index) => (
                       <tr
                         key={graduate.id}
                         onClick={() => openGraduateDetail(graduate)}
@@ -957,8 +1065,9 @@ export default function AdminPage() {
 
             <div className="mt-4 flex items-center justify-between text-sm text-slate-400">
               <span>
-                Showing {Math.min(filteredGraduates.length, 50)} of {graduates.length} graduates
+                Showing {Math.min(sortedGraduates.length, 50)} of {graduates.length} graduates
                 {searchQuery && ` matching "${searchQuery}"`}
+                {sortField !== 'name' && ` • Sorted by ${sortField}`}
               </span>
               {loading && graduates.length > 0 && (
                 <span className="flex items-center gap-2 text-blue-400">
@@ -967,7 +1076,207 @@ export default function AdminPage() {
                 </span>
               )}
             </div>
+            </>
+            )}
+
+            {/* Course-wise View */}
+            {graduatesView === 'by-course' && (
+            <div className="space-y-3">
+              {graduatesByCourse.length === 0 ? (
+                <div className="text-center py-12 text-slate-400">
+                  <p className="font-medium">No graduates found</p>
+                </div>
+              ) : (
+                graduatesByCourse.map(([course, courseGraduates]) => {
+                  const isExpanded = expandedCourses.has(course);
+                  const collected = courseGraduates.filter(g => g.status.certificateCollected).length;
+                  const dispatched = courseGraduates.filter(g => g.status.finalDispatched).length;
+                  const pending = courseGraduates.length - collected - dispatched;
+
+                  return (
+                    <div key={course} className="border border-slate-700/50 rounded-xl overflow-hidden">
+                      {/* Course Header */}
+                      <button
+                        onClick={() => toggleCourseExpansion(course)}
+                        className="w-full flex items-center justify-between p-4 bg-slate-700/30 hover:bg-slate-700/50 transition-all duration-200"
+                      >
+                        <div className="flex items-center gap-3">
+                          <GraduationCap className="w-5 h-5 text-purple-400" />
+                          <div className="text-left">
+                            <p className="font-medium text-white">{course}</p>
+                            <p className="text-xs text-slate-400">{courseGraduates.length} graduates</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="px-2 py-1 rounded-full bg-green-500/20 text-green-400">{collected} collected</span>
+                            <span className="px-2 py-1 rounded-full bg-indigo-500/20 text-indigo-400">{dispatched} dispatched</span>
+                            <span className="px-2 py-1 rounded-full bg-slate-500/20 text-slate-400">{pending} pending</span>
+                          </div>
+                          <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                        </div>
+                      </button>
+
+                      {/* Expanded Graduates List */}
+                      {isExpanded && (
+                        <div className="border-t border-slate-700/50 animate-fade-in">
+                          <table className="w-full">
+                            <thead>
+                              <tr className="border-b border-slate-700/30 bg-slate-800/30">
+                                <th className="text-left py-2 px-4 text-slate-500 font-medium text-xs">Conv. No.</th>
+                                <th className="text-left py-2 px-4 text-slate-500 font-medium text-xs">Name</th>
+                                <th className="text-left py-2 px-4 text-slate-500 font-medium text-xs hidden md:table-cell">Contact</th>
+                                <th className="text-left py-2 px-4 text-slate-500 font-medium text-xs">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {courseGraduates.map((graduate) => (
+                                <tr
+                                  key={graduate.id}
+                                  onClick={() => openGraduateDetail(graduate)}
+                                  className="border-b border-slate-700/20 hover:bg-slate-700/20 cursor-pointer transition-colors group"
+                                >
+                                  <td className="py-2 px-4">
+                                    <span className="text-white font-mono text-sm group-hover:text-blue-400 transition-colors">
+                                      {graduate.convocationNumber || '-'}
+                                    </span>
+                                  </td>
+                                  <td className="py-2 px-4">
+                                    <span className="text-white text-sm group-hover:text-blue-400 transition-colors">{graduate.name}</span>
+                                  </td>
+                                  <td className="py-2 px-4 hidden md:table-cell">
+                                    <span className="text-slate-400 text-xs">{graduate.email}</span>
+                                  </td>
+                                  <td className="py-2 px-4">
+                                    {graduate.status.certificateCollected ? (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-green-500/20 text-green-400">
+                                        <CheckCircle className="w-3 h-3" />
+                                        Collected
+                                      </span>
+                                    ) : graduate.status.finalDispatched ? (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-indigo-500/20 text-indigo-400">
+                                        <Send className="w-3 h-3" />
+                                        Dispatched
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-slate-500/20 text-slate-400">
+                                        <Circle className="w-3 h-3" />
+                                        Pending
+                                      </span>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+              <div className="mt-4 text-sm text-slate-400">
+                <span>{graduatesByCourse.length} courses • {filteredGraduates.length} graduates total</span>
+              </div>
+            </div>
+            )}
           </div>
+          </div>
+          )}
+
+          {/* Stations View - Station Links */}
+          {activeNav === 'stations' && (
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 animate-fade-in-up">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <QrCode className="w-5 h-5 text-green-400" />
+                  Station Links
+                </h2>
+                <p className="text-xs text-slate-400">Share with staff for multi-device check-in</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {stations.map((station, index) => {
+                  const Icon = stationIconMap[station.icon] || Package;
+                  const checkinList = checkinLists.find(l => {
+                    const mapping: Record<string, string> = {
+                      'packing': 'Packing',
+                      'dispatch-venue': 'Dispatch to Convocation',
+                      'registration': 'Registration',
+                      'gown-issue': 'Gown Issued',
+                      'gown-return': 'Gown Returned',
+                      'certificate-collection': 'Certificate Collected',
+                      'return-ho': 'Dispatch to Head Office',
+                      'address-label': 'Address Label Printed',
+                      'final-dispatch': 'Dispatched DTDC',
+                    };
+                    return l.title === mapping[station.id];
+                  });
+
+                  return (
+                    <div
+                      key={station.id}
+                      className="flex items-center justify-between p-4 bg-slate-700/30 hover:bg-slate-700/50 rounded-xl border border-slate-600/30 hover:border-slate-500/50 transition-all duration-300 hover:translate-x-1 group"
+                      style={{ animationDelay: `${index * 30}ms` }}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">
+                          <Icon className="w-5 h-5 text-blue-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-white truncate">{station.name}</p>
+                          {checkinList && (
+                            <p className="text-xs text-slate-400">
+                              {checkinList.checked_in}/{checkinList.total} checked in
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => copyStationUrl(station.id)}
+                          className="p-2 rounded-lg hover:bg-slate-600/50 transition-all duration-200 hover:scale-110"
+                          title="Copy link"
+                        >
+                          {copiedStation === station.id ? (
+                            <Check className="w-4 h-4 text-green-400" />
+                          ) : (
+                            <Copy className="w-4 h-4 text-slate-400 hover:text-white" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => setShowQRModal(station.id)}
+                          className="p-2 rounded-lg hover:bg-slate-600/50 transition-all duration-200 hover:scale-110"
+                          title="Show QR code"
+                        >
+                          <QrCode className="w-4 h-4 text-slate-400 hover:text-white" />
+                        </button>
+                        <a
+                          href={`/stations/${station.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 rounded-lg hover:bg-slate-600/50 transition-all duration-200 hover:scale-110"
+                          title="Open in new tab"
+                        >
+                          <ExternalLink className="w-4 h-4 text-slate-400 hover:text-white" />
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Settings View - Placeholder for future */}
+          {activeNav === 'settings' && (
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 animate-fade-in-up">
+              <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <Settings className="w-5 h-5 text-purple-400" />
+                Settings
+              </h2>
+              <p className="text-slate-400">Settings and configuration coming soon...</p>
+            </div>
+          )}
         </div>
       </main>
 
