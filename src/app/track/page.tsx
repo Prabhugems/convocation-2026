@@ -385,19 +385,19 @@ export default function TrackPage() {
           <GlassCard className="p-6 mb-6">
             <form onSubmit={handleSearch} className="flex gap-3">
               <div className="relative flex-1">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/40" />
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Enter name, convocation no, email, or mobile..."
-                  className="w-full pl-12 pr-12 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder:text-white/40 focus:outline-none focus:border-blue-500"
+                  className="w-full pl-12 pr-12 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                 />
                 {query && (
                   <button
                     type="button"
                     onClick={clearSearch}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white/40 hover:text-white"
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -406,12 +406,12 @@ export default function TrackPage() {
               <button
                 type="submit"
                 disabled={loading || !query.trim()}
-                className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-medium disabled:opacity-50 flex items-center gap-2"
+                className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-xl font-medium disabled:opacity-50 flex items-center gap-2 transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg shadow-blue-500/20"
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Track'}
               </button>
             </form>
-            <p className="text-xs text-white/30 mt-3">
+            <p className="text-xs text-slate-500 mt-3">
               Examples: &quot;Sanjay&quot;, &quot;118AEC1001&quot;, &quot;9876543210&quot;, &quot;example@gmail.com&quot;
             </p>
           </GlassCard>
