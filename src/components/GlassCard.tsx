@@ -10,8 +10,8 @@ interface GlassCardProps {
 }
 
 export default function GlassCard({ children, className = '', hover = false, onClick }: GlassCardProps) {
-  const baseClasses = 'backdrop-blur-lg bg-white/10 border border-white/20 rounded-2xl shadow-xl';
-  const hoverClasses = hover ? 'transition-all duration-300 hover:bg-white/15 hover:border-white/30 hover:scale-[1.02] cursor-pointer' : '';
+  const baseClasses = 'bg-white border border-gray-200 rounded-xl shadow-sm';
+  const hoverClasses = hover ? 'transition-all duration-300 hover:shadow-md hover:border-gray-300 cursor-pointer' : '';
 
   return (
     <div
