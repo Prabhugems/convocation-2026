@@ -6,13 +6,15 @@ import {
   CertificateReadyAttendingData,
   CertificateReadyNotAttendingData,
   DispatchedCourierData,
+  CertificateCollectedData,
+  CertificateDeliveredData,
 } from '@/lib/email/templates';
 import config from '@/lib/config';
 
 interface SendEmailRequest {
   to: string;
   template: EmailTemplateType;
-  data: CertificateReadyAttendingData | CertificateReadyNotAttendingData | DispatchedCourierData;
+  data: CertificateReadyAttendingData | CertificateReadyNotAttendingData | DispatchedCourierData | CertificateCollectedData | CertificateDeliveredData;
   attachBadge?: boolean;
   convocationNumber?: string;
 }
@@ -131,6 +133,26 @@ export async function GET(request: NextRequest) {
         },
       },
       DISPATCHED_COURIER: {
+        name: 'Sample Graduate',
+        convocationNumber: '119AEC1001',
+        course: '119 FMAS Chandigarh',
+        courierName: 'DTDC',
+        trackingNumber: 'D12345678901',
+        address: {
+          line1: '123 Sample Street',
+          line2: 'Apartment 4B',
+          city: 'Mumbai',
+          state: 'Maharashtra',
+          pincode: '400001',
+        },
+      },
+      CERTIFICATE_COLLECTED: {
+        name: 'Sample Graduate',
+        convocationNumber: '119AEC1001',
+        course: '119 FMAS Chandigarh',
+        collectionDate: 'January 15, 2026',
+      },
+      CERTIFICATE_DELIVERED: {
         name: 'Sample Graduate',
         convocationNumber: '119AEC1001',
         course: '119 FMAS Chandigarh',
