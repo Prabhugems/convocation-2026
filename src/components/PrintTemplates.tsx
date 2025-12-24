@@ -610,34 +610,59 @@ export function printSticker3x2(graduate: Graduate, elementRef?: HTMLElement | n
     }`;
 
   if (isMobile()) {
-    // MOBILE: Inject styles and content directly, then print
-    // Remove any existing print styles and content
-    const existingStyle = document.getElementById('mobile-print-style');
-    if (existingStyle) existingStyle.remove();
-    const existingContent = document.getElementById('mobile-print-content');
-    if (existingContent) existingContent.remove();
+    // MOBILE: Complete body replacement approach
+    // Save current page state
+    const originalBody = document.body.innerHTML;
+    const originalStyles = document.head.innerHTML;
 
-    // Add print styles
-    const styleEl = document.createElement('style');
-    styleEl.id = 'mobile-print-style';
-    styleEl.textContent = printStyles;
-    document.head.appendChild(styleEl);
+    // Minimal print page - replaces everything
+    const printPage = `
+      <style>
+        @page { size: 3in 2in; margin: 0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+          width: 3in;
+          height: 2in;
+          overflow: hidden;
+          font-family: Helvetica, Arial, sans-serif;
+          background: white;
+        }
+        .sticker {
+          width: 3in;
+          height: 2in;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0.15in 0.2in;
+        }
+        .left { flex: 0 0 55%; }
+        .label { font-size: 9pt; color: #333; margin-bottom: 2px; }
+        .convno { font-size: 14pt; font-weight: bold; margin-bottom: 6px; }
+        .name { font-size: 11pt; }
+        .right { flex: 0 0 40%; display: flex; justify-content: flex-end; }
+        .right svg { width: 1.4in; height: 1.4in; }
+      </style>
+      <div class="sticker">
+        <div class="left">
+          <div class="label">CON. No-</div>
+          <div class="convno">${graduate.convocationNumber || 'N/A'}</div>
+          <div class="name">Dr. ${graduate.name}</div>
+        </div>
+        <div class="right">${svgHtml}</div>
+      </div>
+    `;
 
-    // Add sticker content
-    const contentEl = document.createElement('div');
-    contentEl.id = 'mobile-print-content';
-    contentEl.innerHTML = stickerContent;
-    document.body.appendChild(contentEl);
+    // Replace body completely
+    document.body.innerHTML = printPage;
 
     // Print after brief delay
     setTimeout(() => {
       window.print();
-      // Cleanup after print
+      // Restore after print dialog closes
       setTimeout(() => {
-        styleEl.remove();
-        contentEl.remove();
-      }, 1000);
-    }, 100);
+        document.body.innerHTML = originalBody;
+      }, 500);
+    }, 50);
   } else {
     // DESKTOP: Use iframe for cleaner printing
     const iframeHtml = `<!DOCTYPE html>
