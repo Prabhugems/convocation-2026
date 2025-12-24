@@ -610,41 +610,48 @@ export function printSticker3x2(graduate: Graduate, elementRef?: HTMLElement | n
     }`;
 
   if (isMobile()) {
-    // MOBILE: Complete body replacement with inline styles
-    const originalBody = document.body.innerHTML;
+    // MOBILE: Open new window with print content
+    const printHtml = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Print Sticker</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Helvetica,Arial,sans-serif;padding:20px}
+.sticker{display:flex;align-items:center;justify-content:space-between;border:1px dashed #ccc;padding:15px;max-width:400px}
+.left{flex:1}
+.label{font-size:12px;color:#666;margin-bottom:4px}
+.convno{font-size:20px;font-weight:bold;margin-bottom:8px}
+.name{font-size:16px}
+.right{width:120px;height:120px}
+.right svg{width:100%;height:100%}
+.btn{display:block;width:100%;max-width:400px;margin:20px auto 0;padding:15px;font-size:18px;background:#2563eb;color:#fff;border:none;border-radius:8px;cursor:pointer}
+.note{text-align:center;margin-top:15px;font-size:14px;color:#666}
+</style>
+</head>
+<body>
+<div class="sticker">
+<div class="left">
+<div class="label">CON. No-</div>
+<div class="convno">${graduate.convocationNumber || 'N/A'}</div>
+<div class="name">Dr. ${graduate.name}</div>
+</div>
+<div class="right">${svgHtml}</div>
+</div>
+<button class="btn" onclick="window.print()">Print Sticker</button>
+<p class="note">Tap Print, then select Landscape orientation</p>
+</body>
+</html>`;
 
-    // Use inline styles for maximum compatibility
-    const printPage = `
-      <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 15px;font-family:Helvetica,Arial,sans-serif;box-sizing:border-box;">
-        <div style="flex:0 0 55%;">
-          <div style="font-size:12px;color:#333;margin-bottom:3px;">CON. No-</div>
-          <div style="font-size:18px;font-weight:bold;color:#000;margin-bottom:8px;">${graduate.convocationNumber || 'N/A'}</div>
-          <div style="font-size:14px;color:#000;">Dr. ${graduate.name}</div>
-        </div>
-        <div style="flex:0 0 40%;display:flex;justify-content:flex-end;">${svgHtml}</div>
-      </div>
-    `;
-
-    // Restore function
-    const restore = () => {
-      document.body.innerHTML = originalBody;
-      document.body.style.margin = '';
-      document.body.style.padding = '';
-      window.removeEventListener('afterprint', restore);
-    };
-
-    // Listen for print completion
-    window.addEventListener('afterprint', restore);
-
-    // Replace body completely
-    document.body.innerHTML = printPage;
-    document.body.style.margin = '0';
-    document.body.style.padding = '0';
-
-    // Print after brief delay
-    setTimeout(() => {
-      window.print();
-    }, 100);
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(printHtml);
+      printWindow.document.close();
+    } else {
+      alert('Please allow popups to print');
+    }
   } else {
     // DESKTOP: Use iframe for cleaner printing
     const iframeHtml = `<!DOCTYPE html>
