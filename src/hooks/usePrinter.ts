@@ -60,11 +60,18 @@ export function usePrinter(): UsePrinterReturn {
     });
   }, []);
 
-  // Detect mobile devices
+  // Detect mobile devices (including iPads that report as Mac)
   const isMobile = useCallback(() => {
     if (typeof navigator === 'undefined') return false;
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    // Check standard mobile user agents
+    if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+      return true;
+    }
+    // iPadOS 13+ reports as Macintosh - detect via touch points
+    if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) {
+      return true;
+    }
+    return false;
   }, []);
 
   // Print a label directly to Zebra printer
