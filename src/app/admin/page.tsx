@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import StatusBadge from '@/components/StatusBadge';
 import CircularProgress from '@/components/CircularProgress';
 import { DashboardStats, Graduate, Address } from '@/types';
@@ -39,10 +39,10 @@ import { format } from 'date-fns';
 
 // Sidebar navigation items
 const navItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'graduates', label: 'Graduates', icon: UsersIcon },
-  { id: 'stations', label: 'Stations', icon: BarChart3 },
-  { id: 'settings', label: 'Settings', icon: Settings },
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, shortcut: 'D' },
+  { id: 'graduates', label: 'Graduates', icon: UsersIcon, shortcut: 'G' },
+  { id: 'stations', label: 'Stations', icon: BarChart3, shortcut: 'S' },
+  { id: 'settings', label: 'Settings', icon: Settings, shortcut: null },
 ];
 
 export default function AdminPage() {
@@ -71,6 +71,63 @@ export default function AdminPage() {
   const [sortField, setSortField] = useState<'name' | 'convocationNumber' | 'course' | 'status'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+
+  // Refs
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        // Allow Escape to blur input
+        if (e.key === 'Escape') {
+          (e.target as HTMLElement).blur();
+        }
+        return;
+      }
+
+      // "/" to focus search
+      if (e.key === '/') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        if (activeNav !== 'graduates') {
+          setActiveNav('graduates');
+        }
+      }
+
+      // "d" for dashboard
+      if (e.key === 'd' && !e.metaKey && !e.ctrlKey) {
+        setActiveNav('dashboard');
+      }
+
+      // "g" for graduates
+      if (e.key === 'g' && !e.metaKey && !e.ctrlKey) {
+        setActiveNav('graduates');
+      }
+
+      // "s" for stations
+      if (e.key === 's' && !e.metaKey && !e.ctrlKey) {
+        setActiveNav('stations');
+      }
+
+      // "r" to refresh
+      if (e.key === 'r' && !e.metaKey && !e.ctrlKey) {
+        fetchData();
+      }
+
+      // Escape to close modals
+      if (e.key === 'Escape') {
+        setSelectedGraduate(null);
+        setShowQRModal(null);
+        setShowEmailModal(false);
+        setMobileMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeNav]);
 
   // Get base URL for station links
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
@@ -330,7 +387,7 @@ export default function AdminPage() {
   }
 
   // Send email to graduate
-  async function sendEmailToGraduate(template: 'CERTIFICATE_READY_ATTENDING' | 'CERTIFICATE_READY_NOT_ATTENDING' | 'DISPATCHED_COURIER') {
+  async function sendEmailToGraduate(template: 'CERTIFICATE_READY_ATTENDING' | 'CERTIFICATE_READY_NOT_ATTENDING' | 'DISPATCHED_COURIER' | 'CERTIFICATE_COLLECTED' | 'CERTIFICATE_DELIVERED') {
     if (!selectedGraduate || !selectedGraduate.email) return;
 
     setEmailSending(true);
@@ -348,6 +405,22 @@ export default function AdminPage() {
       }
 
       if (template === 'DISPATCHED_COURIER') {
+        data.courierName = selectedGraduate.dispatchMethod || 'Courier';
+        data.trackingNumber = selectedGraduate.trackingNumber || '';
+        if (graduateAddress) {
+          data.address = graduateAddress;
+        }
+      }
+
+      if (template === 'CERTIFICATE_COLLECTED') {
+        data.collectionDate = new Date().toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      }
+
+      if (template === 'CERTIFICATE_DELIVERED') {
         data.courierName = selectedGraduate.dispatchMethod || 'Courier';
         data.trackingNumber = selectedGraduate.trackingNumber || '';
         if (graduateAddress) {
@@ -477,8 +550,11 @@ export default function AdminPage() {
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveNav(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 group relative overflow-hidden ${
+                onClick={() => {
+                  setActiveNav(item.id);
+                  setMobileMenuOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-300 group relative overflow-hidden ${
                   isActive
                     ? 'bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-white shadow-lg'
                     : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
@@ -493,9 +569,14 @@ export default function AdminPage() {
                   <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-blue-400 to-purple-500 rounded-r-full" />
                 )}
 
-                <Icon className={`w-5 h-5 relative z-10 transition-transform duration-300 ${isActive ? 'text-blue-400' : 'group-hover:scale-110'}`} />
-                {!sidebarCollapsed && (
-                  <span className="relative z-10 font-medium text-sm">{item.label}</span>
+                <div className="flex items-center gap-3">
+                  <Icon className={`w-5 h-5 relative z-10 transition-transform duration-300 ${isActive ? 'text-blue-400' : 'group-hover:scale-110'}`} />
+                  {!sidebarCollapsed && (
+                    <span className="relative z-10 font-medium text-sm">{item.label}</span>
+                  )}
+                </div>
+                {!sidebarCollapsed && item.shortcut && (
+                  <span className="kbd relative z-10">{item.shortcut}</span>
                 )}
               </button>
             );
@@ -591,12 +672,20 @@ export default function AdminPage() {
       </aside>
 
       {/* Mobile overlay */}
-      {mobileMenuOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
-          onClick={() => setMobileMenuOpen(false)}
-        />
-      )}
+      <div
+        className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden transition-all duration-300 ${
+          mobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
+        }`}
+        onClick={() => setMobileMenuOpen(false)}
+      >
+        {/* Tap to close hint */}
+        <div className={`absolute top-4 right-4 flex items-center gap-2 text-white/60 text-sm transition-all duration-300 ${
+          mobileMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'
+        }`}>
+          <span>Tap to close</span>
+          <X className="w-4 h-4" />
+        </div>
+      </div>
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
@@ -673,37 +762,83 @@ export default function AdminPage() {
             <>
           {/* Stats Cards Row */}
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
-            {[
-              { label: 'Total Graduates', value: stats?.totalGraduates || 0, icon: Users, gradient: 'from-blue-500 to-blue-600', shadow: 'shadow-blue-500/20', glow: 'glow-blue' },
-              { label: 'Collected', value: stats?.certificateCollected || 0, icon: Award, gradient: 'from-green-500 to-green-600', shadow: 'shadow-green-500/20', glow: 'glow-green' },
-              { label: 'Dispatched', value: stats?.finalDispatched || 0, icon: Send, gradient: 'from-purple-500 to-purple-600', shadow: 'shadow-purple-500/20', glow: 'glow-purple' },
-              { label: 'Pending', value: (stats?.totalGraduates || 0) - (stats?.certificateCollected || 0) - (stats?.finalDispatched || 0), icon: Clock, gradient: 'from-amber-500 to-amber-600', shadow: 'shadow-amber-500/20', glow: 'glow-amber' },
-            ].map((stat, index) => {
-              const Icon = stat.icon;
-              return (
+            {loading ? (
+              // Skeleton loading state
+              [...Array(4)].map((_, index) => (
                 <div
-                  key={stat.label}
-                  className={`relative group overflow-hidden bg-slate-800/50 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-5 lg:p-6 border border-slate-700/50 transition-all duration-500 cursor-pointer animate-fade-in-up card-3d card-shine ${stat.glow}`}
+                  key={index}
+                  className="skeleton-card p-4 sm:p-5 lg:p-6"
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
-                  {/* Gradient background on hover */}
-                  <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500`} />
-
-                  {/* Floating decorative circle */}
-                  <div className={`absolute -top-4 -right-4 w-16 sm:w-20 lg:w-24 h-16 sm:h-20 lg:h-24 rounded-full bg-gradient-to-br ${stat.gradient} opacity-10 group-hover:opacity-20 transition-all duration-500 group-hover:scale-125`} />
-
-                  <div className="relative z-10">
-                    <div className="flex items-start justify-between mb-3 sm:mb-4">
-                      <div className={`w-10 h-10 sm:w-11 sm:h-11 lg:w-12 lg:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-lg ${stat.shadow} group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
-                        <Icon className="w-5 h-5 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-white" />
-                      </div>
-                    </div>
-                    <p className="text-slate-300 text-xs sm:text-sm font-medium mb-0.5 sm:mb-1">{stat.label}</p>
-                    <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white group-hover:scale-105 transition-transform duration-300 origin-left">{stat.value}</p>
+                  <div className="flex items-start justify-between mb-3 sm:mb-4">
+                    <div className="skeleton w-10 h-10 sm:w-11 sm:h-11 lg:w-12 lg:h-12 rounded-lg sm:rounded-xl" />
                   </div>
+                  <div className="skeleton skeleton-text w-24 mb-2" />
+                  <div className="skeleton skeleton-text w-16 h-8" />
                 </div>
-              );
-            })}
+              ))
+            ) : (
+              [{
+                label: 'Total Graduates',
+                value: stats?.totalGraduates || 0,
+                icon: Users,
+                gradient: 'from-blue-500 to-blue-600',
+                shadow: 'shadow-blue-500/20',
+                glow: 'glow-blue',
+                tooltip: 'Total number of graduates registered for convocation'
+              }, {
+                label: 'Collected',
+                value: stats?.certificateCollected || 0,
+                icon: Award,
+                gradient: 'from-green-500 to-green-600',
+                shadow: 'shadow-green-500/20',
+                glow: 'glow-green',
+                tooltip: 'Certificates collected in person at the venue'
+              }, {
+                label: 'Dispatched',
+                value: stats?.finalDispatched || 0,
+                icon: Send,
+                gradient: 'from-purple-500 to-purple-600',
+                shadow: 'shadow-purple-500/20',
+                glow: 'glow-purple',
+                tooltip: 'Certificates dispatched via courier (DTDC/India Post)'
+              }, {
+                label: 'Pending',
+                value: (stats?.totalGraduates || 0) - (stats?.certificateCollected || 0) - (stats?.finalDispatched || 0),
+                icon: Clock,
+                gradient: 'from-amber-500 to-amber-600',
+                shadow: 'shadow-amber-500/20',
+                glow: 'glow-amber',
+                tooltip: 'Certificates not yet collected or dispatched'
+              }].map((stat, index) => {
+                const Icon = stat.icon;
+                return (
+                  <div
+                    key={stat.label}
+                    className={`relative group overflow-hidden bg-slate-800/50 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-5 lg:p-6 border border-slate-700/50 transition-all duration-500 cursor-pointer animate-fade-in-up card-3d card-shine ${stat.glow}`}
+                    style={{ animationDelay: `${index * 100}ms` }}
+                    data-tooltip={stat.tooltip}
+                    data-tooltip-pos="bottom"
+                  >
+                    {/* Gradient background on hover */}
+                    <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500`} />
+
+                    {/* Floating decorative circle */}
+                    <div className={`absolute -top-4 -right-4 w-16 sm:w-20 lg:w-24 h-16 sm:h-20 lg:h-24 rounded-full bg-gradient-to-br ${stat.gradient} opacity-10 group-hover:opacity-20 transition-all duration-500 group-hover:scale-125`} />
+
+                    <div className="relative z-10">
+                      <div className="flex items-start justify-between mb-3 sm:mb-4">
+                        <div className={`w-10 h-10 sm:w-11 sm:h-11 lg:w-12 lg:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-lg ${stat.shadow} group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
+                          <Icon className="w-5 h-5 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-white" />
+                        </div>
+                      </div>
+                      <p className="text-slate-300 text-xs sm:text-sm font-medium mb-0.5 sm:mb-1">{stat.label}</p>
+                      <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white group-hover:scale-105 transition-transform duration-300 origin-left">{stat.value}</p>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
 
           {/* Progress Overview */}
@@ -907,12 +1042,16 @@ export default function AdminPage() {
                 <div className="relative group">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 group-focus-within:text-blue-400 transition-colors" />
                   <input
+                    ref={searchInputRef}
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search name, conv. no, email..."
-                    className="pl-8 sm:pl-10 pr-8 sm:pr-10 py-1.5 sm:py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg sm:rounded-xl text-white text-xs sm:text-sm placeholder:text-slate-400 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300 w-full sm:w-72 lg:w-80"
+                    className="pl-8 sm:pl-10 pr-12 sm:pr-14 py-1.5 sm:py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg sm:rounded-xl text-white text-xs sm:text-sm placeholder:text-slate-400 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300 w-full sm:w-72 lg:w-80"
                   />
+                  {!searchQuery && (
+                    <span className="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 kbd hidden sm:inline-flex">/</span>
+                  )}
                   {searchQuery && (
                     <button
                       onClick={clearSearch}
@@ -1539,10 +1678,24 @@ export default function AdminPage() {
                         </button>
                         <button
                           onClick={() => sendEmailToGraduate('DISPATCHED_COURIER')}
-                          className="w-full p-3 text-left hover:bg-slate-600/50 transition-colors"
+                          className="w-full p-3 text-left hover:bg-slate-600/50 transition-colors border-b border-slate-600"
                         >
                           <p className="text-sm font-medium text-white">Dispatched via Courier</p>
                           <p className="text-xs text-slate-400">With tracking information</p>
+                        </button>
+                        <button
+                          onClick={() => sendEmailToGraduate('CERTIFICATE_COLLECTED')}
+                          className="w-full p-3 text-left hover:bg-slate-600/50 transition-colors border-b border-slate-600"
+                        >
+                          <p className="text-sm font-medium text-white">Certificate Collected</p>
+                          <p className="text-xs text-slate-400">Confirmation for in-person collection</p>
+                        </button>
+                        <button
+                          onClick={() => sendEmailToGraduate('CERTIFICATE_DELIVERED')}
+                          className="w-full p-3 text-left hover:bg-slate-600/50 transition-colors"
+                        >
+                          <p className="text-sm font-medium text-white">Certificate Delivered</p>
+                          <p className="text-xs text-slate-400">Courier delivery confirmed</p>
                         </button>
                       </div>
                     )}

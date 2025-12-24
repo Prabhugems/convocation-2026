@@ -4,7 +4,9 @@ import config from '@/lib/config';
 export type EmailTemplateType =
   | 'CERTIFICATE_READY_ATTENDING'
   | 'CERTIFICATE_READY_NOT_ATTENDING'
-  | 'DISPATCHED_COURIER';
+  | 'DISPATCHED_COURIER'
+  | 'CERTIFICATE_COLLECTED'
+  | 'CERTIFICATE_DELIVERED';
 
 // Template data interfaces
 export interface CertificateReadyAttendingData {
@@ -31,6 +33,29 @@ export interface DispatchedCourierData {
   convocationNumber: string;
   course: string;
   courierName: string; // DTDC or India Post
+  trackingNumber: string;
+  address?: {
+    line1: string;
+    line2?: string;
+    city: string;
+    state: string;
+    pincode: string;
+  };
+}
+
+export interface CertificateCollectedData {
+  name: string;
+  convocationNumber: string;
+  course: string;
+  collectionDate: string;
+  collectedBy?: string; // If collected by representative
+}
+
+export interface CertificateDeliveredData {
+  name: string;
+  convocationNumber: string;
+  course: string;
+  courierName: string;
   trackingNumber: string;
   address?: {
     line1: string;
@@ -487,10 +512,159 @@ export function dispatchedCourier(data: DispatchedCourierData): { subject: strin
   };
 }
 
+// Template: Certificate Collected (In-Person)
+export function certificateCollected(data: CertificateCollectedData): { subject: string; html: string } {
+  const collectedByHtml = data.collectedBy ? `
+    <div class="info-row">
+      <span class="info-label">Collected By</span>
+      <span class="info-value">${data.collectedBy}</span>
+    </div>
+  ` : '';
+
+  const content = `
+    <div class="header">
+      <h1>Certificate Collected</h1>
+      <p>AMASI Convocation 2026</p>
+    </div>
+    <div class="content">
+      <p class="greeting">Dear Dr. ${data.name},</p>
+
+      <p>Greetings from AMASI!</p>
+
+      <p>We are pleased to confirm that your <strong>FMAS Certificate</strong> has been successfully collected.</p>
+
+      <div class="tracking-box" style="background: #f0fdf4; border-color: #22c55e;">
+        <h3 style="color: #166534;">✓ Collection Confirmed</h3>
+        <p style="color: #15803d; margin: 0;">Your certificate has been handed over successfully</p>
+      </div>
+
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">Convocation Number</span>
+          <span class="info-value">${data.convocationNumber}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Course</span>
+          <span class="info-value">${data.course}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Collection Date</span>
+          <span class="info-value">${data.collectionDate}</span>
+        </div>
+        ${collectedByHtml}
+      </div>
+
+      <div class="highlight-box">
+        <h3>Thank You for Attending!</h3>
+        <p>We hope you had a memorable convocation ceremony. Your dedication and hard work have led to this achievement.</p>
+        <p>Please keep your certificate safe. In case of any damage or loss, contact us for assistance.</p>
+      </div>
+
+      <p>Congratulations once again on achieving your FMAS certification!</p>
+
+      <p>Best regards,<br><strong>AMASI Office</strong></p>
+    </div>
+    <div class="footer">
+      <p>Association of Minimal Access Surgeons of India</p>
+      <p>Email: <a href="mailto:${config.contact.email}">${config.contact.email}</a></p>
+      <p style="color: #94a3b8; font-size: 11px; margin-top: 16px;">
+        This is a confirmation email for your FMAS certificate collection.
+      </p>
+    </div>
+  `;
+
+  return {
+    subject: `Certificate Collection Confirmed - FMAS ${data.convocationNumber}`,
+    html: emailWrapper(content, `Dr. ${data.name}, your FMAS certificate collection has been confirmed.`),
+  };
+}
+
+// Template: Certificate Delivered (Courier Delivery Confirmed)
+export function certificateDelivered(data: CertificateDeliveredData): { subject: string; html: string } {
+  const addressHtml = data.address ? `
+    <div class="info-box">
+      <h4 style="margin: 0 0 12px; color: #1e3a8a;">Delivered To</h4>
+      <p style="margin: 0; color: #334155;">
+        ${data.address.line1}<br>
+        ${data.address.line2 ? `${data.address.line2}<br>` : ''}
+        ${data.address.city}, ${data.address.state}<br>
+        <strong>${data.address.pincode}</strong>
+      </p>
+    </div>
+  ` : '';
+
+  const trackingUrlMap: Record<string, string> = {
+    'DTDC': `https://www.dtdc.in/tracking.asp`,
+    'India Post': `https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx`,
+  };
+
+  const trackingUrl = trackingUrlMap[data.courierName] || '#';
+
+  const content = `
+    <div class="header">
+      <h1>Certificate Delivered</h1>
+      <p>AMASI Convocation 2026</p>
+    </div>
+    <div class="content">
+      <p class="greeting">Dear Dr. ${data.name},</p>
+
+      <p>Greetings from AMASI!</p>
+
+      <p>We are pleased to inform you that your <strong>FMAS Certificate</strong> has been successfully delivered to your registered address.</p>
+
+      <div class="tracking-box" style="background: #f0fdf4; border-color: #22c55e;">
+        <h3 style="color: #166534;">✓ Delivery Confirmed</h3>
+        <div class="tracking-number" style="color: #15803d;">${data.trackingNumber}</div>
+        <p style="color: #166534; margin: 8px 0 0; font-size: 14px;">Service: ${data.courierName}</p>
+      </div>
+
+      ${addressHtml}
+
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">Convocation Number</span>
+          <span class="info-value">${data.convocationNumber}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Course</span>
+          <span class="info-value">${data.course}</span>
+        </div>
+      </div>
+
+      <p style="text-align: center;">
+        <a href="${trackingUrl}" class="button">View Delivery Details</a>
+      </p>
+
+      <div class="highlight-box" style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); border-color: #ef4444;">
+        <h3 style="color: #991b1b;">⚠️ Important Notice</h3>
+        <p style="color: #991b1b;"><strong>Please report any complaints or issues regarding the certificate delivery within 48 hours to:</strong></p>
+        <p style="color: #991b1b; font-size: 16px; font-weight: bold;"><a href="mailto:${config.contact.email}" style="color: #991b1b;">${config.contact.email}</a></p>
+        <p style="color: #7f1d1d; font-size: 13px; margin-top: 12px;">No response within 48 hours will be considered as confirmation that the delivery is satisfactory and the certificate is in good condition.</p>
+      </div>
+
+      <p>Congratulations once again on achieving your FMAS certification!</p>
+
+      <p>Best regards,<br><strong>AMASI Office</strong></p>
+    </div>
+    <div class="footer">
+      <p>Association of Minimal Access Surgeons of India</p>
+      <p>Email: <a href="mailto:${config.contact.email}">${config.contact.email}</a></p>
+      <p style="color: #94a3b8; font-size: 11px; margin-top: 16px;">
+        This is a confirmation email for your FMAS certificate delivery.
+      </p>
+    </div>
+  `;
+
+  return {
+    subject: `Certificate Delivered Successfully - FMAS ${data.convocationNumber}`,
+    html: emailWrapper(content, `Dr. ${data.name}, your FMAS certificate has been delivered. Please report any issues within 48 hours.`),
+  };
+}
+
 // Get template by type
 export function getEmailTemplate(
   type: EmailTemplateType,
-  data: CertificateReadyAttendingData | CertificateReadyNotAttendingData | DispatchedCourierData
+  data: CertificateReadyAttendingData | CertificateReadyNotAttendingData | DispatchedCourierData | CertificateCollectedData | CertificateDeliveredData
 ): { subject: string; html: string } {
   switch (type) {
     case 'CERTIFICATE_READY_ATTENDING':
@@ -499,6 +673,10 @@ export function getEmailTemplate(
       return certificateReadyNotAttending(data as CertificateReadyNotAttendingData);
     case 'DISPATCHED_COURIER':
       return dispatchedCourier(data as DispatchedCourierData);
+    case 'CERTIFICATE_COLLECTED':
+      return certificateCollected(data as CertificateCollectedData);
+    case 'CERTIFICATE_DELIVERED':
+      return certificateDelivered(data as CertificateDeliveredData);
     default:
       throw new Error(`Unknown email template type: ${type}`);
   }
