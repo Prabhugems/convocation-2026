@@ -440,8 +440,8 @@ export default function AdminPage() {
     <div className={`min-h-screen ${themeClasses.bg} flex transition-colors duration-300`}>
       {/* Sidebar */}
       <aside
-        className={`fixed lg:relative z-40 h-screen backdrop-blur-xl border-r transition-all duration-300 ease-in-out ${themeClasses.sidebar} ${
-          sidebarCollapsed ? 'w-20' : 'w-64'
+        className={`fixed lg:relative z-40 h-screen backdrop-blur-xl border-r transition-all duration-300 ease-in-out flex flex-col ${themeClasses.sidebar} ${
+          sidebarCollapsed ? 'w-20' : 'w-72'
         } ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
         {/* Logo */}
@@ -470,7 +470,7 @@ export default function AdminPage() {
         </div>
 
         {/* Navigation */}
-        <nav className="p-4 space-y-2">
+        <nav className="p-3 space-y-1.5">
           {navItems.map((item, index) => {
             const Icon = item.icon;
             const isActive = activeNav === item.id;
@@ -478,7 +478,7 @@ export default function AdminPage() {
               <button
                 key={item.id}
                 onClick={() => setActiveNav(item.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative overflow-hidden ${
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 group relative overflow-hidden ${
                   isActive
                     ? 'bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-white shadow-lg'
                     : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
@@ -490,39 +490,100 @@ export default function AdminPage() {
 
                 {/* Active indicator */}
                 {isActive && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-blue-400 to-purple-500 rounded-r-full" />
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-blue-400 to-purple-500 rounded-r-full" />
                 )}
 
                 <Icon className={`w-5 h-5 relative z-10 transition-transform duration-300 ${isActive ? 'text-blue-400' : 'group-hover:scale-110'}`} />
                 {!sidebarCollapsed && (
-                  <span className="relative z-10 font-medium">{item.label}</span>
+                  <span className="relative z-10 font-medium text-sm">{item.label}</span>
                 )}
               </button>
             );
           })}
         </nav>
 
-        {/* Stats Mini Card */}
+        {/* Certificate Pipeline in Sidebar */}
         {!sidebarCollapsed && (
-          <div className="absolute bottom-4 left-4 right-4 p-4 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-xl border border-slate-700/50 animate-fade-in-up">
-            <p className="text-xs text-slate-400 mb-2">Total Progress</p>
-            <div className="flex items-end justify-between">
-              <div>
-                <p className="text-2xl font-bold text-white">
-                  {stats ? Math.round(((stats.certificateCollected + stats.finalDispatched) / stats.totalGraduates) * 100) : 0}%
-                </p>
-                <p className="text-xs text-slate-400">Completed</p>
+          <div className="flex-1 overflow-y-auto px-3 pb-3">
+            <div className="p-3 bg-slate-800/30 rounded-xl border border-slate-700/50">
+              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2">
+                <Package className="w-3.5 h-3.5 text-cyan-400" />
+                Pipeline
+              </h3>
+              <div className="space-y-1.5">
+                {[
+                  { label: 'Packed', value: stats?.packed || 0, color: 'gray', icon: Package },
+                  { label: 'At Venue', value: stats?.dispatchedToVenue || 0, color: 'purple', icon: Truck },
+                  { label: 'Registered', value: stats?.registered || 0, color: 'cyan', icon: UserCheck },
+                  { label: 'Gown Issued', value: stats?.gownIssued || 0, color: 'orange', icon: Shirt },
+                  { label: 'Gown Return', value: stats?.gownReturned || 0, color: 'amber', icon: Undo2 },
+                  { label: 'Collected', value: stats?.certificateCollected || 0, color: 'green', icon: Award },
+                ].map((step) => {
+                  const percentage = stats?.totalGraduates ? Math.round((step.value / stats.totalGraduates) * 100) : 0;
+                  const Icon = step.icon;
+                  return (
+                    <div key={step.label} className={`flex items-center justify-between p-2 rounded-lg bg-slate-700/20 hover:bg-slate-700/40 transition-all duration-200 group card-side-accent accent-${step.color}`}>
+                      <div className="flex items-center gap-2 relative z-10">
+                        <div className={`w-6 h-6 rounded-md bg-${step.color}-500/20 flex items-center justify-center`}>
+                          <Icon className={`w-3 h-3 text-${step.color}-400`} />
+                        </div>
+                        <div>
+                          <p className="text-[11px] text-white font-medium leading-tight">{step.label}</p>
+                          <p className="text-[9px] text-slate-500">{percentage}%</p>
+                        </div>
+                      </div>
+                      <span className={`text-sm font-bold text-${step.color}-400 relative z-10`}>{step.value}</span>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="w-16 h-16">
-                <CircularProgress
-                  value={(stats?.certificateCollected || 0) + (stats?.finalDispatched || 0)}
-                  max={stats?.totalGraduates || 1}
-                  size={64}
-                  strokeWidth={6}
-                  color="#3b82f6"
-                  bgColor="rgba(255,255,255,0.1)"
-                  showPercentage={false}
-                />
+
+              {/* Post-event section */}
+              <div className="mt-3 pt-3 border-t border-slate-600/30">
+                <p className="text-[10px] text-slate-500 font-medium mb-2">Post-Event</p>
+                <div className="space-y-1">
+                  {[
+                    { label: 'At HO', value: stats?.returnedToHO || 0, color: 'yellow', icon: Building2 },
+                    { label: 'Labeled', value: 0, color: 'blue', icon: MapPin },
+                    { label: 'Dispatched', value: stats?.finalDispatched || 0, color: 'indigo', icon: Send },
+                  ].map((step) => {
+                    const Icon = step.icon;
+                    return (
+                      <div key={step.label} className={`flex items-center justify-between p-1.5 rounded-md bg-slate-700/20 hover:bg-slate-700/40 transition-all duration-200 group card-side-accent accent-${step.color}`}>
+                        <div className="flex items-center gap-2 relative z-10">
+                          <div className={`w-5 h-5 rounded bg-${step.color}-500/20 flex items-center justify-center`}>
+                            <Icon className={`w-2.5 h-2.5 text-${step.color}-400`} />
+                          </div>
+                          <p className="text-[10px] text-slate-300">{step.label}</p>
+                        </div>
+                        <span className={`text-xs font-bold text-${step.color}-400 relative z-10`}>{step.value}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Total Progress Mini Card */}
+            <div className="mt-3 p-3 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-xl border border-slate-700/50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] text-slate-400 mb-0.5">Completed</p>
+                  <p className="text-xl font-bold text-white">
+                    {stats ? Math.round(((stats.certificateCollected + stats.finalDispatched) / stats.totalGraduates) * 100) : 0}%
+                  </p>
+                </div>
+                <div className="w-12 h-12">
+                  <CircularProgress
+                    value={(stats?.certificateCollected || 0) + (stats?.finalDispatched || 0)}
+                    max={stats?.totalGraduates || 1}
+                    size={48}
+                    strokeWidth={5}
+                    color="#3b82f6"
+                    bgColor="rgba(255,255,255,0.1)"
+                    showPercentage={false}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -736,141 +797,72 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* Station Progress Cards & Certificate Pipeline - Side by Side Layout */}
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-5 lg:gap-6 mt-6">
-            {/* Station Progress Cards - Left Side (2 columns on xl) */}
-            <div className="xl:col-span-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-4 sm:gap-5">
-              {[
-                { id: 'packing', name: 'Packing', icon: Package, gradient: 'from-slate-500 to-slate-600', color: '#64748b', accent: 'accent-slate' },
-                { id: 'dispatch-venue', name: 'Dispatch to Venue', icon: Truck, gradient: 'from-purple-500 to-purple-600', color: '#a855f7', accent: 'accent-purple' },
-                { id: 'registration', name: 'Registration', icon: UserCheck, gradient: 'from-cyan-500 to-cyan-600', color: '#06b6d4', accent: 'accent-cyan' },
-                { id: 'gown-issue', name: 'Gown Issue', icon: Shirt, gradient: 'from-orange-500 to-orange-600', color: '#f97316', accent: 'accent-orange' },
-                { id: 'gown-return', name: 'Gown Return', icon: Undo2, gradient: 'from-amber-500 to-amber-600', color: '#f59e0b', accent: 'accent-amber' },
-                { id: 'certificate-collection', name: 'Certificate Collection', icon: Award, gradient: 'from-green-500 to-green-600', color: '#22c55e', accent: 'accent-green' },
-              ].map((station, index) => {
-                const count = (() => {
-                  switch (station.id) {
-                    case 'packing': return stats?.packed || 0;
-                    case 'dispatch-venue': return stats?.dispatchedToVenue || 0;
-                    case 'registration': return stats?.registered || 0;
-                    case 'gown-issue': return stats?.gownIssued || 0;
-                    case 'gown-return': return stats?.gownReturned || 0;
-                    case 'certificate-collection': return stats?.certificateCollected || 0;
-                    default: return 0;
-                  }
-                })();
-                const total = stats?.totalGraduates || 1;
-                const percentage = Math.round((count / total) * 100);
-                const Icon = station.icon;
+          {/* Station Progress Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6 mt-6">
+            {[
+              { id: 'packing', name: 'Packing', icon: Package, gradient: 'from-slate-500 to-slate-600', color: '#64748b', accent: 'accent-slate' },
+              { id: 'dispatch-venue', name: 'Dispatch to Venue', icon: Truck, gradient: 'from-purple-500 to-purple-600', color: '#a855f7', accent: 'accent-purple' },
+              { id: 'registration', name: 'Registration', icon: UserCheck, gradient: 'from-cyan-500 to-cyan-600', color: '#06b6d4', accent: 'accent-cyan' },
+              { id: 'gown-issue', name: 'Gown Issue', icon: Shirt, gradient: 'from-orange-500 to-orange-600', color: '#f97316', accent: 'accent-orange' },
+              { id: 'gown-return', name: 'Gown Return', icon: Undo2, gradient: 'from-amber-500 to-amber-600', color: '#f59e0b', accent: 'accent-amber' },
+              { id: 'certificate-collection', name: 'Certificate Collection', icon: Award, gradient: 'from-green-500 to-green-600', color: '#22c55e', accent: 'accent-green' },
+            ].map((station, index) => {
+              const count = (() => {
+                switch (station.id) {
+                  case 'packing': return stats?.packed || 0;
+                  case 'dispatch-venue': return stats?.dispatchedToVenue || 0;
+                  case 'registration': return stats?.registered || 0;
+                  case 'gown-issue': return stats?.gownIssued || 0;
+                  case 'gown-return': return stats?.gownReturned || 0;
+                  case 'certificate-collection': return stats?.certificateCollected || 0;
+                  default: return 0;
+                }
+              })();
+              const total = stats?.totalGraduates || 1;
+              const percentage = Math.round((count / total) * 100);
+              const Icon = station.icon;
 
-                return (
-                  <div
-                    key={station.id}
-                    className="relative group animate-fade-in-up"
-                    style={{ animationDelay: `${400 + index * 50}ms` }}
-                  >
-                    <div className={`bg-slate-800/50 backdrop-blur-sm rounded-2xl p-4 sm:p-5 border border-slate-700/50 transition-all duration-500 hover:scale-[1.02] cursor-pointer card-side-accent h-full ${station.accent}`}>
-                      {/* Side accent bar (handled by CSS) */}
+              return (
+                <div
+                  key={station.id}
+                  className="relative group animate-fade-in-up"
+                  style={{ animationDelay: `${400 + index * 50}ms` }}
+                >
+                  <div className={`bg-slate-800/50 backdrop-blur-sm rounded-2xl p-4 sm:p-5 border border-slate-700/50 transition-all duration-500 hover:scale-[1.02] cursor-pointer card-side-accent h-full ${station.accent}`}>
+                    {/* Side accent bar (handled by CSS) */}
 
-                      {/* Header with icon and stats */}
-                      <div className="flex items-start justify-between mb-3 sm:mb-4 relative z-10">
-                        <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br ${station.gradient} shadow-lg flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
-                          <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                        </div>
-                        <div className="text-right">
-                          <p className="text-slate-400 text-xs font-medium">{station.name}</p>
-                          <p className="text-2xl sm:text-3xl font-bold text-white group-hover:scale-105 transition-transform duration-300 origin-right">{count}</p>
-                        </div>
+                    {/* Header with icon and stats */}
+                    <div className="flex items-start justify-between mb-3 sm:mb-4 relative z-10">
+                      <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br ${station.gradient} shadow-lg flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
+                        <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                       </div>
-
-                      {/* Hover glow background */}
-                      <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${station.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`} />
-
-                      {/* Progress */}
-                      <div className="space-y-1.5 sm:space-y-2 relative z-10">
-                        <div className="flex justify-between text-xs sm:text-sm">
-                          <span className="text-slate-400">Progress</span>
-                          <span className="font-semibold" style={{ color: station.color }}>{percentage}%</span>
-                        </div>
-                        <div className="h-1.5 sm:h-2 bg-slate-700/50 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full bg-gradient-to-r ${station.gradient} transition-all duration-1000 ease-out`}
-                            style={{ width: `${percentage}%` }}
-                          />
-                        </div>
-                        <p className="text-[10px] sm:text-xs text-slate-500 text-right">{count} of {total}</p>
+                      <div className="text-right">
+                        <p className="text-slate-400 text-xs font-medium">{station.name}</p>
+                        <p className="text-2xl sm:text-3xl font-bold text-white group-hover:scale-105 transition-transform duration-300 origin-right">{count}</p>
                       </div>
+                    </div>
+
+                    {/* Hover glow background */}
+                    <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${station.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`} />
+
+                    {/* Progress */}
+                    <div className="space-y-1.5 sm:space-y-2 relative z-10">
+                      <div className="flex justify-between text-xs sm:text-sm">
+                        <span className="text-slate-400">Progress</span>
+                        <span className="font-semibold" style={{ color: station.color }}>{percentage}%</span>
+                      </div>
+                      <div className="h-1.5 sm:h-2 bg-slate-700/50 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full bg-gradient-to-r ${station.gradient} transition-all duration-1000 ease-out`}
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                      <p className="text-[10px] sm:text-xs text-slate-500 text-right">{count} of {total}</p>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-
-            {/* Certificate Pipeline - Right Side (vertical on xl) */}
-            <div className="xl:col-span-1 bg-slate-800/50 backdrop-blur-sm rounded-2xl p-4 sm:p-5 border border-slate-700/50 hover:border-slate-600 transition-all duration-300 animate-fade-in-up h-fit" style={{ animationDelay: '500ms' }}>
-              <h2 className="text-base sm:text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <Package className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
-                Certificate Pipeline
-              </h2>
-              <div className="space-y-3">
-                {[
-                  { label: 'Packed', value: stats?.packed || 0, color: 'gray', icon: Package },
-                  { label: 'At Venue', value: stats?.dispatchedToVenue || 0, color: 'purple', icon: Truck },
-                  { label: 'Registered', value: stats?.registered || 0, color: 'cyan', icon: UserCheck },
-                  { label: 'Gown Issued', value: stats?.gownIssued || 0, color: 'orange', icon: Shirt },
-                  { label: 'Gown Return', value: stats?.gownReturned || 0, color: 'amber', icon: Shirt },
-                  { label: 'Collected', value: stats?.certificateCollected || 0, color: 'green', icon: Award },
-                ].map((step, index) => {
-                  const percentage = stats?.totalGraduates ? Math.round((step.value / stats.totalGraduates) * 100) : 0;
-                  const Icon = step.icon;
-                  return (
-                    <div key={step.label} className={`flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-slate-700/30 hover:bg-slate-700/50 transition-all duration-300 group card-side-accent accent-${step.color}`}>
-                      <div className="flex items-center gap-3 relative z-10">
-                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-${step.color}-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
-                          <Icon className={`w-4 h-4 sm:w-5 sm:h-5 text-${step.color}-400`} />
-                        </div>
-                        <div>
-                          <p className="text-xs sm:text-sm text-white font-medium">{step.label}</p>
-                          <p className="text-[10px] sm:text-xs text-slate-500">{percentage}% complete</p>
-                        </div>
-                      </div>
-                      <span className={`text-lg sm:text-xl font-bold text-${step.color}-400 relative z-10`}>{step.value}</span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Post-event section */}
-              <div className="mt-4 pt-4 border-t border-slate-600/50">
-                <p className="text-xs text-slate-400 font-medium mb-3">Post-Event Dispatch</p>
-                <div className="space-y-2">
-                  {[
-                    { label: 'At Head Office', value: stats?.returnedToHO || 0, color: 'yellow', icon: Building2 },
-                    { label: 'Address Labeled', value: 0, color: 'blue', icon: MapPin },
-                    { label: 'Dispatched', value: stats?.finalDispatched || 0, color: 'indigo', icon: Send },
-                  ].map((step) => {
-                    const Icon = step.icon;
-                    return (
-                      <div key={step.label} className={`flex items-center justify-between p-2 sm:p-2.5 rounded-lg bg-slate-700/20 hover:bg-slate-700/40 transition-all duration-300 group card-side-accent accent-${step.color}`}>
-                        <div className="flex items-center gap-2.5 relative z-10">
-                          <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-${step.color}-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
-                            <Icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-${step.color}-400`} />
-                          </div>
-                          <p className="text-xs text-slate-300">{step.label}</p>
-                        </div>
-                        <span className={`text-sm sm:text-base font-bold text-${step.color}-400 relative z-10`}>{step.value}</span>
-                      </div>
-                    );
-                  })}
                 </div>
-                {dispatchMeta && (stats?.finalDispatched || 0) > 0 && (
-                  <div className="flex justify-between mt-3 pt-3 border-t border-slate-600/30 text-xs">
-                    <span className="text-slate-400">DTDC: <span className="text-white font-medium">{dispatchMeta.dispatchedDTDC}</span></span>
-                    <span className="text-slate-400">India Post: <span className="text-white font-medium">{dispatchMeta.dispatchedIndiaPost}</span></span>
-                  </div>
-                )}
-              </div>
-            </div>
+              );
+            })}
           </div>
 
             </>
