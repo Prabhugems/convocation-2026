@@ -32,7 +32,9 @@ import {
   Sparkles,
   Phone,
   Mail,
+  Loader2,
 } from 'lucide-react';
+import { usePrinter } from '@/hooks/usePrinter';
 import QRCode from 'react-qr-code';
 
 const iconMap: Record<string, React.ElementType> = {
@@ -87,6 +89,9 @@ export default function StationPage() {
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
 
   const printRef = useRef<HTMLDivElement>(null);
+
+  // Zebra printer direct print
+  const { printLabel, status: printStatus } = usePrinter();
 
   // Get the shareable station URL
   const stationUrl = typeof window !== 'undefined'
@@ -667,34 +672,40 @@ export default function StationPage() {
                     <Sparkles className="w-4 h-4" style={{ color: colors.accent }} />
                     Last Scanned
                   </h3>
-                  {station.printType && (
+                  {station.printType && lastScanned && (
                     <button
                       onClick={() => {
-                        if (station.printType === '3x2-sticker' && lastScanned) {
-                          printSticker3x2(lastScanned, printRef.current);
-                        } else if (station.printType === '4x6-badge' && lastScanned) {
-                          printBadge4x6(lastScanned, printRef.current);
-                        } else if (station.printType === '4x6-label' && lastScanned && address && airtableData) {
-                          const labelData: AddressLabelData = {
-                            name: lastScanned.name,
-                            course: lastScanned.course,
-                            convocationNumber: lastScanned.convocationNumber,
-                            ticketSlug: lastScanned.ticketSlug,
-                            registrationNumber: lastScanned.registrationNumber,
-                            address: address,
-                            phone: airtableData.mobile,
-                            trackingNumber: airtableData.trackingNumber,
-                            dtdcAvailable: airtableData.dtdcAvailable,
-                          };
-                          printAddressLabel4x6(labelData, printRef.current);
-                        } else if (printRef.current) {
-                          printElement(printRef.current, station.printType);
-                        }
+                        // One-tap direct print to Zebra (with browser fallback)
+                        const printType = station.printType === '3x2-sticker' ? 'packing' : 'badge';
+                        printLabel(lastScanned, printType, printRef.current);
                       }}
-                      className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm transition-colors"
+                      disabled={printStatus === 'printing'}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-white text-sm transition-all ${
+                        printStatus === 'printing'
+                          ? 'bg-blue-500/30 cursor-wait'
+                          : printStatus === 'success'
+                          ? 'bg-green-500/30'
+                          : printStatus === 'error'
+                          ? 'bg-red-500/30 hover:bg-red-500/40'
+                          : 'bg-white/10 hover:bg-white/20'
+                      }`}
                     >
-                      <Printer className="w-4 h-4" />
-                      Reprint
+                      {printStatus === 'printing' ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : printStatus === 'success' ? (
+                        <Check className="w-4 h-4 text-green-400" />
+                      ) : printStatus === 'error' ? (
+                        <AlertTriangle className="w-4 h-4 text-red-400" />
+                      ) : (
+                        <Printer className="w-4 h-4" />
+                      )}
+                      {printStatus === 'printing'
+                        ? 'Printing...'
+                        : printStatus === 'success'
+                        ? 'Printed!'
+                        : printStatus === 'error'
+                        ? 'Retry'
+                        : 'Print'}
                     </button>
                   )}
                 </div>
