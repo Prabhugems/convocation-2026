@@ -387,7 +387,7 @@ export default function AdminPage() {
   }
 
   // Send email to graduate
-  async function sendEmailToGraduate(template: 'CERTIFICATE_READY_ATTENDING' | 'CERTIFICATE_READY_NOT_ATTENDING' | 'DISPATCHED_COURIER') {
+  async function sendEmailToGraduate(template: 'CERTIFICATE_READY_ATTENDING' | 'CERTIFICATE_READY_NOT_ATTENDING' | 'DISPATCHED_COURIER' | 'CERTIFICATE_COLLECTED' | 'CERTIFICATE_DELIVERED') {
     if (!selectedGraduate || !selectedGraduate.email) return;
 
     setEmailSending(true);
@@ -405,6 +405,22 @@ export default function AdminPage() {
       }
 
       if (template === 'DISPATCHED_COURIER') {
+        data.courierName = selectedGraduate.dispatchMethod || 'Courier';
+        data.trackingNumber = selectedGraduate.trackingNumber || '';
+        if (graduateAddress) {
+          data.address = graduateAddress;
+        }
+      }
+
+      if (template === 'CERTIFICATE_COLLECTED') {
+        data.collectionDate = new Date().toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      }
+
+      if (template === 'CERTIFICATE_DELIVERED') {
         data.courierName = selectedGraduate.dispatchMethod || 'Courier';
         data.trackingNumber = selectedGraduate.trackingNumber || '';
         if (graduateAddress) {
@@ -1662,10 +1678,24 @@ export default function AdminPage() {
                         </button>
                         <button
                           onClick={() => sendEmailToGraduate('DISPATCHED_COURIER')}
-                          className="w-full p-3 text-left hover:bg-slate-600/50 transition-colors"
+                          className="w-full p-3 text-left hover:bg-slate-600/50 transition-colors border-b border-slate-600"
                         >
                           <p className="text-sm font-medium text-white">Dispatched via Courier</p>
                           <p className="text-xs text-slate-400">With tracking information</p>
+                        </button>
+                        <button
+                          onClick={() => sendEmailToGraduate('CERTIFICATE_COLLECTED')}
+                          className="w-full p-3 text-left hover:bg-slate-600/50 transition-colors border-b border-slate-600"
+                        >
+                          <p className="text-sm font-medium text-white">Certificate Collected</p>
+                          <p className="text-xs text-slate-400">Confirmation for in-person collection</p>
+                        </button>
+                        <button
+                          onClick={() => sendEmailToGraduate('CERTIFICATE_DELIVERED')}
+                          className="w-full p-3 text-left hover:bg-slate-600/50 transition-colors"
+                        >
+                          <p className="text-sm font-medium text-white">Certificate Delivered</p>
+                          <p className="text-xs text-slate-400">Courier delivery confirmed</p>
                         </button>
                       </div>
                     )}
