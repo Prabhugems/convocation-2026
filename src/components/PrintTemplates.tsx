@@ -610,48 +610,33 @@ export function printSticker3x2(graduate: Graduate, elementRef?: HTMLElement | n
     }`;
 
   if (isMobile()) {
-    // MOBILE: Open new window with print content
-    const printHtml = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Print Sticker</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:Helvetica,Arial,sans-serif;padding:20px}
-.sticker{display:flex;align-items:center;justify-content:space-between;border:1px dashed #ccc;padding:15px;max-width:400px}
-.left{flex:1}
-.label{font-size:12px;color:#666;margin-bottom:4px}
-.convno{font-size:20px;font-weight:bold;margin-bottom:8px}
-.name{font-size:16px}
-.right{width:120px;height:120px}
-.right svg{width:100%;height:100%}
-.btn{display:block;width:100%;max-width:400px;margin:20px auto 0;padding:15px;font-size:18px;background:#2563eb;color:#fff;border:none;border-radius:8px;cursor:pointer}
-.note{text-align:center;margin-top:15px;font-size:14px;color:#666}
-</style>
-</head>
-<body>
-<div class="sticker">
-<div class="left">
-<div class="label">CON. No-</div>
-<div class="convno">${graduate.convocationNumber || 'N/A'}</div>
-<div class="name">Dr. ${graduate.name}</div>
-</div>
-<div class="right">${svgHtml}</div>
-</div>
-<button class="btn" onclick="window.print()">Print Sticker</button>
-<p class="note">Tap Print, then select Landscape orientation</p>
-</body>
-</html>`;
+    // MOBILE: Send directly to printer via API (like professional kiosk systems)
+    // This bypasses unreliable browser print entirely
+    const titoUrl = graduate.ticketSlug
+      ? `https://ti.to/tickets/${graduate.ticketSlug}`
+      : `https://ti.to/amasi/convocation-2026-kolkata/tickets/${graduate.registrationNumber}`;
 
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(printHtml);
-      printWindow.document.close();
-    } else {
-      alert('Please allow popups to print');
-    }
+    fetch('/api/print/zpl', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'packing',
+        convocationNumber: graduate.convocationNumber || 'N/A',
+        name: graduate.name,
+        ticketUrl: titoUrl,
+      }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert('✓ Label sent to printer!');
+        } else {
+          alert('Print failed: ' + (data.error || 'Unknown error'));
+        }
+      })
+      .catch(err => {
+        alert('Print error: ' + err.message);
+      });
   } else {
     // DESKTOP: Use iframe for cleaner printing
     const iframeHtml = `<!DOCTYPE html>
