@@ -338,7 +338,7 @@ export default function StationPage() {
   const progressPercent = stationStats ? Math.round((stationStats.checkedIn / stationStats.total) * 100) : 0;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 no-print">
       {/* Success Animation Overlay */}
       {showSuccessAnimation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
@@ -781,37 +781,63 @@ export default function StationPage() {
         </div>
       </div>
 
-      {/* Hidden Print Templates - Only these print when Reprint is tapped */}
-      <div className="hidden print:block">
-        {lastScanned && station.printType === '3x2-sticker' && (
-          <div className="print-area sticker-3x2">
-            <Sticker3x2 ref={printRef} graduate={lastScanned} />
+      {/* Print Badge - Only this prints (3x2 inch sticker) */}
+      {lastScanned && station.printType === '3x2-sticker' && (
+        <div
+          ref={printRef}
+          className="print-badge"
+          style={{
+            width: '3in',
+            height: '2in',
+            backgroundColor: 'white',
+            display: 'none',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0.15in 0.2in',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            boxSizing: 'border-box',
+          }}
+        >
+          <div className="sticker-left" style={{ flex: '0 0 55%', paddingRight: '0.1in' }}>
+            <p style={{ fontSize: '9pt', color: '#333', margin: 0, marginBottom: '2px' }}>CON. No-</p>
+            <p style={{ fontSize: '14pt', fontWeight: 'bold', color: '#000', margin: 0, marginBottom: '6px' }}>
+              {lastScanned.convocationNumber || 'N/A'}
+            </p>
+            <p style={{ fontSize: '11pt', color: '#000', margin: 0 }}>Dr. {lastScanned.name}</p>
           </div>
-        )}
-        {lastScanned && station.printType === '4x6-badge' && (
-          <div className="print-area badge-4x6">
-            <Badge4x6 ref={printRef} graduate={lastScanned} />
-          </div>
-        )}
-        {lastScanned && station.printType === '4x6-label' && address && airtableData && (
-          <div className="print-area address-label-4x6">
-            <AddressLabel4x6
-              ref={printRef}
-              data={{
-                name: lastScanned.name,
-                course: lastScanned.course,
-                convocationNumber: lastScanned.convocationNumber,
-                ticketSlug: lastScanned.ticketSlug,
-                registrationNumber: lastScanned.registrationNumber,
-                address: address,
-                phone: airtableData.mobile,
-                trackingNumber: airtableData.trackingNumber,
-                dtdcAvailable: airtableData.dtdcAvailable,
-              }}
+          <div className="sticker-right" style={{ flex: '0 0 40%', display: 'flex', justifyContent: 'flex-end' }}>
+            <QRCode
+              value={lastScanned.ticketSlug ? `https://ti.to/tickets/${lastScanned.ticketSlug}` : `https://ti.to/amasi/convocation-2026-kolkata/tickets/${lastScanned.registrationNumber}`}
+              size={100}
             />
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Print Badge 4x6 - For badges and labels */}
+      {lastScanned && station.printType === '4x6-badge' && (
+        <div ref={printRef} className="print-badge-4x6" style={{ display: 'none' }}>
+          <Badge4x6 graduate={lastScanned} />
+        </div>
+      )}
+      {lastScanned && station.printType === '4x6-label' && address && airtableData && (
+        <div ref={printRef} className="print-badge-4x6" style={{ display: 'none' }}>
+          <AddressLabel4x6
+            data={{
+              name: lastScanned.name,
+              course: lastScanned.course,
+              convocationNumber: lastScanned.convocationNumber,
+              ticketSlug: lastScanned.ticketSlug,
+              registrationNumber: lastScanned.registrationNumber,
+              address: address,
+              phone: airtableData.mobile,
+              trackingNumber: airtableData.trackingNumber,
+              dtdcAvailable: airtableData.dtdcAvailable,
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
