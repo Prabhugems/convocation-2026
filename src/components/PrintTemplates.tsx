@@ -625,6 +625,17 @@ export function printSticker3x2(graduate: Graduate, elementRef?: HTMLElement | n
       </div>
     `;
 
+    // Restore function
+    const restore = () => {
+      document.body.innerHTML = originalBody;
+      document.body.style.margin = '';
+      document.body.style.padding = '';
+      window.removeEventListener('afterprint', restore);
+    };
+
+    // Listen for print completion
+    window.addEventListener('afterprint', restore);
+
     // Replace body completely
     document.body.innerHTML = printPage;
     document.body.style.margin = '0';
@@ -633,12 +644,6 @@ export function printSticker3x2(graduate: Graduate, elementRef?: HTMLElement | n
     // Print after brief delay
     setTimeout(() => {
       window.print();
-      // Restore after print
-      setTimeout(() => {
-        document.body.innerHTML = originalBody;
-        document.body.style.margin = '';
-        document.body.style.padding = '';
-      }, 1000);
     }, 100);
   } else {
     // DESKTOP: Use iframe for cleaner printing
