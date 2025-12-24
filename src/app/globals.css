@@ -165,6 +165,43 @@ main {
   height: 6px;
 }
 
+/* Card Side Color Accent - Left border that grows on hover */
+.card-side-accent {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-side-accent::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 0;
+  background: var(--accent-gradient, linear-gradient(180deg, #3b82f6, #8b5cf6));
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1;
+  border-radius: inherit;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.card-side-accent:hover::before {
+  width: 4px;
+}
+
+/* Accent color variants */
+.accent-blue { --accent-gradient: linear-gradient(180deg, #3b82f6, #60a5fa); }
+.accent-purple { --accent-gradient: linear-gradient(180deg, #8b5cf6, #a78bfa); }
+.accent-cyan { --accent-gradient: linear-gradient(180deg, #06b6d4, #22d3ee); }
+.accent-orange { --accent-gradient: linear-gradient(180deg, #f97316, #fb923c); }
+.accent-amber { --accent-gradient: linear-gradient(180deg, #f59e0b, #fbbf24); }
+.accent-green { --accent-gradient: linear-gradient(180deg, #10b981, #34d399); }
+.accent-slate { --accent-gradient: linear-gradient(180deg, #64748b, #94a3b8); }
+.accent-indigo { --accent-gradient: linear-gradient(180deg, #6366f1, #818cf8); }
+.accent-yellow { --accent-gradient: linear-gradient(180deg, #eab308, #facc15); }
+.accent-gray { --accent-gradient: linear-gradient(180deg, #6b7280, #9ca3af); }
+
 /* Station-specific gradients */
 .glow-blue { --station-gradient: linear-gradient(90deg, #3b82f6, #6366f1); }
 .glow-purple { --station-gradient: linear-gradient(90deg, #8b5cf6, #a855f7); }
