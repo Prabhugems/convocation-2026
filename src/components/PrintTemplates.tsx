@@ -610,59 +610,36 @@ export function printSticker3x2(graduate: Graduate, elementRef?: HTMLElement | n
     }`;
 
   if (isMobile()) {
-    // MOBILE: Complete body replacement approach
-    // Save current page state
+    // MOBILE: Complete body replacement with inline styles
     const originalBody = document.body.innerHTML;
-    const originalStyles = document.head.innerHTML;
 
-    // Minimal print page - replaces everything
+    // Use inline styles for maximum compatibility
     const printPage = `
-      <style>
-        @page { size: 3in 2in; margin: 0; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body {
-          width: 3in;
-          height: 2in;
-          overflow: hidden;
-          font-family: Helvetica, Arial, sans-serif;
-          background: white;
-        }
-        .sticker {
-          width: 3in;
-          height: 2in;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 0.15in 0.2in;
-        }
-        .left { flex: 0 0 55%; }
-        .label { font-size: 9pt; color: #333; margin-bottom: 2px; }
-        .convno { font-size: 14pt; font-weight: bold; margin-bottom: 6px; }
-        .name { font-size: 11pt; }
-        .right { flex: 0 0 40%; display: flex; justify-content: flex-end; }
-        .right svg { width: 1.4in; height: 1.4in; }
-      </style>
-      <div class="sticker">
-        <div class="left">
-          <div class="label">CON. No-</div>
-          <div class="convno">${graduate.convocationNumber || 'N/A'}</div>
-          <div class="name">Dr. ${graduate.name}</div>
+      <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 15px;font-family:Helvetica,Arial,sans-serif;box-sizing:border-box;">
+        <div style="flex:0 0 55%;">
+          <div style="font-size:12px;color:#333;margin-bottom:3px;">CON. No-</div>
+          <div style="font-size:18px;font-weight:bold;color:#000;margin-bottom:8px;">${graduate.convocationNumber || 'N/A'}</div>
+          <div style="font-size:14px;color:#000;">Dr. ${graduate.name}</div>
         </div>
-        <div class="right">${svgHtml}</div>
+        <div style="flex:0 0 40%;display:flex;justify-content:flex-end;">${svgHtml}</div>
       </div>
     `;
 
     // Replace body completely
     document.body.innerHTML = printPage;
+    document.body.style.margin = '0';
+    document.body.style.padding = '0';
 
     // Print after brief delay
     setTimeout(() => {
       window.print();
-      // Restore after print dialog closes
+      // Restore after print
       setTimeout(() => {
         document.body.innerHTML = originalBody;
-      }, 500);
-    }, 50);
+        document.body.style.margin = '';
+        document.body.style.padding = '';
+      }, 1000);
+    }, 100);
   } else {
     // DESKTOP: Use iframe for cleaner printing
     const iframeHtml = `<!DOCTYPE html>
