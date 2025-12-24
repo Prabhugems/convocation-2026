@@ -60,6 +60,13 @@ export function usePrinter(): UsePrinterReturn {
     });
   }, []);
 
+  // Detect mobile devices
+  const isMobile = useCallback(() => {
+    if (typeof navigator === 'undefined') return false;
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  }, []);
+
   // Print a label directly to Zebra printer
   const printLabel = useCallback(async (
     graduate: Graduate,
@@ -74,8 +81,11 @@ export function usePrinter(): UsePrinterReturn {
       ? `https://ti.to/tickets/${graduate.ticketSlug}`
       : `https://ti.to/amasi/convocation-2026-kolkata/tickets/${graduate.registrationNumber}`;
 
-    // Try direct print if enabled
-    if (settings.useDirectPrint) {
+    // On mobile, skip direct print and use browser print directly
+    const skipDirectPrint = isMobile();
+
+    // Try direct print if enabled and not on mobile
+    if (settings.useDirectPrint && !skipDirectPrint) {
       try {
         const response = await fetch('/api/print/zpl', {
           method: 'POST',
@@ -121,7 +131,7 @@ export function usePrinter(): UsePrinterReturn {
       setStatus('error');
       setError(err instanceof Error ? err.message : 'Print failed');
     }
-  }, [settings]);
+  }, [settings, isMobile]);
 
   // Test printer connection
   const testPrint = useCallback(async (): Promise<{ success: boolean; error?: string }> => {

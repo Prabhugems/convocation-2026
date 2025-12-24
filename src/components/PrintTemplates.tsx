@@ -523,18 +523,35 @@ export function printSticker3x2(graduate: Graduate, elementRef?: HTMLElement | n
     // Make the print-badge visible temporarily
     const printBadge = document.querySelector('.print-badge') as HTMLElement;
     if (printBadge) {
+      // Set display and force reflow
       printBadge.style.display = 'flex';
+      printBadge.style.visibility = 'visible';
+      printBadge.style.position = 'fixed';
+      printBadge.style.left = '0';
+      printBadge.style.top = '0';
+      printBadge.style.zIndex = '999999';
+
+      // Force browser to repaint before printing
+      printBadge.offsetHeight;
+
+      // Small delay to ensure render, then print
+      setTimeout(() => {
+        window.print();
+
+        // Hide it again after print dialog closes
+        setTimeout(() => {
+          if (printBadge) {
+            printBadge.style.display = 'none';
+            printBadge.style.visibility = 'hidden';
+            printBadge.style.position = '';
+            printBadge.style.zIndex = '';
+          }
+        }, 1000);
+      }, 100);
+    } else {
+      // No print-badge found, alert user
+      alert('Print element not found. Please try again.');
     }
-
-    // Trigger print
-    window.print();
-
-    // Hide it again after print dialog
-    setTimeout(() => {
-      if (printBadge) {
-        printBadge.style.display = 'none';
-      }
-    }, 1000);
     return;
   }
 
@@ -623,13 +640,25 @@ export function printBadge4x6(graduate: Graduate, elementRef?: HTMLElement | nul
     const printBadge = document.querySelector('.print-badge-4x6') as HTMLElement;
     if (printBadge) {
       printBadge.style.display = 'block';
+      printBadge.style.visibility = 'visible';
+      printBadge.style.position = 'fixed';
+      printBadge.style.left = '0';
+      printBadge.style.top = '0';
+      printBadge.style.zIndex = '999999';
+      printBadge.offsetHeight; // Force reflow
+
+      setTimeout(() => {
+        window.print();
+        setTimeout(() => {
+          if (printBadge) {
+            printBadge.style.display = 'none';
+            printBadge.style.visibility = 'hidden';
+            printBadge.style.position = '';
+            printBadge.style.zIndex = '';
+          }
+        }, 1000);
+      }, 100);
     }
-    window.print();
-    setTimeout(() => {
-      if (printBadge) {
-        printBadge.style.display = 'none';
-      }
-    }, 1000);
     return;
   }
 
@@ -814,13 +843,25 @@ export function printAddressLabel4x6(data: AddressLabelData, elementRef?: HTMLEl
     const printBadge = document.querySelector('.print-badge-4x6') as HTMLElement;
     if (printBadge) {
       printBadge.style.display = 'block';
+      printBadge.style.visibility = 'visible';
+      printBadge.style.position = 'fixed';
+      printBadge.style.left = '0';
+      printBadge.style.top = '0';
+      printBadge.style.zIndex = '999999';
+      printBadge.offsetHeight; // Force reflow
+
+      setTimeout(() => {
+        window.print();
+        setTimeout(() => {
+          if (printBadge) {
+            printBadge.style.display = 'none';
+            printBadge.style.visibility = 'hidden';
+            printBadge.style.position = '';
+            printBadge.style.zIndex = '';
+          }
+        }, 1000);
+      }, 100);
     }
-    window.print();
-    setTimeout(() => {
-      if (printBadge) {
-        printBadge.style.display = 'none';
-      }
-    }, 1000);
     return;
   }
 
