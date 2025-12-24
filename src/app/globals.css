@@ -562,3 +562,92 @@ main {
   animation: gradient-flow 3s ease infinite;
   border-radius: 4px;
 }
+
+/* ========================================
+   PRINT STYLES - Badge/Label Only
+   For Zebra ZD230 Thermal Printer
+   ======================================== */
+
+@media print {
+  /* Hide everything by default */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Show only the print area and its children */
+  .print-area,
+  .print-area * {
+    visibility: visible !important;
+  }
+
+  /* Position print area at top-left of page */
+  .print-area {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  /* Hide navigation, buttons, headers in print */
+  nav,
+  header,
+  footer,
+  button,
+  .no-print,
+  [class*="modal"],
+  [class*="overlay"],
+  [class*="scanner"],
+  [class*="Scanner"] {
+    display: none !important;
+  }
+
+  /* Remove backgrounds and shadows */
+  html, body {
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* 3x2 inch sticker - Zebra ZD230 */
+  .sticker-3x2,
+  .print-area.sticker-3x2 {
+    width: 3in !important;
+    height: 2in !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* 4x6 inch badge */
+  .badge-4x6,
+  .print-area.badge-4x6 {
+    width: 4in !important;
+    height: 6in !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* 4x6 inch address label */
+  .address-label-4x6,
+  .print-area.address-label-4x6 {
+    width: 4in !important;
+    height: 6in !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Page setup for 3x2 sticker */
+  @page sticker {
+    size: 3in 2in;
+    margin: 0;
+  }
+
+  /* Page setup for 4x6 label/badge */
+  @page label {
+    size: 4in 6in;
+    margin: 0;
+  }
+}

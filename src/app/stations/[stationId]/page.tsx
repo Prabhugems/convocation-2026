@@ -781,29 +781,35 @@ export default function StationPage() {
         </div>
       </div>
 
-      {/* Hidden Print Templates */}
-      <div className="hidden">
+      {/* Hidden Print Templates - Only these print when Reprint is tapped */}
+      <div className="hidden print:block">
         {lastScanned && station.printType === '3x2-sticker' && (
-          <Sticker3x2 ref={printRef} graduate={lastScanned} />
+          <div className="print-area sticker-3x2">
+            <Sticker3x2 ref={printRef} graduate={lastScanned} />
+          </div>
         )}
         {lastScanned && station.printType === '4x6-badge' && (
-          <Badge4x6 ref={printRef} graduate={lastScanned} />
+          <div className="print-area badge-4x6">
+            <Badge4x6 ref={printRef} graduate={lastScanned} />
+          </div>
         )}
         {lastScanned && station.printType === '4x6-label' && address && airtableData && (
-          <AddressLabel4x6
-            ref={printRef}
-            data={{
-              name: lastScanned.name,
-              course: lastScanned.course,
-              convocationNumber: lastScanned.convocationNumber,
-              ticketSlug: lastScanned.ticketSlug,
-              registrationNumber: lastScanned.registrationNumber,
-              address: address,
-              phone: airtableData.mobile,
-              trackingNumber: airtableData.trackingNumber,
-              dtdcAvailable: airtableData.dtdcAvailable,
-            }}
-          />
+          <div className="print-area address-label-4x6">
+            <AddressLabel4x6
+              ref={printRef}
+              data={{
+                name: lastScanned.name,
+                course: lastScanned.course,
+                convocationNumber: lastScanned.convocationNumber,
+                ticketSlug: lastScanned.ticketSlug,
+                registrationNumber: lastScanned.registrationNumber,
+                address: address,
+                phone: airtableData.mobile,
+                trackingNumber: airtableData.trackingNumber,
+                dtdcAvailable: airtableData.dtdcAvailable,
+              }}
+            />
+          </div>
         )}
       </div>
     </div>
