@@ -81,55 +81,72 @@ export function usePrinter(): UsePrinterReturn {
       ? `https://ti.to/tickets/${graduate.ticketSlug}`
       : `https://ti.to/amasi/convocation-2026-kolkata/tickets/${graduate.registrationNumber}`;
 
-    // On mobile, skip direct print and use browser print directly
-    const skipDirectPrint = isMobile();
+    // ALWAYS use API print (works on both mobile and desktop)
+    // This sends ZPL directly to printer - no browser print dialog
+    try {
+      const response = await fetch('/api/print/zpl', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type,
+          convocationNumber: graduate.convocationNumber || 'N/A',
+          name: graduate.name,
+          ticketUrl,
+          course: graduate.course,
+          printerIP: settings.ip,
+          printerPort: settings.port,
+        }),
+      });
 
-    // Try direct print if enabled and not on mobile
-    if (settings.useDirectPrint && !skipDirectPrint) {
-      try {
-        const response = await fetch('/api/print/zpl', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type,
-            convocationNumber: graduate.convocationNumber || 'N/A',
-            name: graduate.name,
-            ticketUrl,
-            course: graduate.course,
-            printerIP: settings.ip,
-            printerPort: settings.port,
-          }),
-        });
+      const result = await response.json();
 
-        const result = await response.json();
+      if (result.success) {
+        setStatus('success');
+        setTimeout(() => setStatus('idle'), 2000);
+        return;
+      } else {
+        console.warn('[Printer] Direct print failed:', result.error);
+        setError(result.error);
 
-        if (result.success) {
+        // Only fallback to browser print on desktop (mobile browser print doesn't work)
+        if (!isMobile()) {
+          try {
+            if (type === 'packing') {
+              printSticker3x2(graduate, elementRef);
+            } else {
+              printBadge4x6(graduate, elementRef);
+            }
+            setStatus('success');
+            setTimeout(() => setStatus('idle'), 2000);
+            return;
+          } catch (err) {
+            console.error('[Printer] Browser print also failed:', err);
+          }
+        }
+
+        setStatus('error');
+      }
+    } catch (err) {
+      console.error('[Printer] API error:', err);
+      setError(err instanceof Error ? err.message : 'Network error');
+
+      // Only fallback to browser print on desktop
+      if (!isMobile()) {
+        try {
+          if (type === 'packing') {
+            printSticker3x2(graduate, elementRef);
+          } else {
+            printBadge4x6(graduate, elementRef);
+          }
           setStatus('success');
           setTimeout(() => setStatus('idle'), 2000);
           return;
-        } else {
-          // Direct print failed, fall back to browser print
-          console.warn('[Printer] Direct print failed, falling back to browser:', result.error);
-          setError(result.error);
+        } catch (browserErr) {
+          console.error('[Printer] Browser print also failed:', browserErr);
         }
-      } catch (err) {
-        console.warn('[Printer] Direct print error, falling back to browser:', err);
-        setError(err instanceof Error ? err.message : 'Network error');
       }
-    }
 
-    // Fallback: browser print
-    try {
-      if (type === 'packing') {
-        printSticker3x2(graduate, elementRef);
-      } else {
-        printBadge4x6(graduate, elementRef);
-      }
-      setStatus('success');
-      setTimeout(() => setStatus('idle'), 2000);
-    } catch (err) {
       setStatus('error');
-      setError(err instanceof Error ? err.message : 'Print failed');
     }
   }, [settings, isMobile]);
 
