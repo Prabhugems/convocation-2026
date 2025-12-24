@@ -516,48 +516,10 @@ function isIOS(): boolean {
 }
 
 // Print 3x2 sticker directly - SINGLE PAGE GUARANTEED
-// Uses different approach for iOS (window.print) vs desktop (iframe)
+// Uses popup window approach for all devices for consistency
 export function printSticker3x2(graduate: Graduate, elementRef?: HTMLElement | null): void {
-  // On iOS/iPad, use window.print() directly - CSS handles the layout
-  if (isIOS()) {
-    // Make the print-badge visible temporarily
-    const printBadge = document.querySelector('.print-badge') as HTMLElement;
-    if (printBadge) {
-      // Set display and force reflow
-      printBadge.style.display = 'flex';
-      printBadge.style.visibility = 'visible';
-      printBadge.style.position = 'fixed';
-      printBadge.style.left = '0';
-      printBadge.style.top = '0';
-      printBadge.style.zIndex = '999999';
-
-      // Force browser to repaint before printing
-      printBadge.offsetHeight;
-
-      // Small delay to ensure render, then print
-      setTimeout(() => {
-        window.print();
-
-        // Hide it again after print dialog closes
-        setTimeout(() => {
-          if (printBadge) {
-            printBadge.style.display = 'none';
-            printBadge.style.visibility = 'hidden';
-            printBadge.style.position = '';
-            printBadge.style.zIndex = '';
-          }
-        }, 1000);
-      }, 100);
-    } else {
-      // No print-badge found, alert user
-      alert('Print element not found. Please try again.');
-    }
-    return;
-  }
-
-  // Desktop: Use iframe approach
+  // Get QR code SVG if available
   let svgHtml = '';
-
   if (elementRef) {
     const svgElement = elementRef.querySelector('svg');
     if (svgElement) {
@@ -568,68 +530,85 @@ export function printSticker3x2(graduate: Graduate, elementRef?: HTMLElement | n
   if (!svgHtml) {
     const titoUrl = graduate.ticketSlug
       ? `https://ti.to/tickets/${graduate.ticketSlug}`
-      : graduate.registrationNumber;
-    svgHtml = `<div style="width:95pt;height:95pt;border:1px solid #000;display:flex;align-items:center;justify-content:center;font-size:6pt;text-align:center;word-break:break-all;padding:4pt">${titoUrl}</div>`;
+      : `https://ti.to/amasi/convocation-2026-kolkata/tickets/${graduate.registrationNumber}`;
+    // Create a simple QR placeholder
+    svgHtml = `<div style="width:1.4in;height:1.4in;border:1px solid #000;display:flex;align-items:center;justify-content:center;font-size:6pt;text-align:center;word-break:break-all;padding:4pt">${titoUrl}</div>`;
   }
 
+  // Build print HTML - self-contained page
   const html = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Sticker</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Print Label</title>
 <style>
-@page { size: 216pt 144pt; margin: 0; }
+@page { size: 3in 2in; margin: 0; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { width: 216pt; height: 144pt; overflow: hidden; font-family: Helvetica, Arial, sans-serif; background: #fff; }
-.s { width: 214pt; height: 142pt; display: flex; align-items: center; padding: 8pt 12pt; margin: 1pt; }
-.l { flex: 1; }
-.t { font-size: 9pt; color: #333; }
-.n { font-size: 14pt; font-weight: 700; margin: 2pt 0 4pt; }
-.m { font-size: 11pt; }
-.r { display: flex; align-items: center; justify-content: flex-end; }
-.r svg { width: 95pt; height: 95pt; }
+html, body {
+  width: 3in;
+  height: 2in;
+  overflow: hidden;
+  font-family: Helvetica, Arial, sans-serif;
+  background: #fff;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.sticker {
+  width: 3in;
+  height: 2in;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.15in 0.2in;
+  background: white;
+}
+.left {
+  flex: 0 0 55%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.label { font-size: 9pt; color: #333; margin-bottom: 2px; }
+.convno { font-size: 14pt; font-weight: bold; color: #000; margin-bottom: 6px; }
+.name { font-size: 11pt; color: #000; }
+.right {
+  flex: 0 0 40%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+.right svg { width: 1.4in; height: 1.4in; }
 </style>
 </head>
 <body>
-<div class="s">
-<div class="l">
-<div class="t">CON. No-</div>
-<div class="n">${graduate.convocationNumber || 'N/A'}</div>
-<div class="m">Dr. ${graduate.name}</div>
+<div class="sticker">
+  <div class="left">
+    <div class="label">CON. No-</div>
+    <div class="convno">${graduate.convocationNumber || 'N/A'}</div>
+    <div class="name">Dr. ${graduate.name}</div>
+  </div>
+  <div class="right">${svgHtml}</div>
 </div>
-<div class="r">${svgHtml}</div>
-</div>
+<script>
+window.onload = function() {
+  setTimeout(function() { window.print(); }, 100);
+};
+window.onafterprint = function() { window.close(); };
+</script>
 </body>
 </html>`;
 
-  const iframe = document.createElement('iframe');
-  iframe.style.position = 'fixed';
-  iframe.style.right = '0';
-  iframe.style.bottom = '0';
-  iframe.style.width = '0';
-  iframe.style.height = '0';
-  iframe.style.border = 'none';
-  document.body.appendChild(iframe);
-
-  const iframeDoc = iframe.contentWindow?.document;
-  if (!iframeDoc) {
-    alert('Failed to create print frame');
-    document.body.removeChild(iframe);
+  // Open popup window
+  const printWindow = window.open('', '_blank', 'width=400,height=300');
+  if (!printWindow) {
+    alert('Please allow popups to print');
     return;
   }
 
-  iframeDoc.open();
-  iframeDoc.write(html);
-  iframeDoc.close();
-
-  setTimeout(() => {
-    iframe.contentWindow?.focus();
-    iframe.contentWindow?.print();
-
-    setTimeout(() => {
-      document.body.removeChild(iframe);
-    }, 1000);
-  }, 200);
+  printWindow.document.write(html);
+  printWindow.document.close();
 }
 
 // Print 4x6 Badge - BLACK ONLY for thermal/label printer
