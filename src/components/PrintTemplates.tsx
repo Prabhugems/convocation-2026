@@ -515,8 +515,15 @@ function isIOS(): boolean {
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 }
 
+// Detect mobile devices
+function isMobile(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
 // Print 3x2 sticker directly - SINGLE PAGE GUARANTEED
-// Uses popup window approach for all devices for consistency
+// Mobile: Injects print styles and content directly into page
+// Desktop: Uses iframe approach for cleaner printing
 export function printSticker3x2(graduate: Graduate, elementRef?: HTMLElement | null): void {
   // Get QR code SVG if available
   let svgHtml = '';
@@ -531,84 +538,149 @@ export function printSticker3x2(graduate: Graduate, elementRef?: HTMLElement | n
     const titoUrl = graduate.ticketSlug
       ? `https://ti.to/tickets/${graduate.ticketSlug}`
       : `https://ti.to/amasi/convocation-2026-kolkata/tickets/${graduate.registrationNumber}`;
-    // Create a simple QR placeholder
     svgHtml = `<div style="width:1.4in;height:1.4in;border:1px solid #000;display:flex;align-items:center;justify-content:center;font-size:6pt;text-align:center;word-break:break-all;padding:4pt">${titoUrl}</div>`;
   }
 
-  // Build print HTML - self-contained page
-  const html = `<!DOCTYPE html>
+  // Sticker content HTML
+  const stickerContent = `
+    <div class="print-sticker-content">
+      <div class="sticker-left-print">
+        <div class="sticker-label">CON. No-</div>
+        <div class="sticker-convno">${graduate.convocationNumber || 'N/A'}</div>
+        <div class="sticker-name">Dr. ${graduate.name}</div>
+      </div>
+      <div class="sticker-right-print">${svgHtml}</div>
+    </div>`;
+
+  // Print styles - injected into page for mobile, into iframe for desktop
+  const printStyles = `
+    @media print {
+      @page {
+        size: 3in 2in !important;
+        margin: 0 !important;
+      }
+      html, body {
+        width: 3in !important;
+        height: 2in !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+      }
+      body * {
+        visibility: hidden !important;
+        display: none !important;
+      }
+      .print-sticker-content,
+      .print-sticker-content * {
+        visibility: visible !important;
+        display: block !important;
+      }
+      .print-sticker-content {
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 3in !important;
+        height: 2in !important;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 0.15in 0.2in !important;
+        background: white !important;
+        font-family: Helvetica, Arial, sans-serif !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .sticker-left-print {
+        flex: 0 0 55% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+      }
+      .sticker-label { font-size: 9pt !important; color: #333 !important; margin-bottom: 2px !important; }
+      .sticker-convno { font-size: 14pt !important; font-weight: bold !important; color: #000 !important; margin-bottom: 6px !important; }
+      .sticker-name { font-size: 11pt !important; color: #000 !important; }
+      .sticker-right-print {
+        flex: 0 0 40% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-end !important;
+      }
+      .sticker-right-print svg { width: 1.4in !important; height: 1.4in !important; display: block !important; }
+    }`;
+
+  if (isMobile()) {
+    // MOBILE: Inject styles and content directly, then print
+    // Remove any existing print styles and content
+    const existingStyle = document.getElementById('mobile-print-style');
+    if (existingStyle) existingStyle.remove();
+    const existingContent = document.getElementById('mobile-print-content');
+    if (existingContent) existingContent.remove();
+
+    // Add print styles
+    const styleEl = document.createElement('style');
+    styleEl.id = 'mobile-print-style';
+    styleEl.textContent = printStyles;
+    document.head.appendChild(styleEl);
+
+    // Add sticker content
+    const contentEl = document.createElement('div');
+    contentEl.id = 'mobile-print-content';
+    contentEl.innerHTML = stickerContent;
+    document.body.appendChild(contentEl);
+
+    // Print after brief delay
+    setTimeout(() => {
+      window.print();
+      // Cleanup after print
+      setTimeout(() => {
+        styleEl.remove();
+        contentEl.remove();
+      }, 1000);
+    }, 100);
+  } else {
+    // DESKTOP: Use iframe for cleaner printing
+    const iframeHtml = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Print Label</title>
 <style>
 @page { size: 3in 2in; margin: 0; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html, body {
-  width: 3in;
-  height: 2in;
-  overflow: hidden;
-  font-family: Helvetica, Arial, sans-serif;
-  background: #fff;
-  -webkit-print-color-adjust: exact;
-  print-color-adjust: exact;
-}
-.sticker {
-  width: 3in;
-  height: 2in;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.15in 0.2in;
-  background: white;
-}
-.left {
-  flex: 0 0 55%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-.label { font-size: 9pt; color: #333; margin-bottom: 2px; }
-.convno { font-size: 14pt; font-weight: bold; color: #000; margin-bottom: 6px; }
-.name { font-size: 11pt; color: #000; }
-.right {
-  flex: 0 0 40%;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-}
-.right svg { width: 1.4in; height: 1.4in; }
+html, body { width: 3in; height: 2in; overflow: hidden; font-family: Helvetica, Arial, sans-serif; background: #fff; }
+.print-sticker-content { width: 3in; height: 2in; display: flex; align-items: center; justify-content: space-between; padding: 0.15in 0.2in; }
+.sticker-left-print { flex: 0 0 55%; display: flex; flex-direction: column; justify-content: center; }
+.sticker-label { font-size: 9pt; color: #333; margin-bottom: 2px; }
+.sticker-convno { font-size: 14pt; font-weight: bold; color: #000; margin-bottom: 6px; }
+.sticker-name { font-size: 11pt; color: #000; }
+.sticker-right-print { flex: 0 0 40%; display: flex; align-items: center; justify-content: flex-end; }
+.sticker-right-print svg { width: 1.4in; height: 1.4in; }
 </style>
 </head>
-<body>
-<div class="sticker">
-  <div class="left">
-    <div class="label">CON. No-</div>
-    <div class="convno">${graduate.convocationNumber || 'N/A'}</div>
-    <div class="name">Dr. ${graduate.name}</div>
-  </div>
-  <div class="right">${svgHtml}</div>
-</div>
-<script>
-window.onload = function() {
-  setTimeout(function() { window.print(); }, 100);
-};
-window.onafterprint = function() { window.close(); };
-</script>
-</body>
+<body>${stickerContent}</body>
 </html>`;
 
-  // Open popup window
-  const printWindow = window.open('', '_blank', 'width=400,height=300');
-  if (!printWindow) {
-    alert('Please allow popups to print');
-    return;
-  }
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:none;';
+    document.body.appendChild(iframe);
 
-  printWindow.document.write(html);
-  printWindow.document.close();
+    const iframeDoc = iframe.contentWindow?.document;
+    if (!iframeDoc) {
+      alert('Failed to create print frame');
+      document.body.removeChild(iframe);
+      return;
+    }
+
+    iframeDoc.open();
+    iframeDoc.write(iframeHtml);
+    iframeDoc.close();
+
+    setTimeout(() => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+      setTimeout(() => document.body.removeChild(iframe), 1000);
+    }, 200);
+  }
 }
 
 // Print 4x6 Badge - BLACK ONLY for thermal/label printer
