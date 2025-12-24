@@ -606,12 +606,12 @@ export default function AdminPage() {
         </header>
 
         {/* Dashboard Content */}
-        <div className="p-4 lg:p-8 space-y-6 mesh-gradient">
+        <div className="p-4 sm:p-6 lg:p-8 pb-8 sm:pb-12 lg:pb-16 space-y-4 sm:space-y-5 lg:space-y-6 mesh-gradient min-h-[calc(100vh-4rem)]">
           {/* Conditionally render based on activeNav */}
           {activeNav === 'dashboard' && (
             <>
           {/* Stats Cards Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
             {[
               { label: 'Total Graduates', value: stats?.totalGraduates || 0, icon: Users, gradient: 'from-blue-500 to-blue-600', shadow: 'shadow-blue-500/20', glow: 'glow-blue' },
               { label: 'Collected', value: stats?.certificateCollected || 0, icon: Award, gradient: 'from-green-500 to-green-600', shadow: 'shadow-green-500/20', glow: 'glow-green' },
@@ -622,24 +622,23 @@ export default function AdminPage() {
               return (
                 <div
                   key={stat.label}
-                  className={`relative group overflow-hidden bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 transition-all duration-500 cursor-pointer animate-fade-in-up card-3d card-shine ${stat.glow}`}
+                  className={`relative group overflow-hidden bg-slate-800/50 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-5 lg:p-6 border border-slate-700/50 transition-all duration-500 cursor-pointer animate-fade-in-up card-3d card-shine ${stat.glow}`}
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
                   {/* Gradient background on hover */}
                   <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500`} />
 
                   {/* Floating decorative circle */}
-                  <div className={`absolute -top-4 -right-4 w-24 h-24 rounded-full bg-gradient-to-br ${stat.gradient} opacity-10 group-hover:opacity-20 transition-all duration-500 group-hover:scale-125`} />
+                  <div className={`absolute -top-4 -right-4 w-16 sm:w-20 lg:w-24 h-16 sm:h-20 lg:h-24 rounded-full bg-gradient-to-br ${stat.gradient} opacity-10 group-hover:opacity-20 transition-all duration-500 group-hover:scale-125`} />
 
                   <div className="relative z-10">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-lg ${stat.shadow} group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
-                        <Icon className="w-6 h-6 text-white" />
+                    <div className="flex items-start justify-between mb-3 sm:mb-4">
+                      <div className={`w-10 h-10 sm:w-11 sm:h-11 lg:w-12 lg:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-lg ${stat.shadow} group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
+                        <Icon className="w-5 h-5 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-white" />
                       </div>
-                      <div className={`absolute top-4 right-4 w-20 h-20 rounded-full bg-gradient-to-br ${stat.gradient} opacity-20`} />
                     </div>
-                    <p className="text-slate-300 text-sm font-medium mb-1">{stat.label}</p>
-                    <p className="text-4xl font-bold text-white group-hover:scale-105 transition-transform duration-300 origin-left">{stat.value}</p>
+                    <p className="text-slate-300 text-xs sm:text-sm font-medium mb-0.5 sm:mb-1">{stat.label}</p>
+                    <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white group-hover:scale-105 transition-transform duration-300 origin-left">{stat.value}</p>
                   </div>
                 </div>
               );
@@ -647,14 +646,14 @@ export default function AdminPage() {
           </div>
 
           {/* Progress Overview */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
             {/* Circular Progress Card */}
-            <div className="lg:col-span-2 bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 hover:border-slate-600 transition-all duration-300 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-              <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-blue-400" />
+            <div className="lg:col-span-2 bg-slate-800/50 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-5 lg:p-6 border border-slate-700/50 hover:border-slate-600 transition-all duration-300 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+              <h2 className="text-base sm:text-lg font-semibold text-white mb-4 sm:mb-6 flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
                 Overall Progress
               </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
                 {[
                   { label: 'Collected', value: stats?.certificateCollected || 0, color: '#22c55e' },
                   { label: 'Dispatched', value: stats?.finalDispatched || 0, color: '#6366f1' },
@@ -677,12 +676,12 @@ export default function AdminPage() {
             </div>
 
             {/* Quick Stats Card */}
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 hover:border-slate-600 transition-all duration-300 animate-fade-in-up" style={{ animationDelay: '250ms' }}>
-              <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-purple-400" />
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-5 lg:p-6 border border-slate-700/50 hover:border-slate-600 transition-all duration-300 animate-fade-in-up" style={{ animationDelay: '250ms' }}>
+              <h2 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4 flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
                 Quick Stats
               </h2>
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {[
                   { label: 'Total Graduates', value: stats?.totalGraduates || 0, icon: Users, color: 'blue', indicatorColor: '#3b82f6' },
                   { label: 'Completed', value: (stats?.certificateCollected || 0) + (stats?.finalDispatched || 0), icon: CheckCircle2, color: 'green', indicatorColor: '#22c55e' },
@@ -692,25 +691,25 @@ export default function AdminPage() {
                   return (
                     <div
                       key={item.label}
-                      className="flex items-center justify-between p-3 rounded-xl bg-slate-700/30 hover:bg-slate-700/50 transition-all duration-300 cursor-pointer group slide-indicator"
+                      className="flex items-center justify-between p-2.5 sm:p-3 rounded-lg sm:rounded-xl bg-slate-700/30 hover:bg-slate-700/50 transition-all duration-300 cursor-pointer group slide-indicator"
                       style={{ animationDelay: `${350 + index * 50}ms`, '--indicator-color': item.indicatorColor } as React.CSSProperties}
                     >
-                      <div className="flex items-center gap-3">
-                        <Icon className={`w-5 h-5 text-${item.color}-400 group-hover:scale-110 transition-transform duration-300`} />
-                        <span className="text-slate-300 text-sm">{item.label}</span>
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <Icon className={`w-4 h-4 sm:w-5 sm:h-5 text-${item.color}-400 group-hover:scale-110 transition-transform duration-300`} />
+                        <span className="text-slate-300 text-xs sm:text-sm">{item.label}</span>
                       </div>
-                      <span className={`text-lg font-bold text-${item.color}-400`}>{item.value}</span>
+                      <span className={`text-base sm:text-lg font-bold text-${item.color}-400`}>{item.value}</span>
                     </div>
                   );
                 })}
 
                 {(stats?.pendingGownDeposit || 0) > 0 && (
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 transition-all duration-300 hover:translate-x-1 cursor-pointer group animate-pulse-soft">
-                    <div className="flex items-center gap-3">
-                      <Shirt className="w-5 h-5 text-amber-400 group-hover:scale-110 transition-transform duration-300" />
-                      <span className="text-amber-300 text-sm">Gown Returns</span>
+                  <div className="flex items-center justify-between p-2.5 sm:p-3 rounded-lg sm:rounded-xl bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 transition-all duration-300 hover:translate-x-1 cursor-pointer group animate-pulse-soft">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <Shirt className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 group-hover:scale-110 transition-transform duration-300" />
+                      <span className="text-amber-300 text-xs sm:text-sm">Gown Returns</span>
                     </div>
-                    <span className="text-lg font-bold text-amber-400">{stats?.pendingGownDeposit || 0}</span>
+                    <span className="text-base sm:text-lg font-bold text-amber-400">{stats?.pendingGownDeposit || 0}</span>
                   </div>
                 )}
               </div>
@@ -718,48 +717,74 @@ export default function AdminPage() {
           </div>
 
           {/* Certificate Pipeline */}
-          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 mb-4 border border-slate-700/50 hover:border-slate-600 transition-all duration-300 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
-            <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-slate-700/50 hover:border-slate-600 transition-all duration-300 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
+            <h2 className="text-lg font-semibold text-white mb-4 sm:mb-6 flex items-center gap-2">
               <Package className="w-5 h-5 text-cyan-400" />
               Certificate Pipeline
             </h2>
-            <div className="overflow-x-auto">
-              <div className="flex items-center justify-between min-w-[800px] gap-2">
-                {[
-                  { label: 'Packed', value: stats?.packed || 0, color: 'gray', icon: Package, tooltip: 'Certificates packed and ready' },
-                  { label: 'At Venue', value: stats?.dispatchedToVenue || 0, color: 'purple', icon: Truck, tooltip: 'Dispatched to convocation venue' },
-                  { label: 'Registered', value: stats?.registered || 0, color: 'cyan', icon: UserCheck, tooltip: 'Graduates registered at venue' },
-                  { label: 'Gown Issued', value: stats?.gownIssued || 0, color: 'orange', icon: Shirt, tooltip: 'Academic gowns issued' },
-                  { label: 'Gown Return', value: stats?.gownReturned || 0, color: 'amber', icon: Shirt, tooltip: 'Gowns returned after ceremony' },
-                  { label: 'Collected', value: stats?.certificateCollected || 0, color: 'green', icon: Award, tooltip: 'Certificates collected by graduates' },
-                ].map((step, index, arr) => {
-                  const percentage = stats?.totalGraduates ? Math.round((step.value / stats.totalGraduates) * 100) : 0;
-                  const Icon = step.icon;
-                  return (
-                    <div key={step.label} className="flex items-center flex-1 group">
-                      <div className="flex-1 text-center tooltip-hover" data-tooltip={step.tooltip}>
-                        <div className={`w-16 h-16 mx-auto rounded-2xl bg-${step.color}-500/20 flex items-center justify-center mb-3 relative group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-300 cursor-pointer`}>
-                          <Icon className={`w-7 h-7 text-${step.color}-400 group-hover:animate-bounce-soft`} />
-                          <div className="absolute -bottom-1 -right-1 bg-slate-900 border border-slate-700 rounded-full px-1.5 py-0.5 shadow-lg">
-                            <span className="text-xs font-bold text-slate-300">{percentage}%</span>
-                          </div>
+            {/* Desktop: horizontal row, Mobile: 2-column grid */}
+            <div className="hidden lg:flex items-center justify-between gap-2">
+              {[
+                { label: 'Packed', value: stats?.packed || 0, color: 'gray', icon: Package, tooltip: 'Certificates packed and ready' },
+                { label: 'At Venue', value: stats?.dispatchedToVenue || 0, color: 'purple', icon: Truck, tooltip: 'Dispatched to convocation venue' },
+                { label: 'Registered', value: stats?.registered || 0, color: 'cyan', icon: UserCheck, tooltip: 'Graduates registered at venue' },
+                { label: 'Gown Issued', value: stats?.gownIssued || 0, color: 'orange', icon: Shirt, tooltip: 'Academic gowns issued' },
+                { label: 'Gown Return', value: stats?.gownReturned || 0, color: 'amber', icon: Shirt, tooltip: 'Gowns returned after ceremony' },
+                { label: 'Collected', value: stats?.certificateCollected || 0, color: 'green', icon: Award, tooltip: 'Certificates collected by graduates' },
+              ].map((step, index, arr) => {
+                const percentage = stats?.totalGraduates ? Math.round((step.value / stats.totalGraduates) * 100) : 0;
+                const Icon = step.icon;
+                return (
+                  <div key={step.label} className="flex items-center flex-1 group">
+                    <div className="flex-1 text-center tooltip-hover" data-tooltip={step.tooltip}>
+                      <div className={`w-14 h-14 xl:w-16 xl:h-16 mx-auto rounded-2xl bg-${step.color}-500/20 flex items-center justify-center mb-2 xl:mb-3 relative group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-300 cursor-pointer`}>
+                        <Icon className={`w-6 h-6 xl:w-7 xl:h-7 text-${step.color}-400 group-hover:animate-bounce-soft`} />
+                        <div className="absolute -bottom-1 -right-1 bg-slate-900 border border-slate-700 rounded-full px-1.5 py-0.5 shadow-lg">
+                          <span className="text-xs font-bold text-slate-300">{percentage}%</span>
                         </div>
-                        <p className="text-2xl font-bold text-white group-hover:scale-110 transition-transform duration-300">{step.value}</p>
-                        <p className="text-sm text-slate-300 font-medium mt-1">{step.label}</p>
                       </div>
-                      {index < arr.length - 1 && (
-                        <ArrowRight className="w-5 h-5 text-slate-600 shrink-0 mx-1 animate-pulse" />
-                      )}
+                      <p className="text-xl xl:text-2xl font-bold text-white group-hover:scale-110 transition-transform duration-300">{step.value}</p>
+                      <p className="text-xs xl:text-sm text-slate-300 font-medium mt-1">{step.label}</p>
                     </div>
-                  );
-                })}
-              </div>
+                    {index < arr.length - 1 && (
+                      <ArrowRight className="w-4 h-4 xl:w-5 xl:h-5 text-slate-600 shrink-0 mx-0.5 xl:mx-1 animate-pulse" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {/* Mobile/Tablet: 2x3 grid layout */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 lg:hidden">
+              {[
+                { label: 'Packed', value: stats?.packed || 0, color: 'gray', icon: Package, tooltip: 'Certificates packed and ready' },
+                { label: 'At Venue', value: stats?.dispatchedToVenue || 0, color: 'purple', icon: Truck, tooltip: 'Dispatched to convocation venue' },
+                { label: 'Registered', value: stats?.registered || 0, color: 'cyan', icon: UserCheck, tooltip: 'Graduates registered at venue' },
+                { label: 'Gown Issued', value: stats?.gownIssued || 0, color: 'orange', icon: Shirt, tooltip: 'Academic gowns issued' },
+                { label: 'Gown Return', value: stats?.gownReturned || 0, color: 'amber', icon: Shirt, tooltip: 'Gowns returned after ceremony' },
+                { label: 'Collected', value: stats?.certificateCollected || 0, color: 'green', icon: Award, tooltip: 'Certificates collected by graduates' },
+              ].map((step, index) => {
+                const percentage = stats?.totalGraduates ? Math.round((step.value / stats.totalGraduates) * 100) : 0;
+                const Icon = step.icon;
+                return (
+                  <div key={step.label} className="text-center p-3 sm:p-4 bg-slate-700/20 rounded-xl border border-slate-700/30 hover:border-slate-600/50 transition-all duration-300 group" style={{ animationDelay: `${index * 50}ms` }}>
+                    <div className={`w-12 h-12 sm:w-14 sm:h-14 mx-auto rounded-xl bg-${step.color}-500/20 flex items-center justify-center mb-2 relative group-hover:scale-110 transition-all duration-300`}>
+                      <Icon className={`w-5 h-5 sm:w-6 sm:h-6 text-${step.color}-400`} />
+                      <div className="absolute -bottom-1 -right-1 bg-slate-900 border border-slate-700 rounded-full px-1 py-0.5 shadow-lg">
+                        <span className="text-[10px] font-bold text-slate-300">{percentage}%</span>
+                      </div>
+                    </div>
+                    <p className="text-lg sm:text-xl font-bold text-white">{step.value}</p>
+                    <p className="text-xs text-slate-300 font-medium mt-0.5">{step.label}</p>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Post-event pipeline */}
-            <div className="mt-6 pt-6 border-t border-slate-600/50">
-              <p className="text-sm text-slate-300 font-medium mb-4">Post-Event Dispatch</p>
-              <div className="flex items-center justify-start gap-4 flex-wrap">
+            <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-slate-600/50">
+              <p className="text-sm text-slate-300 font-medium mb-3 sm:mb-4">Post-Event Dispatch</p>
+              {/* Desktop: horizontal row */}
+              <div className="hidden sm:flex items-center justify-start gap-4 lg:gap-6">
                 {[
                   { label: 'At Head Office', value: stats?.returnedToHO || 0, color: 'yellow', icon: Building2 },
                   { label: 'Address Labeled', value: 0, color: 'blue', icon: MapPin },
@@ -768,49 +793,77 @@ export default function AdminPage() {
                   const Icon = step.icon;
                   return (
                     <div key={step.label} className="flex items-center group">
-                      <div className="text-center min-w-[100px]">
-                        <div className={`w-12 h-12 mx-auto rounded-xl bg-${step.color}-500/20 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform duration-300 cursor-pointer`}>
-                          <Icon className={`w-5 h-5 text-${step.color}-400`} />
+                      <div className="text-center min-w-[90px] lg:min-w-[100px]">
+                        <div className={`w-10 h-10 lg:w-12 lg:h-12 mx-auto rounded-xl bg-${step.color}-500/20 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform duration-300 cursor-pointer`}>
+                          <Icon className={`w-4 h-4 lg:w-5 lg:h-5 text-${step.color}-400`} />
                         </div>
-                        <p className="text-lg font-bold text-white">{step.value}</p>
+                        <p className="text-base lg:text-lg font-bold text-white">{step.value}</p>
                         <p className="text-xs text-slate-300 font-medium">{step.label}</p>
                       </div>
                       {index < arr.length - 1 && (
-                        <ArrowRight className="w-4 h-4 text-slate-500 shrink-0 mx-2" />
+                        <ArrowRight className="w-3 h-3 lg:w-4 lg:h-4 text-slate-500 shrink-0 mx-1 lg:mx-2" />
                       )}
                     </div>
                   );
                 })}
                 {dispatchMeta && (stats?.finalDispatched || 0) > 0 && (
-                  <div className="ml-4 pl-4 border-l border-slate-600 text-sm">
+                  <div className="ml-3 lg:ml-4 pl-3 lg:pl-4 border-l border-slate-600 text-xs lg:text-sm">
                     <p className="text-slate-300">DTDC: <span className="text-white font-medium">{dispatchMeta.dispatchedDTDC}</span></p>
                     <p className="text-slate-300">India Post: <span className="text-white font-medium">{dispatchMeta.dispatchedIndiaPost}</span></p>
                   </div>
                 )}
               </div>
+              {/* Mobile: 3-column grid */}
+              <div className="grid grid-cols-3 gap-2 sm:hidden">
+                {[
+                  { label: 'At Head Office', value: stats?.returnedToHO || 0, color: 'yellow', icon: Building2 },
+                  { label: 'Address Labeled', value: 0, color: 'blue', icon: MapPin },
+                  { label: 'Dispatched', value: stats?.finalDispatched || 0, color: 'indigo', icon: Send },
+                ].map((step) => {
+                  const Icon = step.icon;
+                  return (
+                    <div key={step.label} className="text-center p-2.5 bg-slate-700/20 rounded-lg border border-slate-700/30">
+                      <div className={`w-9 h-9 mx-auto rounded-lg bg-${step.color}-500/20 flex items-center justify-center mb-1.5`}>
+                        <Icon className={`w-4 h-4 text-${step.color}-400`} />
+                      </div>
+                      <p className="text-sm font-bold text-white">{step.value}</p>
+                      <p className="text-[10px] text-slate-300 font-medium leading-tight">{step.label}</p>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Mobile dispatch meta */}
+              {dispatchMeta && (stats?.finalDispatched || 0) > 0 && (
+                <div className="flex justify-center gap-4 mt-3 text-xs sm:hidden">
+                  <p className="text-slate-300">DTDC: <span className="text-white font-medium">{dispatchMeta.dispatchedDTDC}</span></p>
+                  <p className="text-slate-300">India Post: <span className="text-white font-medium">{dispatchMeta.dispatchedIndiaPost}</span></p>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Alerts */}
           {(stats?.pendingGownDeposit || 0) > 0 && (
-            <div className="p-4 border border-amber-500/30 bg-amber-500/10 rounded-xl animate-fade-in-up animate-attention-pulse flex items-center gap-4 hover:animate-none transition-all duration-300 cursor-pointer group">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/30 group-hover:scale-110 transition-transform duration-300">
-                <AlertTriangle className="w-6 h-6 text-white animate-float" />
+            <div className="p-3 sm:p-4 border border-amber-500/30 bg-amber-500/10 rounded-lg sm:rounded-xl animate-fade-in-up animate-attention-pulse flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 hover:animate-none transition-all duration-300 cursor-pointer group">
+              <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/30 group-hover:scale-110 transition-transform duration-300 shrink-0">
+                  <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-amber-300 text-sm sm:text-base">Pending Gown Returns</p>
+                  <p className="text-xs sm:text-sm text-amber-400/80 line-clamp-2 sm:line-clamp-none">
+                    {stats?.pendingGownDeposit} graduates have pending gown returns (₹{(stats?.pendingGownDeposit || 0) * 500} refundable deposits)
+                  </p>
+                </div>
               </div>
-              <div className="flex-1">
-                <p className="font-semibold text-amber-300">Pending Gown Returns</p>
-                <p className="text-sm text-amber-400/80">
-                  {stats?.pendingGownDeposit} graduates have pending gown returns (₹{(stats?.pendingGownDeposit || 0) * 500} refundable deposits)
-                </p>
-              </div>
-              <button className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium text-sm transition-all duration-300 hover:scale-105 active:scale-95 btn-ripple">
+              <button className="w-full sm:w-auto px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium text-xs sm:text-sm transition-all duration-300 hover:scale-105 active:scale-95 btn-ripple shrink-0">
                 View Details
               </button>
             </div>
           )}
 
           {/* Station Progress Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6 mt-6">
             {[
               { id: 'packing', name: 'Packing', icon: Package, gradient: 'from-slate-500 to-slate-600', color: '#64748b', glow: 'glow-blue' },
               { id: 'dispatch-venue', name: 'Dispatch to Venue', icon: Truck, gradient: 'from-purple-500 to-purple-600', color: '#a855f7', glow: 'glow-purple' },
@@ -837,42 +890,42 @@ export default function AdminPage() {
               return (
                 <div
                   key={station.id}
-                  className="relative group animate-fade-in-up"
+                  className="relative group animate-fade-in-up pt-6 sm:pt-7"
                   style={{ animationDelay: `${400 + index * 50}ms` }}
                 >
-                  <div className={`bg-slate-800/50 backdrop-blur-sm rounded-2xl pt-10 pb-6 px-6 border border-slate-700/50 transition-all duration-500 hover:scale-[1.02] cursor-pointer card-shine gradient-border-animated ${station.glow}`}>
+                  <div className={`bg-slate-800/50 backdrop-blur-sm rounded-2xl p-4 sm:p-5 lg:p-6 border border-slate-700/50 transition-all duration-500 hover:scale-[1.02] cursor-pointer card-shine gradient-border-animated h-full ${station.glow}`}>
                     {/* Floating Icon Badge */}
-                    <div className={`absolute -top-5 left-6 w-16 h-16 rounded-xl bg-gradient-to-br ${station.gradient} shadow-lg flex items-center justify-center group-hover:scale-110 group-hover:rotate-6 transition-all duration-300`}>
-                      <Icon className="w-8 h-8 text-white animate-float" style={{ animationDelay: `${index * 0.3}s` }} />
+                    <div className={`absolute -top-4 sm:-top-5 left-4 sm:left-5 lg:left-6 w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 rounded-xl bg-gradient-to-br ${station.gradient} shadow-lg flex items-center justify-center group-hover:scale-110 group-hover:rotate-6 transition-all duration-300`}>
+                      <Icon className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-white" />
                     </div>
 
                     {/* Hover glow */}
                     <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${station.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`} />
 
                     {/* Stats */}
-                    <div className="flex justify-end mb-4 relative z-10">
+                    <div className="flex justify-end mb-3 sm:mb-4 relative z-10 pt-1 sm:pt-2">
                       <div className="text-right">
-                        <p className="text-slate-300 text-sm font-medium">{station.name}</p>
-                        <p className="text-3xl font-bold text-white group-hover:scale-105 transition-transform duration-300 origin-right">{count}</p>
+                        <p className="text-slate-300 text-xs sm:text-sm font-medium">{station.name}</p>
+                        <p className="text-2xl sm:text-3xl font-bold text-white group-hover:scale-105 transition-transform duration-300 origin-right">{count}</p>
                       </div>
                     </div>
 
                     {/* Divider */}
-                    <div className="h-px bg-slate-600/50 mb-4" />
+                    <div className="h-px bg-slate-600/50 mb-3 sm:mb-4" />
 
                     {/* Progress */}
-                    <div className="space-y-2 relative z-10">
-                      <div className="flex justify-between text-sm">
+                    <div className="space-y-1.5 sm:space-y-2 relative z-10">
+                      <div className="flex justify-between text-xs sm:text-sm">
                         <span className="text-slate-300">Progress</span>
                         <span className="font-semibold" style={{ color: station.color }}>{percentage}%</span>
                       </div>
-                      <div className="h-2 bg-slate-700/50 rounded-full overflow-hidden">
+                      <div className="h-1.5 sm:h-2 bg-slate-700/50 rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full bg-gradient-to-r ${station.gradient} transition-all duration-1000 ease-out`}
                           style={{ width: `${percentage}%` }}
                         />
                       </div>
-                      <p className="text-xs text-slate-400 text-right">{count} of {total}</p>
+                      <p className="text-[10px] sm:text-xs text-slate-400 text-right">{count} of {total}</p>
                     </div>
                   </div>
                 </div>
@@ -885,62 +938,62 @@ export default function AdminPage() {
 
           {/* Graduates View - Only shown when Graduates is selected in sidebar */}
           {activeNav === 'graduates' && (
-          <div className="space-y-6 animate-fade-in-up">
+          <div className="space-y-4 sm:space-y-6 animate-fade-in-up">
             {/* View Toggle Tabs */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <button
                 onClick={() => setGraduatesView('all')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all duration-300 ${
+                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl font-medium text-xs sm:text-sm transition-all duration-300 ${
                   graduatesView === 'all'
                     ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
                     : 'bg-slate-800/50 text-slate-400 hover:text-white hover:bg-slate-700/50'
                 }`}
               >
-                <List className="w-4 h-4" />
+                <List className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 All Graduates
               </button>
               <button
                 onClick={() => setGraduatesView('by-course')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm transition-all duration-300 ${
+                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl font-medium text-xs sm:text-sm transition-all duration-300 ${
                   graduatesView === 'by-course'
                     ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
                     : 'bg-slate-800/50 text-slate-400 hover:text-white hover:bg-slate-700/50'
                 }`}
               >
-                <GraduationCap className="w-4 h-4" />
+                <GraduationCap className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 By Course
               </button>
             </div>
 
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 hover:border-slate-600 transition-all duration-300">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                <UsersIcon className="w-5 h-5 text-indigo-400" />
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-5 lg:p-6 border border-slate-700/50 hover:border-slate-600 transition-all duration-300">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+              <h2 className="text-base sm:text-lg font-semibold text-white flex items-center gap-2">
+                <UsersIcon className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400" />
                 {graduatesView === 'all' ? 'All Graduates' : 'Graduates by Course'}
               </h2>
-              <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <div className="relative group">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-400 transition-colors" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 group-focus-within:text-blue-400 transition-colors" />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search name, conv. no, email, mobile..."
-                    className="pl-10 pr-10 py-2 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white text-sm placeholder:text-slate-400 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300 w-full sm:w-80"
+                    placeholder="Search name, conv. no, email..."
+                    className="pl-8 sm:pl-10 pr-8 sm:pr-10 py-1.5 sm:py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg sm:rounded-xl text-white text-xs sm:text-sm placeholder:text-slate-400 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300 w-full sm:w-72 lg:w-80"
                   />
                   {searchQuery && (
                     <button
                       onClick={clearSearch}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                      className="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </button>
                   )}
                 </div>
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
-                  className="px-4 py-2 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white text-sm focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300 cursor-pointer"
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg sm:rounded-xl text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300 cursor-pointer"
                 >
                   <option value="all">All Status</option>
                   <option value="collected">Collected</option>
@@ -1192,15 +1245,15 @@ export default function AdminPage() {
 
           {/* Stations View - Station Links */}
           {activeNav === 'stations' && (
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 animate-fade-in-up">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <QrCode className="w-5 h-5 text-green-400" />
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-5 lg:p-6 border border-slate-700/50 animate-fade-in-up">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 mb-4 sm:mb-6">
+                <h2 className="text-base sm:text-lg font-semibold text-white flex items-center gap-2">
+                  <QrCode className="w-4 h-4 sm:w-5 sm:h-5 text-green-400" />
                   Station Links
                 </h2>
-                <p className="text-xs text-slate-400">Share with staff for multi-device check-in</p>
+                <p className="text-[10px] sm:text-xs text-slate-400">Share with staff for multi-device check-in</p>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
                 {stations.map((station, index) => {
                   const Icon = stationIconMap[station.icon] || Package;
                   const checkinList = checkinLists.find(l => {
@@ -1221,49 +1274,49 @@ export default function AdminPage() {
                   return (
                     <div
                       key={station.id}
-                      className="flex items-center justify-between p-4 bg-slate-700/30 hover:bg-slate-700/50 rounded-xl border border-slate-600/30 hover:border-slate-500/50 transition-all duration-300 hover:translate-x-1 group"
+                      className="flex items-center justify-between p-3 sm:p-4 bg-slate-700/30 hover:bg-slate-700/50 rounded-lg sm:rounded-xl border border-slate-600/30 hover:border-slate-500/50 transition-all duration-300 hover:translate-x-1 group"
                       style={{ animationDelay: `${index * 30}ms` }}
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">
-                          <Icon className="w-5 h-5 text-blue-400" />
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">
+                          <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-white truncate">{station.name}</p>
+                          <p className="text-xs sm:text-sm font-medium text-white truncate">{station.name}</p>
                           {checkinList && (
-                            <p className="text-xs text-slate-400">
+                            <p className="text-[10px] sm:text-xs text-slate-400">
                               {checkinList.checked_in}/{checkinList.total} checked in
                             </p>
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
                         <button
                           onClick={() => copyStationUrl(station.id)}
-                          className="p-2 rounded-lg hover:bg-slate-600/50 transition-all duration-200 hover:scale-110"
+                          className="p-1.5 sm:p-2 rounded-lg hover:bg-slate-600/50 transition-all duration-200 hover:scale-110"
                           title="Copy link"
                         >
                           {copiedStation === station.id ? (
-                            <Check className="w-4 h-4 text-green-400" />
+                            <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-400" />
                           ) : (
-                            <Copy className="w-4 h-4 text-slate-400 hover:text-white" />
+                            <Copy className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 hover:text-white" />
                           )}
                         </button>
                         <button
                           onClick={() => setShowQRModal(station.id)}
-                          className="p-2 rounded-lg hover:bg-slate-600/50 transition-all duration-200 hover:scale-110"
+                          className="p-1.5 sm:p-2 rounded-lg hover:bg-slate-600/50 transition-all duration-200 hover:scale-110"
                           title="Show QR code"
                         >
-                          <QrCode className="w-4 h-4 text-slate-400 hover:text-white" />
+                          <QrCode className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 hover:text-white" />
                         </button>
                         <a
                           href={`/stations/${station.id}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-2 rounded-lg hover:bg-slate-600/50 transition-all duration-200 hover:scale-110"
+                          className="p-1.5 sm:p-2 rounded-lg hover:bg-slate-600/50 transition-all duration-200 hover:scale-110"
                           title="Open in new tab"
                         >
-                          <ExternalLink className="w-4 h-4 text-slate-400 hover:text-white" />
+                          <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 hover:text-white" />
                         </a>
                       </div>
                     </div>
@@ -1275,12 +1328,12 @@ export default function AdminPage() {
 
           {/* Settings View - Placeholder for future */}
           {activeNav === 'settings' && (
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 animate-fade-in-up">
-              <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <Settings className="w-5 h-5 text-purple-400" />
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-5 lg:p-6 border border-slate-700/50 animate-fade-in-up">
+              <h2 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4 flex items-center gap-2">
+                <Settings className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
                 Settings
               </h2>
-              <p className="text-slate-400">Settings and configuration coming soon...</p>
+              <p className="text-sm sm:text-base text-slate-400">Settings and configuration coming soon...</p>
             </div>
           )}
         </div>
