@@ -152,7 +152,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-4 md:gap-8 max-w-lg mx-auto">
+            <div className="grid grid-cols-4 gap-3 md:gap-6 max-w-xl mx-auto">
               {[
                 { value: timeLeft.days, label: 'Days', gradient: 'from-blue-500 to-blue-600' },
                 { value: timeLeft.hours, label: 'Hours', gradient: 'from-purple-500 to-purple-600' },
@@ -164,11 +164,11 @@ export default function Home() {
                   className="text-center group"
                   style={{ animationDelay: `${500 + index * 100}ms` }}
                 >
-                  <div className={`relative ${themeClasses.countdownBg} rounded-2xl p-4 md:p-6 mb-3 overflow-hidden transition-all duration-300 group-hover:scale-105`}>
+                  <div className={`relative ${themeClasses.countdownBg} rounded-2xl p-4 md:p-6 mb-3 overflow-hidden transition-all duration-300 group-hover:scale-105 flex items-center justify-center min-h-[72px] md:min-h-[96px]`}>
                     {/* Hover gradient effect */}
                     <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} opacity-0 group-hover:opacity-20 transition-opacity duration-300`} />
-                    <p className={`text-3xl md:text-5xl font-bold font-mono relative z-10 ${themeClasses.text} transition-transform duration-300 group-hover:scale-110`}>
-                      {String(item.value).padStart(2, '0')}
+                    <p className={`text-3xl md:text-5xl font-bold font-mono relative z-10 ${themeClasses.text} transition-transform duration-300 group-hover:scale-110 tabular-nums`}>
+                      {item.label === 'Days' ? item.value : String(item.value).padStart(2, '0')}
                     </p>
                   </div>
                   <p className={`text-xs md:text-sm ${themeClasses.textMuted}`}>{item.label}</p>
