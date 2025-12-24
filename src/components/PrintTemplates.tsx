@@ -508,10 +508,37 @@ html,body{width:216pt;height:144pt;overflow:hidden;font-family:Helvetica,Arial,s
   }, 300);
 }
 
+// Detect iOS/iPadOS
+function isIOS(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
 // Print 3x2 sticker directly - SINGLE PAGE GUARANTEED
-// Uses hidden iframe to avoid showing browser extensions
+// Uses different approach for iOS (window.print) vs desktop (iframe)
 export function printSticker3x2(graduate: Graduate, elementRef?: HTMLElement | null): void {
-  // Try to get SVG from the rendered element
+  // On iOS/iPad, use window.print() directly - CSS handles the layout
+  if (isIOS()) {
+    // Make the print-badge visible temporarily
+    const printBadge = document.querySelector('.print-badge') as HTMLElement;
+    if (printBadge) {
+      printBadge.style.display = 'flex';
+    }
+
+    // Trigger print
+    window.print();
+
+    // Hide it again after print dialog
+    setTimeout(() => {
+      if (printBadge) {
+        printBadge.style.display = 'none';
+      }
+    }, 1000);
+    return;
+  }
+
+  // Desktop: Use iframe approach
   let svgHtml = '';
 
   if (elementRef) {
@@ -521,7 +548,6 @@ export function printSticker3x2(graduate: Graduate, elementRef?: HTMLElement | n
     }
   }
 
-  // If no SVG found, create a simple text placeholder with the URL
   if (!svgHtml) {
     const titoUrl = graduate.ticketSlug
       ? `https://ti.to/tickets/${graduate.ticketSlug}`
@@ -529,7 +555,6 @@ export function printSticker3x2(graduate: Graduate, elementRef?: HTMLElement | n
     svgHtml = `<div style="width:95pt;height:95pt;border:1px solid #000;display:flex;align-items:center;justify-content:center;font-size:6pt;text-align:center;word-break:break-all;padding:4pt">${titoUrl}</div>`;
   }
 
-  // Use slightly smaller dimensions to prevent overflow at 100% scale
   const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -560,7 +585,6 @@ html, body { width: 216pt; height: 144pt; overflow: hidden; font-family: Helveti
 </body>
 </html>`;
 
-  // Create hidden iframe for printing (avoids showing browser extensions)
   const iframe = document.createElement('iframe');
   iframe.style.position = 'fixed';
   iframe.style.right = '0';
@@ -581,12 +605,10 @@ html, body { width: 216pt; height: 144pt; overflow: hidden; font-family: Helveti
   iframeDoc.write(html);
   iframeDoc.close();
 
-  // Wait for content to load, then print
   setTimeout(() => {
     iframe.contentWindow?.focus();
     iframe.contentWindow?.print();
 
-    // Remove iframe after printing
     setTimeout(() => {
       document.body.removeChild(iframe);
     }, 1000);
@@ -594,9 +616,24 @@ html, body { width: 216pt; height: 144pt; overflow: hidden; font-family: Helveti
 }
 
 // Print 4x6 Badge - BLACK ONLY for thermal/label printer
-// Uses hidden iframe to avoid showing browser extensions
+// Uses different approach for iOS (window.print) vs desktop (iframe)
 export function printBadge4x6(graduate: Graduate, elementRef?: HTMLElement | null): void {
-  // Try to get SVG from the rendered element
+  // On iOS/iPad, use window.print() directly
+  if (isIOS()) {
+    const printBadge = document.querySelector('.print-badge-4x6') as HTMLElement;
+    if (printBadge) {
+      printBadge.style.display = 'block';
+    }
+    window.print();
+    setTimeout(() => {
+      if (printBadge) {
+        printBadge.style.display = 'none';
+      }
+    }, 1000);
+    return;
+  }
+
+  // Desktop: iframe approach
   let svgHtml = '';
 
   if (elementRef) {
@@ -606,7 +643,6 @@ export function printBadge4x6(graduate: Graduate, elementRef?: HTMLElement | nul
     }
   }
 
-  // If no SVG found, create a placeholder
   if (!svgHtml) {
     const titoUrl = graduate.ticketSlug
       ? `https://ti.to/tickets/${graduate.ticketSlug}`
@@ -771,9 +807,24 @@ function generateBarcodeSvg(text: string): string {
 }
 
 // Print Address Label 4x6 - INK-SAVING for WHITE LABEL PAPER
-// Uses hidden iframe to avoid showing browser extensions
+// Uses different approach for iOS (window.print) vs desktop (iframe)
 export function printAddressLabel4x6(data: AddressLabelData, elementRef?: HTMLElement | null): void {
-  // Try to get QR code SVG from the rendered element
+  // On iOS/iPad, use window.print() directly
+  if (isIOS()) {
+    const printBadge = document.querySelector('.print-badge-4x6') as HTMLElement;
+    if (printBadge) {
+      printBadge.style.display = 'block';
+    }
+    window.print();
+    setTimeout(() => {
+      if (printBadge) {
+        printBadge.style.display = 'none';
+      }
+    }, 1000);
+    return;
+  }
+
+  // Desktop: iframe approach
   let qrSvgHtml = '';
 
   if (elementRef) {
@@ -783,7 +834,6 @@ export function printAddressLabel4x6(data: AddressLabelData, elementRef?: HTMLEl
     }
   }
 
-  // If no QR SVG found, create a placeholder
   if (!qrSvgHtml) {
     const titoUrl = data.ticketSlug
       ? `https://ti.to/tickets/${data.ticketSlug}`
