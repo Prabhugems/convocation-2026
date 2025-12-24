@@ -58,22 +58,6 @@ export async function POST(request: NextRequest) {
       if (ticketResult.success && ticketResult.data) {
         graduate = ticketToGraduate(ticketResult.data);
         console.log(`[Scan API] Found graduate via ticket slug: ${graduate.name}`);
-
-        // Merge with Airtable data (including name)
-        if (graduate.convocationNumber) {
-          const airtableResult = await getAirtableDataByConvocationNumber(graduate.convocationNumber);
-          if (airtableResult.success && airtableResult.data) {
-            // ALWAYS use Airtable name if available (has full name with middle name)
-            if (airtableResult.data.name && airtableResult.data.name !== graduate.name) {
-              console.log(`[Scan API] Using Airtable name "${airtableResult.data.name}" instead of Tito name "${graduate.name}"`);
-              graduate.name = airtableResult.data.name;
-            }
-            graduate.phone = graduate.phone || airtableResult.data.mobile;
-            if (airtableResult.data.address.line1) {
-              graduate.address = airtableResult.data.address;
-            }
-          }
-        }
       } else {
         return NextResponse.json(
           { success: false, error: `Ticket not found: ${ticketSlug}` },
@@ -100,22 +84,6 @@ export async function POST(request: NextRequest) {
       }
 
       graduate = registrationToGraduate(regResult.data);
-
-      // Merge with Airtable data (including name)
-      if (graduate.convocationNumber) {
-        const airtableResult = await getAirtableDataByConvocationNumber(graduate.convocationNumber);
-        if (airtableResult.success && airtableResult.data) {
-          // ALWAYS use Airtable name if available (has full name with middle name)
-          if (airtableResult.data.name && airtableResult.data.name !== graduate.name) {
-            console.log(`[Scan API] Using Airtable name "${airtableResult.data.name}" instead of Tito name "${graduate.name}"`);
-            graduate.name = airtableResult.data.name;
-          }
-          graduate.phone = graduate.phone || airtableResult.data.mobile;
-          if (airtableResult.data.address.line1) {
-            graduate.address = airtableResult.data.address;
-          }
-        }
-      }
     }
 
     if (!graduate) {
@@ -125,8 +93,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create check-in at the station
-    const checkinResult = await checkinAtStation(graduate.ticketId, stationId as StationId);
+    // Run Airtable fetch and check-in in PARALLEL for speed
+    const [airtableResult, checkinResult] = await Promise.all([
+      graduate.convocationNumber
+        ? getAirtableDataByConvocationNumber(graduate.convocationNumber)
+        : Promise.resolve({ success: false, data: null }),
+      checkinAtStation(graduate.ticketId, stationId as StationId)
+    ]);
+
+    // Merge Airtable data
+    if (airtableResult.success && airtableResult.data) {
+      // ALWAYS use Airtable name if available (has full name with middle name)
+      if (airtableResult.data.name && airtableResult.data.name !== graduate.name) {
+        console.log(`[Scan API] Using Airtable name "${airtableResult.data.name}" instead of Tito name "${graduate.name}"`);
+        graduate.name = airtableResult.data.name;
+      }
+      graduate.phone = graduate.phone || airtableResult.data.mobile;
+      if (airtableResult.data.address?.line1) {
+        graduate.address = airtableResult.data.address;
+      }
+    }
 
     if (!checkinResult.success) {
       // If already checked in, still return the graduate info
@@ -141,14 +127,6 @@ export async function POST(request: NextRequest) {
         { success: false, error: checkinResult.error || 'Failed to record scan' },
         { status: 400 }
       );
-    }
-
-    // For address-label station, try to fetch address from Airtable
-    if (stationId === 'address-label' && graduate.convocationNumber) {
-      const addressResult = await getAddressByConvocationNumber(graduate.convocationNumber);
-      if (addressResult.success && addressResult.data) {
-        graduate.address = addressResult.data;
-      }
     }
 
     // Update tracking info for final dispatch
