@@ -73,12 +73,8 @@ export default function Home() {
     badge: theme === 'dark'
       ? 'bg-white/10 text-white/70'
       : 'bg-gray-100 text-gray-600',
-    countdownBg: theme === 'dark'
-      ? 'bg-white/10'
-      : 'bg-gray-100',
-    eventCard: theme === 'dark'
-      ? 'bg-white/5'
-      : 'bg-gray-50',
+    countdownBg: 'bg-slate-800/90',  // Consistent dark style for countdown
+    eventCard: 'bg-slate-800/90',  // Consistent dark style for event details
   };
 
   return (
@@ -164,10 +160,10 @@ export default function Home() {
                   className="text-center group"
                   style={{ animationDelay: `${500 + index * 100}ms` }}
                 >
-                  <div className={`relative ${themeClasses.countdownBg} rounded-2xl p-4 md:p-6 mb-3 overflow-hidden transition-all duration-300 group-hover:scale-105 flex items-center justify-center min-h-[72px] md:min-h-[96px]`}>
+                  <div className={`relative ${themeClasses.countdownBg} rounded-2xl p-4 md:p-6 mb-3 overflow-hidden transition-all duration-300 group-hover:scale-105 flex items-center justify-center min-h-[72px] md:min-h-[96px] border border-slate-700/50`}>
                     {/* Hover gradient effect */}
                     <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} opacity-0 group-hover:opacity-20 transition-opacity duration-300`} />
-                    <p className={`text-3xl md:text-5xl font-bold font-mono relative z-10 ${themeClasses.text} transition-transform duration-300 group-hover:scale-110 tabular-nums`}>
+                    <p className="text-3xl md:text-5xl font-bold font-mono relative z-10 text-white transition-transform duration-300 group-hover:scale-110 tabular-nums">
                       {item.label === 'Days' ? item.value : String(item.value).padStart(2, '0')}
                     </p>
                   </div>
@@ -321,14 +317,14 @@ export default function Home() {
               return (
                 <div
                   key={item.title}
-                  className={`group flex items-center gap-4 p-5 ${themeClasses.eventCard} rounded-2xl transition-all duration-300 hover:scale-[1.02] cursor-pointer`}
+                  className={`group flex items-center gap-4 p-5 ${themeClasses.eventCard} rounded-2xl transition-all duration-300 hover:scale-[1.02] cursor-pointer border border-slate-700/50`}
                 >
                   <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${item.gradient} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
                     <Icon className={`w-6 h-6 ${iconColors[item.color]}`} />
                   </div>
                   <div>
-                    <p className={`font-semibold ${themeClasses.text}`}>{item.title}</p>
-                    <p className={`text-sm ${themeClasses.textMuted}`}>{item.subtitle}</p>
+                    <p className="font-semibold text-white">{item.title}</p>
+                    <p className="text-sm text-slate-300">{item.subtitle}</p>
                   </div>
                 </div>
               );
