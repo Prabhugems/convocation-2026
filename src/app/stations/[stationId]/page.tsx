@@ -793,6 +793,7 @@ export default function StationPage() {
       </div>
 
       {/* Print Badge - Only this prints (3x2 inch sticker) */}
+      {/* FIXED: Exact 3in × 2in sizing with 1.1in QR code */}
       {lastScanned && station.printType === '3x2-sticker' && (
         <div
           ref={printRef}
@@ -800,27 +801,45 @@ export default function StationPage() {
           style={{
             width: '3in',
             height: '2in',
+            maxWidth: '3in',
+            maxHeight: '2in',
             backgroundColor: 'white',
             display: 'none',
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '0.15in 0.2in',
+            padding: '0.15in',
             fontFamily: 'Helvetica, Arial, sans-serif',
             boxSizing: 'border-box',
+            overflow: 'hidden',
           }}
         >
-          <div className="sticker-left" style={{ flex: '0 0 55%', paddingRight: '0.1in' }}>
+          <div className="sticker-left" style={{
+            flex: '0 0 1.6in',
+            maxWidth: '1.6in',
+            paddingRight: '0.1in',
+            overflow: 'hidden',
+          }}>
             <p style={{ fontSize: '9pt', color: '#333', margin: 0, marginBottom: '2px' }}>CON. No-</p>
-            <p style={{ fontSize: '14pt', fontWeight: 'bold', color: '#000', margin: 0, marginBottom: '6px' }}>
+            <p style={{ fontSize: '11pt', fontWeight: 'bold', color: '#000', margin: 0, marginBottom: '4px' }}>
               {lastScanned.convocationNumber || 'N/A'}
             </p>
-            <p style={{ fontSize: '11pt', color: '#000', margin: 0 }}>Dr. {lastScanned.name}</p>
+            <p style={{ fontSize: '10pt', color: '#000', margin: 0, lineHeight: 1.2 }}>Dr. {lastScanned.name}</p>
           </div>
-          <div className="sticker-right" style={{ flex: '0 0 40%', display: 'flex', justifyContent: 'flex-end' }}>
+          <div className="sticker-right" style={{
+            flex: '0 0 1.1in',
+            width: '1.1in',
+            height: '1.1in',
+            maxWidth: '1.1in',
+            maxHeight: '1.1in',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+          }}>
             <QRCode
               value={lastScanned.ticketSlug ? `https://ti.to/tickets/${lastScanned.ticketSlug}` : `https://ti.to/amasi/convocation-2026-kolkata/tickets/${lastScanned.registrationNumber}`}
-              size={100}
+              size={105}
+              style={{ width: '1.1in', height: '1.1in', maxWidth: '1.1in', maxHeight: '1.1in' }}
             />
           </div>
         </div>

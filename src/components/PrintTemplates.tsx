@@ -9,6 +9,7 @@ interface PrintProps {
 }
 
 // 3x2 inch sticker for certificate envelope (LANDSCAPE: 3" wide × 2" tall)
+// FIXED: Exact sizing - text 1.6in, QR 1.1in, padding 0.15in on each side
 // Layout: Left side has CON. No and Name, Right side has QR code
 export const Sticker3x2 = forwardRef<HTMLDivElement, PrintProps>(({ graduate }, ref) => {
   // Generate Tito ticket URL for QR code
@@ -23,24 +24,29 @@ export const Sticker3x2 = forwardRef<HTMLDivElement, PrintProps>(({ graduate }, 
       style={{
         width: '3in',
         height: '2in',
+        maxWidth: '3in',
+        maxHeight: '2in',
         backgroundColor: 'white',
         display: 'flex',
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0.15in 0.2in',
+        padding: '0.15in',
         fontFamily: 'Helvetica, Arial, sans-serif',
         boxSizing: 'border-box',
+        overflow: 'hidden',
       }}
     >
-      {/* Left side - 60% - Text content */}
+      {/* Left side - 1.6in - Text content */}
       <div
         style={{
-          flex: '0 0 55%',
+          flex: '0 0 1.6in',
+          maxWidth: '1.6in',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
           paddingRight: '0.1in',
+          overflow: 'hidden',
         }}
       >
         {/* CON. No- label */}
@@ -54,15 +60,14 @@ export const Sticker3x2 = forwardRef<HTMLDivElement, PrintProps>(({ graduate }, 
         >
           CON. No-
         </p>
-        {/* Convocation Number - Bold and Large */}
+        {/* Convocation Number - Bold */}
         <p
           style={{
-            fontSize: '14pt',
+            fontSize: '11pt',
             fontWeight: 'bold',
             color: '#000',
             margin: 0,
-            marginBottom: '6px',
-            letterSpacing: '0.5px',
+            marginBottom: '4px',
           }}
         >
           {graduate.convocationNumber || 'N/A'}
@@ -70,7 +75,7 @@ export const Sticker3x2 = forwardRef<HTMLDivElement, PrintProps>(({ graduate }, 
         {/* Name with Dr. prefix */}
         <p
           style={{
-            fontSize: '11pt',
+            fontSize: '10pt',
             fontWeight: 'normal',
             color: '#000',
             margin: 0,
@@ -81,10 +86,14 @@ export const Sticker3x2 = forwardRef<HTMLDivElement, PrintProps>(({ graduate }, 
         </p>
       </div>
 
-      {/* Right side - 40% - QR Code */}
+      {/* Right side - 1.1in - QR Code */}
       <div
         style={{
-          flex: '0 0 40%',
+          flex: '0 0 1.1in',
+          width: '1.1in',
+          height: '1.1in',
+          maxWidth: '1.1in',
+          maxHeight: '1.1in',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'flex-end',
@@ -92,10 +101,12 @@ export const Sticker3x2 = forwardRef<HTMLDivElement, PrintProps>(({ graduate }, 
       >
         <QRCode
           value={titoUrl}
-          size={108}  // ~1.5 inches at 72 DPI
+          size={105}  // ~1.1 inches at 96 DPI
           style={{
-            maxWidth: '1.5in',
-            maxHeight: '1.5in',
+            width: '1.1in',
+            height: '1.1in',
+            maxWidth: '1.1in',
+            maxHeight: '1.1in',
           }}
         />
       </div>
@@ -469,6 +480,7 @@ body{font-family:Helvetica,Arial,sans-serif}
 }
 
 // Dedicated 3x2 sticker print - guaranteed single page
+// FIXED: Enforce exact 3in × 2in (216pt × 144pt) sizing with proper QR constraints
 function print3x2Sticker(convNumber: string, name: string, qrSvgHtml: string): void {
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
@@ -476,23 +488,24 @@ function print3x2Sticker(convNumber: string, name: string, qrSvgHtml: string): v
     return;
   }
 
-  // Minimal HTML - no extra whitespace, no extra elements
+  // Minimal HTML - EXACT 3x2 inch sizing (216pt × 144pt at 72dpi)
+  // QR code constrained to 75pt (~1.04 inch) to leave room for text
   const html = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <title>Sticker</title>
 <style>
-@page{size:216pt 144pt;margin:0}
+@page{size:3in 2in;margin:0!important}
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{width:216pt;height:144pt;overflow:hidden;font-family:Helvetica,Arial,sans-serif}
-.s{width:216pt;height:144pt;display:flex;align-items:center;padding:10pt 14pt;background:#fff}
-.l{flex:1}
-.t{font-size:9pt;color:#333}
-.n{font-size:14pt;font-weight:700;margin:2pt 0 5pt}
-.m{font-size:11pt}
-.r{width:100pt;height:100pt;display:flex;align-items:center;justify-content:flex-end}
-.r svg{width:100pt;height:100pt}
+html,body{width:3in!important;height:2in!important;max-width:3in!important;max-height:2in!important;overflow:hidden!important;font-family:Helvetica,Arial,sans-serif;background:#fff}
+.s{width:3in;height:2in;max-width:3in;max-height:2in;display:flex;align-items:center;justify-content:space-between;padding:0.15in;background:#fff;overflow:hidden;box-sizing:border-box}
+.l{flex:0 0 1.6in;max-width:1.6in;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
+.t{font-size:9pt;color:#333;margin-bottom:2pt}
+.n{font-size:11pt;font-weight:700;margin-bottom:4pt;word-wrap:break-word}
+.m{font-size:10pt;line-height:1.2;word-wrap:break-word}
+.r{flex:0 0 1.1in;width:1.1in;height:1.1in;display:flex;align-items:center;justify-content:flex-end}
+.r svg{width:1.1in!important;height:1.1in!important;max-width:1.1in!important;max-height:1.1in!important;display:block}
 </style>
 </head>
 <body><div class="s"><div class="l"><div class="t">CON. No-</div><div class="n">${convNumber}</div><div class="m">${name}</div></div><div class="r">${qrSvgHtml}</div></div></body>
@@ -516,6 +529,7 @@ function isIOS(): boolean {
 }
 
 // Print 3x2 sticker directly - SINGLE PAGE GUARANTEED
+// FIXED: Enforce exact 3in × 2in sizing with constrained QR code
 // Uses different approach for iOS (window.print) vs desktop (iframe)
 export function printSticker3x2(graduate: Graduate, elementRef?: HTMLElement | null): void {
   // On iOS/iPad, use window.print() directly - CSS handles the layout
@@ -552,25 +566,65 @@ export function printSticker3x2(graduate: Graduate, elementRef?: HTMLElement | n
     const titoUrl = graduate.ticketSlug
       ? `https://ti.to/tickets/${graduate.ticketSlug}`
       : graduate.registrationNumber;
-    svgHtml = `<div style="width:95pt;height:95pt;border:1px solid #000;display:flex;align-items:center;justify-content:center;font-size:6pt;text-align:center;word-break:break-all;padding:4pt">${titoUrl}</div>`;
+    svgHtml = `<div style="width:1.1in;height:1.1in;border:1px solid #000;display:flex;align-items:center;justify-content:center;font-size:6pt;text-align:center;word-break:break-all;padding:4pt">${titoUrl}</div>`;
   }
 
+  // EXACT 3x2 inch sizing - QR constrained to 1.1in, text to 1.6in
   const html = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <title>Sticker</title>
 <style>
-@page { size: 216pt 144pt; margin: 0; }
+@page { size: 3in 2in; margin: 0 !important; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { width: 216pt; height: 144pt; overflow: hidden; font-family: Helvetica, Arial, sans-serif; background: #fff; }
-.s { width: 214pt; height: 142pt; display: flex; align-items: center; padding: 8pt 12pt; margin: 1pt; }
-.l { flex: 1; }
-.t { font-size: 9pt; color: #333; }
-.n { font-size: 14pt; font-weight: 700; margin: 2pt 0 4pt; }
-.m { font-size: 11pt; }
-.r { display: flex; align-items: center; justify-content: flex-end; }
-.r svg { width: 95pt; height: 95pt; }
+html, body {
+  width: 3in !important;
+  height: 2in !important;
+  max-width: 3in !important;
+  max-height: 2in !important;
+  overflow: hidden !important;
+  font-family: Helvetica, Arial, sans-serif;
+  background: #fff;
+}
+.s {
+  width: 3in;
+  height: 2in;
+  max-width: 3in;
+  max-height: 2in;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.15in;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.l {
+  flex: 0 0 1.6in;
+  max-width: 1.6in;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+}
+.t { font-size: 9pt; color: #333; margin-bottom: 2pt; }
+.n { font-size: 11pt; font-weight: 700; margin-bottom: 4pt; word-wrap: break-word; }
+.m { font-size: 10pt; line-height: 1.2; word-wrap: break-word; }
+.r {
+  flex: 0 0 1.1in;
+  width: 1.1in;
+  height: 1.1in;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+.r svg {
+  width: 1.1in !important;
+  height: 1.1in !important;
+  max-width: 1.1in !important;
+  max-height: 1.1in !important;
+  display: block;
+}
 </style>
 </head>
 <body>
