@@ -104,6 +104,7 @@ export const Sticker3x2 = forwardRef<HTMLDivElement, PrintProps>(({ graduate }, 
         <QRCode
           value={titoUrl}
           size={106}  // 28mm ≈ 106px at 96 DPI
+          level="M"   // Medium error correction for better scanning
           style={{
             width: '28mm',
             height: '28mm',
@@ -201,6 +202,7 @@ export const Badge4x6 = forwardRef<HTMLDivElement, PrintProps>(({ graduate }, re
         <QRCode
           value={titoUrl}
           size={144}
+          level="M"   // Medium error correction for better scanning
           style={{
             width: '38mm',
             height: '38mm',
@@ -394,6 +396,7 @@ export const AddressLabel4x6 = forwardRef<HTMLDivElement, { data: AddressLabelDa
             <QRCode
               value={titoUrl}
               size={96}
+              level="M"   // Medium error correction for better scanning
               style={{
                 width: '1in',
                 height: '1in',

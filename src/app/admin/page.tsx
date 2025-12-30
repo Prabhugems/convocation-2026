@@ -1427,7 +1427,7 @@ export default function AdminPage() {
                     </div>
                     <div className="pt-3 border-t border-slate-700/50 space-y-2">
                       <p className="text-xs text-slate-500">
-                        Run calibration when loading new label stock to prevent over-feeding.
+                        Run calibration when loading new label stock. Clear queue if printing is stuck.
                       </p>
                       <div className="flex gap-2">
                         <button
@@ -1443,7 +1443,7 @@ export default function AdminPage() {
                           className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors flex items-center justify-center gap-2"
                         >
                           <RefreshCw className="w-4 h-4" />
-                          Calibrate Printer
+                          Calibrate
                         </button>
                         <button
                           onClick={async () => {
@@ -1459,6 +1459,21 @@ export default function AdminPage() {
                         >
                           <Printer className="w-4 h-4" />
                           Test Print
+                        </button>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const res = await fetch('/api/print/zpl?action=clear-queue');
+                              const data = await res.json();
+                              alert(data.success ? 'Print queue cleared!' : `Error: ${data.error}`);
+                            } catch {
+                              alert('Failed to clear print queue');
+                            }
+                          }}
+                          className="flex-1 px-3 py-2 bg-red-600/80 hover:bg-red-500 text-white text-sm rounded-lg transition-colors flex items-center justify-center gap-2"
+                        >
+                          <X className="w-4 h-4" />
+                          Clear Queue
                         </button>
                       </div>
                     </div>

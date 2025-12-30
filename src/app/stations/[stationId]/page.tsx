@@ -840,6 +840,7 @@ export default function StationPage() {
             <QRCode
               value={lastScanned.ticketSlug ? `https://ti.to/tickets/${lastScanned.ticketSlug}` : `https://ti.to/amasi/convocation-2026-kolkata/tickets/${lastScanned.registrationNumber}`}
               size={106}
+              level="M"
               style={{ width: '28mm', height: '28mm', maxWidth: '28mm', maxHeight: '28mm' }}
             />
           </div>

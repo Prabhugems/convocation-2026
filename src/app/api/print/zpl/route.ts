@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generatePackingLabel, generateBadgeLabel, generateCalibrationCommand, sendToPrinter, DEFAULT_PRINTER_SETTINGS } from '@/lib/zpl';
+import { generatePackingLabel, generateBadgeLabel, generateCalibrationCommand, generateClearQueueCommand, sendToPrinter, DEFAULT_PRINTER_SETTINGS } from '@/lib/zpl';
 
 interface PrintRequest {
   type: 'packing' | 'badge';
@@ -87,12 +87,12 @@ export async function POST(request: NextRequest) {
 /**
  * GET /api/print/zpl
  *
- * Test printer connection, print test label, or calibrate printer
+ * Test printer connection, print test label, calibrate, or clear queue
  *
  * Query params:
  * - ip: Printer IP address
  * - port: Printer port
- * - action: 'test' (default) or 'calibrate'
+ * - action: 'test' (default), 'calibrate', or 'clear-queue'
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -125,12 +125,39 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // Handle clear queue
+  if (action === 'clear-queue') {
+    console.log(`[Print API] Clearing print queue on ${printerIP}:${printerPort}`);
+
+    const clearZpl = generateClearQueueCommand();
+    const result = await sendToPrinter(clearZpl, printerIP, printerPort);
+
+    if (result.success) {
+      return NextResponse.json({
+        success: true,
+        message: 'Print queue cleared successfully.',
+        printer: { ip: printerIP, port: printerPort },
+      });
+    } else {
+      return NextResponse.json(
+        {
+          success: false,
+          error: result.error,
+          printer: { ip: printerIP, port: printerPort },
+        },
+        { status: 500 }
+      );
+    }
+  }
+
   // Default: Test print with label dimensions
   const testZpl = `^XA
 ^CI28
 ^PW609
 ^LL406
 ^MNY
+^LH10,10
+^MD10
 ^CF0,40
 ^FO50,50^FD*** TEST PRINT ***^FS
 ^CF0,30

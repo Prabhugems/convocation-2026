@@ -17,19 +17,31 @@ export interface ZPLLabelData {
 /**
  * ZPL initialization commands for label dimensions
  * Prevents printer from feeding extra labels
+ *
+ * Commands:
+ * ^PW - Print Width in dots
+ * ^LL - Label Length in dots
+ * ^MNY - Media type: Gap/notch sensing
+ * ^POI - Print Orientation Inverted (180° rotation)
+ * ^LH - Label Home (X,Y offset from top-left)
+ * ^MD - Media Darkness (-30 to 30, higher = darker)
  */
 const ZPL_PACKING_INIT = `
 ^PW609
 ^LL406
 ^MNY
 ^POI
-`.trim();  // 75mm×50mm, gap sensing, inverted orientation
+^LH10,10
+^MD10
+`.trim();  // 75mm×50mm, gap sensing, inverted, with offset and darkness
 
 const ZPL_BADGE_INIT = `
 ^PW803
 ^LL1229
 ^MNY
-`.trim();  // 100mm×153mm, gap sensing
+^LH10,10
+^MD10
+`.trim();  // 100mm×153mm, gap sensing, with offset and darkness
 
 /**
  * Generate ZPL code for 75mm × 50mm packing label
@@ -43,7 +55,8 @@ const ZPL_BADGE_INIT = `
 export function generatePackingLabel(data: ZPLLabelData): string {
   // Sanitize inputs to prevent ZPL injection
   const convNum = sanitizeZPL(data.convocationNumber || 'N/A');
-  const name = sanitizeZPL(data.name || 'Unknown');
+  // Truncate long names to fit on label (max 22 chars for packing label)
+  const name = truncateForLabel(sanitizeZPL(data.name || 'Unknown'), 22);
   const ticketUrl = sanitizeZPL(data.ticketUrl || '');
 
   // ZPL commands:
@@ -108,6 +121,25 @@ export function generateCalibrationCommand(): string {
   return `~JC^XA^JUS^XZ`;
   // ~JC = Calibrate label length sensor
   // ^JUS = Save settings to printer
+}
+
+/**
+ * Generate ZPL command to clear print queue
+ * Use when print queue is stuck
+ */
+export function generateClearQueueCommand(): string {
+  return `~JA^XA^XZ`;
+  // ~JA = Cancel all queued jobs
+  // ^XA^XZ = Empty format to clear buffer
+}
+
+/**
+ * Truncate long text for label display
+ * Prevents text overflow on small labels
+ */
+export function truncateForLabel(text: string, maxLength: number = 25): string {
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength - 2) + '..';
 }
 
 /**
