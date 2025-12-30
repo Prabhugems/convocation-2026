@@ -8,8 +8,9 @@ interface PrintProps {
   graduate: Graduate;
 }
 
-// 3x2 inch sticker for certificate envelope (LANDSCAPE: 3" wide × 2" tall)
-// FIXED: Exact sizing - text 1.6in, QR 1.1in, padding 0.15in on each side
+// 75mm × 50mm sticker for certificate envelope (LANDSCAPE: 75mm wide × 50mm tall)
+// FIXED: Exact sizing in millimeters for thermal printer
+// FIXED: rotate(180deg) to fix reversed/upside-down print on Zebra ZD230
 // Layout: Left side has CON. No and Name, Right side has QR code
 export const Sticker3x2 = forwardRef<HTMLDivElement, PrintProps>(({ graduate }, ref) => {
   // Generate Tito ticket URL for QR code
@@ -22,40 +23,41 @@ export const Sticker3x2 = forwardRef<HTMLDivElement, PrintProps>(({ graduate }, 
       ref={ref}
       className="sticker-3x2"
       style={{
-        width: '3in',
-        height: '2in',
-        maxWidth: '3in',
-        maxHeight: '2in',
+        width: '75mm',
+        height: '50mm',
+        maxWidth: '75mm',
+        maxHeight: '50mm',
         backgroundColor: 'white',
         display: 'flex',
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0.15in',
+        padding: '3mm',
         fontFamily: 'Helvetica, Arial, sans-serif',
         boxSizing: 'border-box',
         overflow: 'hidden',
+        transform: 'rotate(180deg)',  // Fix reversed print on Zebra
       }}
     >
-      {/* Left side - 1.6in - Text content */}
+      {/* Left side - ~40mm - Text content */}
       <div
         style={{
-          flex: '0 0 1.6in',
-          maxWidth: '1.6in',
+          flex: '0 0 40mm',
+          maxWidth: '40mm',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
-          paddingRight: '0.1in',
+          paddingRight: '2mm',
           overflow: 'hidden',
         }}
       >
         {/* CON. No- label */}
         <p
           style={{
-            fontSize: '9pt',
+            fontSize: '7pt',
             color: '#333',
             margin: 0,
-            marginBottom: '2px',
+            marginBottom: '1mm',
           }}
         >
           CON. No-
@@ -63,11 +65,11 @@ export const Sticker3x2 = forwardRef<HTMLDivElement, PrintProps>(({ graduate }, 
         {/* Convocation Number - Bold */}
         <p
           style={{
-            fontSize: '11pt',
+            fontSize: '10pt',
             fontWeight: 'bold',
             color: '#000',
             margin: 0,
-            marginBottom: '4px',
+            marginBottom: '2mm',
           }}
         >
           {graduate.convocationNumber || 'N/A'}
@@ -75,7 +77,7 @@ export const Sticker3x2 = forwardRef<HTMLDivElement, PrintProps>(({ graduate }, 
         {/* Name with Dr. prefix */}
         <p
           style={{
-            fontSize: '10pt',
+            fontSize: '8pt',
             fontWeight: 'normal',
             color: '#000',
             margin: 0,
@@ -86,14 +88,14 @@ export const Sticker3x2 = forwardRef<HTMLDivElement, PrintProps>(({ graduate }, 
         </p>
       </div>
 
-      {/* Right side - 1.1in - QR Code */}
+      {/* Right side - 28mm - QR Code */}
       <div
         style={{
-          flex: '0 0 1.1in',
-          width: '1.1in',
-          height: '1.1in',
-          maxWidth: '1.1in',
-          maxHeight: '1.1in',
+          flex: '0 0 28mm',
+          width: '28mm',
+          height: '28mm',
+          maxWidth: '28mm',
+          maxHeight: '28mm',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'flex-end',
@@ -101,12 +103,13 @@ export const Sticker3x2 = forwardRef<HTMLDivElement, PrintProps>(({ graduate }, 
       >
         <QRCode
           value={titoUrl}
-          size={105}  // ~1.1 inches at 96 DPI
+          size={106}  // 28mm ≈ 106px at 96 DPI
+          level="M"   // Medium error correction for better scanning
           style={{
-            width: '1.1in',
-            height: '1.1in',
-            maxWidth: '1.1in',
-            maxHeight: '1.1in',
+            width: '28mm',
+            height: '28mm',
+            maxWidth: '28mm',
+            maxHeight: '28mm',
           }}
         />
       </div>
@@ -115,9 +118,9 @@ export const Sticker3x2 = forwardRef<HTMLDivElement, PrintProps>(({ graduate }, 
 });
 Sticker3x2.displayName = 'Sticker3x2';
 
-// 4x6 inch badge for registration - BLACK ONLY for thermal/label printer
+// 100mm × 153mm badge for registration - BLACK ONLY for thermal/label printer
 // Pre-printed overlay has orange header/footer - we print only black content
-// FIXED: Exact 4in × 6in sizing with proper constraints
+// FIXED: Content shrunk to 75% to fit properly on thermal printer
 // MUST MATCH digital badge layout exactly for alignment with pre-printed paper
 export const Badge4x6 = forwardRef<HTMLDivElement, PrintProps>(({ graduate }, ref) => {
   // Generate Tito ticket URL for QR code
@@ -130,115 +133,116 @@ export const Badge4x6 = forwardRef<HTMLDivElement, PrintProps>(({ graduate }, re
       ref={ref}
       className="badge-4x6"
       style={{
-        width: '4in',
-        height: '6in',
-        maxWidth: '4in',
-        maxHeight: '6in',
+        width: '100mm',
+        height: '153mm',
+        maxWidth: '100mm',
+        maxHeight: '153mm',
         backgroundColor: 'white',
         fontFamily: 'Arial, Helvetica, sans-serif',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        paddingTop: '0.75in',    // Skip overlay header (~220px at 300dpi = 0.73in)
-        paddingBottom: '0.4in',  // Skip overlay footer
-        paddingLeft: '0.15in',
-        paddingRight: '0.15in',
+        paddingTop: '14mm',    // Skip overlay header (reduced)
+        paddingBottom: '8mm',  // Skip overlay footer (reduced)
+        paddingLeft: '3mm',
+        paddingRight: '3mm',
         boxSizing: 'border-box',
         overflow: 'hidden',
       }}
     >
-      {/* CONVOCATION 2026 - Black, large, bold */}
-      <div
-        style={{
-          fontSize: '21pt',
-          fontWeight: 'bold',
-          color: '#000',
-          textAlign: 'center',
-          marginBottom: '8pt',
-          letterSpacing: '1px',
-        }}
-      >
-        CONVOCATION 2026
-      </div>
-
-      {/* Course name - Black bold text */}
+      {/* CONVOCATION 2026 - Shrunk to 75% */}
       <div
         style={{
           fontSize: '16pt',
           fontWeight: 'bold',
           color: '#000',
           textAlign: 'center',
-          marginBottom: '10pt',
+          marginBottom: '6pt',
+          letterSpacing: '0.5px',
+        }}
+      >
+        CONVOCATION 2026
+      </div>
+
+      {/* Course name - Shrunk */}
+      <div
+        style={{
+          fontSize: '12pt',
+          fontWeight: 'bold',
+          color: '#000',
+          textAlign: 'center',
+          marginBottom: '8pt',
         }}
       >
         {graduate.course || 'FMAS Course'}
       </div>
 
-      {/* Name with Dr. prefix - Black, large, bold */}
+      {/* Name with Dr. prefix - Shrunk */}
       <div
         style={{
-          fontSize: '19pt',
+          fontSize: '14pt',
           fontWeight: 'bold',
           color: '#000',
           textAlign: 'center',
-          marginBottom: '10pt',
+          marginBottom: '8pt',
           lineHeight: '1.2',
         }}
       >
         Dr. {graduate.name}
       </div>
 
-      {/* QR Code - centered, constrained to 1.5in */}
+      {/* QR Code - Shrunk to 28mm */}
       <div
         style={{
           display: 'flex',
           justifyContent: 'center',
-          marginBottom: '10pt',
+          marginBottom: '2mm',
         }}
       >
         <QRCode
           value={titoUrl}
-          size={144}
+          size={106}
+          level="M"   // Medium error correction for better scanning
           style={{
-            width: '1.5in',
-            height: '1.5in',
-            maxWidth: '1.5in',
-            maxHeight: '1.5in',
+            width: '28mm',
+            height: '28mm',
+            maxWidth: '28mm',
+            maxHeight: '28mm',
           }}
         />
       </div>
 
-      {/* Convocation Number - Black, bold */}
+      {/* Convocation Number - Shrunk */}
       <div
         style={{
-          fontSize: '17pt',
+          fontSize: '13pt',
           fontWeight: 'bold',
           color: '#000',
           textAlign: 'center',
-          letterSpacing: '1px',
-          marginBottom: '12pt',
+          letterSpacing: '0.5px',
+          marginBottom: '10pt',
         }}
       >
         {graduate.convocationNumber || ''}
       </div>
 
-      {/* Collection Info */}
+      {/* Collection Info - Shrunk */}
       <div
         style={{
-          fontSize: '9pt',
+          fontSize: '7pt',
           color: '#333',
           textAlign: 'center',
-          marginBottom: '2pt',
+          marginBottom: '1pt',
         }}
       >
         Collect your certificate on 28th August 2026
       </div>
       <div
         style={{
-          fontSize: '9pt',
+          fontSize: '7pt',
           color: '#333',
           textAlign: 'center',
-          marginBottom: '10pt',
+          marginBottom: '8pt',
         }}
       >
         at AMASI Office (Venue)
@@ -247,20 +251,20 @@ export const Badge4x6 = forwardRef<HTMLDivElement, PrintProps>(({ graduate }, re
       {/* Separator line */}
       <div
         style={{
-          width: '80%',
+          width: '70%',
           height: '1px',
           backgroundColor: '#ccc',
-          marginBottom: '8pt',
+          marginBottom: '6pt',
         }}
       />
 
-      {/* Disclaimer note */}
+      {/* Disclaimer note - Shrunk */}
       <div
         style={{
-          fontSize: '6pt',
+          fontSize: '5pt',
           color: '#666',
           textAlign: 'center',
-          lineHeight: '1.4',
+          lineHeight: '1.3',
         }}
       >
         This badge is valid for Convocation Ceremony only,
@@ -285,8 +289,8 @@ export interface AddressLabelData {
   dtdcAvailable?: boolean;
 }
 
-// 4x6 inch address label - INK-SAVING design for WHITE LABEL PAPER
-// FIXED: Exact 4in × 6in sizing with proper constraints
+// 100mm × 153mm address label - INK-SAVING design for WHITE LABEL PAPER
+// FIXED: Exact sizing in millimeters for thermal printer
 // No filled bars - just text and thin lines
 export const AddressLabel4x6 = forwardRef<HTMLDivElement, { data: AddressLabelData }>(({ data }, ref) => {
   // Generate Tito ticket URL for QR code
@@ -299,20 +303,20 @@ export const AddressLabel4x6 = forwardRef<HTMLDivElement, { data: AddressLabelDa
       ref={ref}
       className="address-label-4x6"
       style={{
-        width: '4in',
-        height: '6in',
-        maxWidth: '4in',
-        maxHeight: '6in',
+        width: '100mm',
+        height: '153mm',
+        maxWidth: '100mm',
+        maxHeight: '153mm',
         backgroundColor: 'white',
         fontFamily: 'Helvetica, Arial, sans-serif',
         display: 'flex',
         flexDirection: 'column',
         boxSizing: 'border-box',
         overflow: 'hidden',
-        paddingTop: '20pt',
-        paddingLeft: '15pt',
-        paddingRight: '15pt',
-        paddingBottom: '15pt',
+        paddingTop: '7mm',
+        paddingLeft: '5mm',
+        paddingRight: '5mm',
+        paddingBottom: '5mm',
       }}
     >
       {/* TOP: Course name (bold text, no bar) + thin separator line */}
@@ -392,6 +396,7 @@ export const AddressLabel4x6 = forwardRef<HTMLDivElement, { data: AddressLabelDa
             <QRCode
               value={titoUrl}
               size={96}
+              level="M"   // Medium error correction for better scanning
               style={{
                 width: '1in',
                 height: '1in',
@@ -509,8 +514,8 @@ body{font-family:Helvetica,Arial,sans-serif}
   }, 250);
 }
 
-// Dedicated 3x2 sticker print - guaranteed single page
-// FIXED: Enforce exact 3in × 2in (216pt × 144pt) sizing with proper QR constraints
+// Dedicated 75mm × 50mm sticker print - guaranteed single page
+// FIXED: Uses CSS transform rotate(180deg) with all browser prefixes
 function print3x2Sticker(convNumber: string, name: string, qrSvgHtml: string): void {
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
@@ -518,27 +523,36 @@ function print3x2Sticker(convNumber: string, name: string, qrSvgHtml: string): v
     return;
   }
 
-  // Minimal HTML - EXACT 3x2 inch sizing (216pt × 144pt at 72dpi)
-  // QR code constrained to 75pt (~1.04 inch) to leave room for text
+  // Layout: Text on LEFT, QR on RIGHT, rotated 180° for Zebra ZD230
   const html = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <title>Sticker</title>
 <style>
-@page{size:3in 2in;margin:0!important}
+@page{size:75mm 50mm;margin:0!important}
+@media print{html,body{page-break-after:avoid!important;page-break-before:avoid!important;page-break-inside:avoid!important}}
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{width:3in!important;height:2in!important;max-width:3in!important;max-height:2in!important;overflow:hidden!important;font-family:Helvetica,Arial,sans-serif;background:#fff}
-.s{width:3in;height:2in;max-width:3in;max-height:2in;display:flex;align-items:center;justify-content:space-between;padding:0.15in;background:#fff;overflow:hidden;box-sizing:border-box}
-.l{flex:0 0 1.6in;max-width:1.6in;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
-.t{font-size:9pt;color:#333;margin-bottom:2pt}
-.n{font-size:11pt;font-weight:700;margin-bottom:4pt;word-wrap:break-word}
-.m{font-size:10pt;line-height:1.2;word-wrap:break-word}
-.r{flex:0 0 1.1in;width:1.1in;height:1.1in;display:flex;align-items:center;justify-content:flex-end}
-.r svg{width:1.1in!important;height:1.1in!important;max-width:1.1in!important;max-height:1.1in!important;display:block}
+html,body{width:75mm!important;height:50mm!important;max-width:75mm!important;max-height:50mm!important;overflow:hidden!important;font-family:Helvetica,Arial,sans-serif;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.s{width:75mm;height:50mm;display:flex;align-items:center;justify-content:space-between;padding:3mm;background:#fff;overflow:hidden;transform:rotate(180deg);-webkit-transform:rotate(180deg);-moz-transform:rotate(180deg);-ms-transform:rotate(180deg)}
+.txt{flex:0 0 40mm;max-width:40mm;display:flex;flex-direction:column;justify-content:center;padding-right:2mm}
+.qr{flex:0 0 28mm;width:28mm;height:28mm}
+.qr svg{width:28mm!important;height:28mm!important;display:block}
+.t1{font-size:7pt;color:#333;margin-bottom:1mm}
+.t2{font-size:10pt;font-weight:700;margin-bottom:2mm}
+.t3{font-size:8pt}
 </style>
 </head>
-<body><div class="s"><div class="l"><div class="t">CON. No-</div><div class="n">${convNumber}</div><div class="m">${name}</div></div><div class="r">${qrSvgHtml}</div></div></body>
+<body>
+<div class="s">
+<div class="txt">
+<div class="t1">CON. No-</div>
+<div class="t2">${convNumber}</div>
+<div class="t3">Dr. ${name}</div>
+</div>
+<div class="qr">${qrSvgHtml}</div>
+</div>
+</body>
 </html>`;
 
   printWindow.document.write(html);
@@ -558,8 +572,8 @@ function isIOS(): boolean {
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 }
 
-// Print 3x2 sticker directly - SINGLE PAGE GUARANTEED
-// FIXED: Enforce exact 3in × 2in sizing with constrained QR code
+// Print 75mm × 50mm sticker directly - SINGLE PAGE GUARANTEED
+// FIXED: Exact sizing in millimeters for thermal printer
 // Uses different approach for iOS (window.print) vs desktop (iframe)
 export function printSticker3x2(graduate: Graduate, elementRef?: HTMLElement | null): void {
   // On iOS/iPad, use window.print() directly - CSS handles the layout
@@ -596,75 +610,41 @@ export function printSticker3x2(graduate: Graduate, elementRef?: HTMLElement | n
     const titoUrl = graduate.ticketSlug
       ? `https://ti.to/tickets/${graduate.ticketSlug}`
       : graduate.registrationNumber;
-    svgHtml = `<div style="width:1.1in;height:1.1in;border:1px solid #000;display:flex;align-items:center;justify-content:center;font-size:6pt;text-align:center;word-break:break-all;padding:4pt">${titoUrl}</div>`;
+    svgHtml = `<div style="width:28mm;height:28mm;border:1px solid #000;display:flex;align-items:center;justify-content:center;font-size:6pt;text-align:center;word-break:break-all;padding:2mm">${titoUrl}</div>`;
   }
 
-  // EXACT 3x2 inch sizing - QR constrained to 1.1in, text to 1.6in
+  console.warn('[Print] WARNING: Browser print fallback - extra labels may occur!');
+  console.warn('[Print] FIX: Hold FEED button on printer for 5 seconds to calibrate');
+
+  // 75mm × 50mm with 180° rotation for Zebra ZD230
+  // Uses CSS transform with all browser prefixes
   const html = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <title>Sticker</title>
 <style>
-@page { size: 3in 2in; margin: 0 !important; }
-* { margin: 0; padding: 0; box-sizing: border-box; }
-html, body {
-  width: 3in !important;
-  height: 2in !important;
-  max-width: 3in !important;
-  max-height: 2in !important;
-  overflow: hidden !important;
-  font-family: Helvetica, Arial, sans-serif;
-  background: #fff;
-}
-.s {
-  width: 3in;
-  height: 2in;
-  max-width: 3in;
-  max-height: 2in;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.15in;
-  overflow: hidden;
-  box-sizing: border-box;
-}
-.l {
-  flex: 0 0 1.6in;
-  max-width: 1.6in;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  overflow: hidden;
-}
-.t { font-size: 9pt; color: #333; margin-bottom: 2pt; }
-.n { font-size: 11pt; font-weight: 700; margin-bottom: 4pt; word-wrap: break-word; }
-.m { font-size: 10pt; line-height: 1.2; word-wrap: break-word; }
-.r {
-  flex: 0 0 1.1in;
-  width: 1.1in;
-  height: 1.1in;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-}
-.r svg {
-  width: 1.1in !important;
-  height: 1.1in !important;
-  max-width: 1.1in !important;
-  max-height: 1.1in !important;
-  display: block;
-}
+@page{size:75mm 50mm;margin:0!important}
+@media print{html,body{page-break-after:avoid!important;page-break-before:avoid!important}}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:75mm!important;height:50mm!important;overflow:hidden!important;font-family:Helvetica,Arial,sans-serif;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.wrap{width:75mm;height:50mm;display:flex;align-items:center;justify-content:space-between;padding:3mm;overflow:hidden;background:#fff;transform:rotate(180deg);-webkit-transform:rotate(180deg);-moz-transform:rotate(180deg);-ms-transform:rotate(180deg)}
+.txt{flex:0 0 40mm;max-width:40mm;display:flex;flex-direction:column;justify-content:center;padding-right:2mm}
+.qr{flex:0 0 28mm;width:28mm;height:28mm}
+.qr svg,.qr div{width:28mm!important;height:28mm!important;display:block}
+.t1{font-size:7pt;color:#333;margin-bottom:1mm}
+.t2{font-size:10pt;font-weight:700;margin-bottom:2mm}
+.t3{font-size:8pt}
 </style>
 </head>
 <body>
-<div class="s">
-<div class="l">
-<div class="t">CON. No-</div>
-<div class="n">${graduate.convocationNumber || 'N/A'}</div>
-<div class="m">Dr. ${graduate.name}</div>
+<div class="wrap">
+<div class="txt">
+<div class="t1">CON. No-</div>
+<div class="t2">${graduate.convocationNumber || 'N/A'}</div>
+<div class="t3">Dr. ${graduate.name}</div>
 </div>
-<div class="r">${svgHtml}</div>
+<div class="qr">${svgHtml}</div>
 </div>
 </body>
 </html>`;
@@ -699,8 +679,8 @@ html, body {
   }, 200);
 }
 
-// Print 4x6 Badge - BLACK ONLY for thermal/label printer
-// FIXED: Exact 4in × 6in sizing with proper constraints
+// Print 100mm × 153mm Badge - BLACK ONLY for thermal/label printer
+// FIXED: Exact sizing in millimeters for thermal printer
 // Uses different approach for iOS (window.print) vs desktop (iframe)
 export function printBadge4x6(graduate: Graduate, elementRef?: HTMLElement | null): void {
   // On iOS/iPad, use window.print() directly
@@ -732,97 +712,97 @@ export function printBadge4x6(graduate: Graduate, elementRef?: HTMLElement | nul
     const titoUrl = graduate.ticketSlug
       ? `https://ti.to/tickets/${graduate.ticketSlug}`
       : graduate.registrationNumber;
-    svgHtml = `<div style="width:1.5in;height:1.5in;border:2px solid #000;display:flex;align-items:center;justify-content:center;font-size:8pt;text-align:center;word-break:break-all;padding:6pt">${titoUrl}</div>`;
+    svgHtml = `<div style="width:38mm;height:38mm;border:2px solid #000;display:flex;align-items:center;justify-content:center;font-size:8pt;text-align:center;word-break:break-all;padding:3mm">${titoUrl}</div>`;
   }
 
-  // EXACT 4x6 inch sizing with constraints
+  // EXACT 100mm × 153mm sizing for thermal printer
   const html = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <title>Badge - ${graduate.convocationNumber}</title>
 <style>
-@page { size: 4in 6in; margin: 0 !important; }
+@page { size: 100mm 153mm; margin: 0 !important; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body {
-  width: 4in !important;
-  height: 6in !important;
-  max-width: 4in !important;
-  max-height: 6in !important;
+  width: 100mm !important;
+  height: 153mm !important;
+  max-width: 100mm !important;
+  max-height: 153mm !important;
   overflow: hidden !important;
   font-family: Helvetica, Arial, sans-serif;
   background: #fff;
 }
 .badge {
-  width: 4in;
-  height: 6in;
-  max-width: 4in;
-  max-height: 6in;
+  width: 100mm;
+  height: 153mm;
+  max-width: 100mm;
+  max-height: 153mm;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0.75in 0.15in 0.4in 0.15in; /* Skip overlay areas */
+  padding: 14mm 3mm 8mm 3mm; /* Reduced padding */
   overflow: hidden;
 }
 .title {
-  font-size: 21pt;
-  font-weight: bold;
-  color: #000;
-  text-align: center;
-  margin-bottom: 8pt;
-  letter-spacing: 1px;
-}
-.course {
   font-size: 16pt;
   font-weight: bold;
   color: #000;
   text-align: center;
-  margin-bottom: 10pt;
+  margin-bottom: 2mm;
+  letter-spacing: 0.5px;
 }
-.name {
-  font-size: 19pt;
+.course {
+  font-size: 12pt;
   font-weight: bold;
   color: #000;
   text-align: center;
-  margin-bottom: 10pt;
+  margin-bottom: 2mm;
+}
+.name {
+  font-size: 14pt;
+  font-weight: bold;
+  color: #000;
+  text-align: center;
+  margin-bottom: 2mm;
   line-height: 1.2;
 }
 .qr-container {
   display: flex;
   justify-content: center;
-  margin-bottom: 10pt;
+  margin-bottom: 2mm;
 }
 .qr-container svg {
-  width: 1.5in !important;
-  height: 1.5in !important;
-  max-width: 1.5in !important;
-  max-height: 1.5in !important;
+  width: 28mm !important;
+  height: 28mm !important;
+  max-width: 28mm !important;
+  max-height: 28mm !important;
 }
 .conv-number {
-  font-size: 17pt;
+  font-size: 13pt;
   font-weight: bold;
   color: #000;
   text-align: center;
-  letter-spacing: 1px;
-  margin-bottom: 12pt;
+  letter-spacing: 0.5px;
+  margin-bottom: 3mm;
 }
 .collection-info {
-  font-size: 9pt;
+  font-size: 7pt;
   color: #333;
   text-align: center;
-  margin-bottom: 2pt;
+  margin-bottom: 1mm;
 }
 .separator {
-  width: 80%;
+  width: 70%;
   height: 1px;
   background: #ccc;
-  margin: 8pt auto;
+  margin: 2mm auto;
 }
 .note {
-  font-size: 6pt;
+  font-size: 5pt;
   color: #666;
   text-align: center;
-  line-height: 1.4;
+  line-height: 1.3;
 }
 </style>
 </head>

@@ -1397,14 +1397,89 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* Settings View - Placeholder for future */}
+          {/* Settings View - Printer Calibration */}
           {activeNav === 'settings' && (
             <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-5 lg:p-6 border border-slate-700/50 animate-fade-in-up">
               <h2 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4 flex items-center gap-2">
                 <Settings className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
                 Settings
               </h2>
-              <p className="text-sm sm:text-base text-slate-400">Settings and configuration coming soon...</p>
+
+              {/* Printer Settings Section */}
+              <div className="space-y-4">
+                <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-700/50">
+                  <h3 className="text-sm font-medium text-white mb-3 flex items-center gap-2">
+                    <Printer className="w-4 h-4 text-blue-400" />
+                    Zebra ZD230 Printer
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-400">IP Address:</span>
+                      <span className="text-white font-mono">10.0.1.12:9100</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-400">Packing Label:</span>
+                      <span className="text-white">75mm × 50mm</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-400">Badge Label:</span>
+                      <span className="text-white">100mm × 153mm</span>
+                    </div>
+                    <div className="pt-3 border-t border-slate-700/50 space-y-2">
+                      <p className="text-xs text-slate-500">
+                        Run calibration when loading new label stock. Clear queue if printing is stuck.
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={async () => {
+                            try {
+                              const res = await fetch('/api/print/zpl?action=calibrate');
+                              const data = await res.json();
+                              alert(data.success ? 'Calibration command sent!' : `Error: ${data.error}`);
+                            } catch {
+                              alert('Failed to send calibration command');
+                            }
+                          }}
+                          className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors flex items-center justify-center gap-2"
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                          Calibrate
+                        </button>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const res = await fetch('/api/print/zpl');
+                              const data = await res.json();
+                              alert(data.success ? 'Test label printed!' : `Error: ${data.error}`);
+                            } catch {
+                              alert('Failed to print test label');
+                            }
+                          }}
+                          className="flex-1 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition-colors flex items-center justify-center gap-2"
+                        >
+                          <Printer className="w-4 h-4" />
+                          Test Print
+                        </button>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const res = await fetch('/api/print/zpl?action=clear-queue');
+                              const data = await res.json();
+                              alert(data.success ? 'Print queue cleared!' : `Error: ${data.error}`);
+                            } catch {
+                              alert('Failed to clear print queue');
+                            }
+                          }}
+                          className="flex-1 px-3 py-2 bg-red-600/80 hover:bg-red-500 text-white text-sm rounded-lg transition-colors flex items-center justify-center gap-2"
+                        >
+                          <X className="w-4 h-4" />
+                          Clear Queue
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>

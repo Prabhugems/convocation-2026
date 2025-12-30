@@ -25,6 +25,7 @@ export interface UsePrinterReturn {
   updateSettings: (settings: Partial<PrinterSettings>) => void;
   printLabel: (graduate: Graduate, type?: 'packing' | 'badge', elementRef?: HTMLElement | null) => Promise<void>;
   testPrint: () => Promise<{ success: boolean; error?: string }>;
+  calibratePrinter: () => Promise<{ success: boolean; error?: string }>;
   status: PrintStatus;
   error: string | null;
 }
@@ -76,6 +77,7 @@ export function usePrinter(): UsePrinterReturn {
 
     // Try direct print if enabled
     if (settings.useDirectPrint) {
+      console.log(`[Printer] Attempting ZPL direct print to ${settings.ip}:${settings.port}`);
       try {
         const response = await fetch('/api/print/zpl', {
           method: 'POST',
@@ -94,18 +96,23 @@ export function usePrinter(): UsePrinterReturn {
         const result = await response.json();
 
         if (result.success) {
+          console.log('[Printer] ZPL direct print SUCCESS - label should print correctly');
           setStatus('success');
           setTimeout(() => setStatus('idle'), 2000);
           return;
         } else {
           // Direct print failed, fall back to browser print
-          console.warn('[Printer] Direct print failed, falling back to browser:', result.error);
+          console.warn('[Printer] ZPL direct print FAILED, falling back to browser:', result.error);
+          console.warn('[Printer] Browser printing may cause extra labels - use Admin > Settings > Calibrate');
           setError(result.error);
         }
       } catch (err) {
-        console.warn('[Printer] Direct print error, falling back to browser:', err);
+        console.warn('[Printer] ZPL direct print ERROR, falling back to browser:', err);
+        console.warn('[Printer] Check if printer is connected to network at', settings.ip);
         setError(err instanceof Error ? err.message : 'Network error');
       }
+    } else {
+      console.log('[Printer] Direct print disabled, using browser print');
     }
 
     // Fallback: browser print
@@ -149,11 +156,38 @@ export function usePrinter(): UsePrinterReturn {
     }
   }, [settings]);
 
+  // Calibrate printer (run when loading new label stock)
+  const calibratePrinter = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
+    setStatus('printing');
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/print/zpl?ip=${settings.ip}&port=${settings.port}&action=calibrate`);
+      const result = await response.json();
+
+      if (result.success) {
+        setStatus('success');
+        setTimeout(() => setStatus('idle'), 2000);
+        return { success: true };
+      } else {
+        setStatus('error');
+        setError(result.error);
+        return { success: false, error: result.error };
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Network error';
+      setStatus('error');
+      setError(errorMsg);
+      return { success: false, error: errorMsg };
+    }
+  }, [settings]);
+
   return {
     settings,
     updateSettings,
     printLabel,
     testPrint,
+    calibratePrinter,
     status,
     error,
   };

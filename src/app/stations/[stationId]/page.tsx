@@ -792,54 +792,56 @@ export default function StationPage() {
         </div>
       </div>
 
-      {/* Print Badge - Only this prints (3x2 inch sticker) */}
-      {/* FIXED: Exact 3in × 2in sizing with 1.1in QR code */}
+      {/* Print Badge - Only this prints (75mm × 50mm sticker) */}
+      {/* FIXED: Exact 75mm × 50mm sizing with 28mm QR code, rotate(180deg) for Zebra ZD230 */}
       {lastScanned && station.printType === '3x2-sticker' && (
         <div
           ref={printRef}
           className="print-badge"
           style={{
-            width: '3in',
-            height: '2in',
-            maxWidth: '3in',
-            maxHeight: '2in',
+            width: '75mm',
+            height: '50mm',
+            maxWidth: '75mm',
+            maxHeight: '50mm',
             backgroundColor: 'white',
             display: 'none',
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '0.15in',
+            padding: '4mm',
             fontFamily: 'Helvetica, Arial, sans-serif',
             boxSizing: 'border-box',
             overflow: 'hidden',
+            transform: 'rotate(180deg)',  // Fix reversed print on Zebra
           }}
         >
           <div className="sticker-left" style={{
-            flex: '0 0 1.6in',
-            maxWidth: '1.6in',
-            paddingRight: '0.1in',
+            flex: '0 0 43mm',
+            maxWidth: '43mm',
+            paddingRight: '2mm',
             overflow: 'hidden',
           }}>
-            <p style={{ fontSize: '9pt', color: '#333', margin: 0, marginBottom: '2px' }}>CON. No-</p>
-            <p style={{ fontSize: '11pt', fontWeight: 'bold', color: '#000', margin: 0, marginBottom: '4px' }}>
+            <p style={{ fontSize: '7pt', color: '#333', margin: 0, marginBottom: '1mm' }}>CON. No-</p>
+            <p style={{ fontSize: '10pt', fontWeight: 'bold', color: '#000', margin: 0, marginBottom: '2mm' }}>
               {lastScanned.convocationNumber || 'N/A'}
             </p>
-            <p style={{ fontSize: '10pt', color: '#000', margin: 0, lineHeight: 1.2 }}>Dr. {lastScanned.name}</p>
+            <p style={{ fontSize: '8pt', color: '#000', margin: 0, lineHeight: 1.2 }}>Dr. {lastScanned.name}</p>
           </div>
           <div className="sticker-right" style={{
-            flex: '0 0 1.1in',
-            width: '1.1in',
-            height: '1.1in',
-            maxWidth: '1.1in',
-            maxHeight: '1.1in',
+            flex: '0 0 28mm',
+            width: '28mm',
+            height: '28mm',
+            maxWidth: '28mm',
+            maxHeight: '28mm',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'flex-end',
           }}>
             <QRCode
               value={lastScanned.ticketSlug ? `https://ti.to/tickets/${lastScanned.ticketSlug}` : `https://ti.to/amasi/convocation-2026-kolkata/tickets/${lastScanned.registrationNumber}`}
-              size={105}
-              style={{ width: '1.1in', height: '1.1in', maxWidth: '1.1in', maxHeight: '1.1in' }}
+              size={106}
+              level="M"
+              style={{ width: '28mm', height: '28mm', maxWidth: '28mm', maxHeight: '28mm' }}
             />
           </div>
         </div>
