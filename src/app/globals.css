@@ -622,7 +622,14 @@ main {
     justify-content: space-between !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
-    transform: rotate(180deg) !important;  /* Fix reversed print on Zebra */
+    page-break-after: avoid !important;
+    page-break-before: avoid !important;
+    page-break-inside: avoid !important;
+    /* 180° rotation for Zebra ZD230 - all browser prefixes */
+    transform: rotate(180deg) !important;
+    -webkit-transform: rotate(180deg) !important;
+    -moz-transform: rotate(180deg) !important;
+    -ms-transform: rotate(180deg) !important;
   }
 
   /* Force hide navigation, modals, overlays */
