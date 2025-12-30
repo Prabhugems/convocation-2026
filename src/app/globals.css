@@ -566,22 +566,24 @@ main {
 /* ========================================
    PRINT STYLES - Badge/Label Only
    For Zebra ZD230 Thermal Printer
-   FIXED: Enforce exact 3in × 2in sizing with constrained QR
+   FIXED: Exact mm sizing with rotation for reversed print
+   Packing Sticker: 75mm × 50mm
+   Badge: 100mm × 153mm
    ======================================== */
 
 @media print {
-  /* Set page size FIRST - EXACT 3x2 inches */
+  /* Set page size FIRST - EXACT 75mm × 50mm for packing sticker */
   @page {
-    size: 3in 2in;
+    size: 75mm 50mm;
     margin: 0 !important;
   }
 
   /* Hide EVERYTHING by default */
   html, body {
-    width: 3in !important;
-    height: 2in !important;
-    max-width: 3in !important;
-    max-height: 2in !important;
+    width: 75mm !important;
+    height: 50mm !important;
+    max-width: 75mm !important;
+    max-height: 50mm !important;
     margin: 0 !important;
     padding: 0 !important;
     background: white !important;
@@ -593,7 +595,7 @@ main {
     display: none !important;
   }
 
-  /* Show ONLY the print badge - EXACT sizing */
+  /* Show ONLY the print badge - EXACT 75mm × 50mm with rotation */
   .print-badge,
   .print-badge * {
     visibility: visible !important;
@@ -604,12 +606,12 @@ main {
     position: absolute !important;
     left: 0 !important;
     top: 0 !important;
-    width: 3in !important;
-    height: 2in !important;
-    max-width: 3in !important;
-    max-height: 2in !important;
+    width: 75mm !important;
+    height: 50mm !important;
+    max-width: 75mm !important;
+    max-height: 50mm !important;
     margin: 0 !important;
-    padding: 0.15in !important;
+    padding: 4mm !important;
     background: white !important;
     z-index: 999999 !important;
     display: flex !important;
@@ -618,7 +620,7 @@ main {
     justify-content: space-between !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
-    transform: none !important;
+    transform: rotate(180deg) !important;  /* Fix reversed print on Zebra */
   }
 
   /* Force hide navigation, modals, overlays */
@@ -644,14 +646,14 @@ main {
     overflow: hidden !important;
   }
 
-  /* Sticker content layout - FIXED sizing */
+  /* Sticker content layout - FIXED sizing in mm */
   .print-badge .sticker-left {
-    flex: 0 0 1.6in !important;
-    max-width: 1.6in !important;
+    flex: 0 0 43mm !important;
+    max-width: 43mm !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: center !important;
-    padding-right: 0.1in !important;
+    padding-right: 2mm !important;
     overflow: hidden !important;
   }
 
@@ -662,42 +664,42 @@ main {
 
   /* Text sizing for print (in points) */
   .print-badge .sticker-left p:first-child {
-    font-size: 9pt !important;
+    font-size: 7pt !important;
     color: #333 !important;
-    margin-bottom: 2pt !important;
+    margin-bottom: 1mm !important;
   }
 
   .print-badge .sticker-left p:nth-child(2) {
-    font-size: 11pt !important;
+    font-size: 10pt !important;
     font-weight: bold !important;
     color: #000 !important;
-    margin-bottom: 4pt !important;
+    margin-bottom: 2mm !important;
   }
 
   .print-badge .sticker-left p:nth-child(3) {
-    font-size: 10pt !important;
+    font-size: 8pt !important;
     color: #000 !important;
   }
 
   .print-badge .sticker-right {
-    flex: 0 0 1.1in !important;
-    width: 1.1in !important;
-    max-width: 1.1in !important;
+    flex: 0 0 28mm !important;
+    width: 28mm !important;
+    max-width: 28mm !important;
     display: flex !important;
     align-items: center !important;
     justify-content: flex-end !important;
   }
 
-  /* QR Code - CONSTRAINED to 1.1 inches */
+  /* QR Code - CONSTRAINED to 28mm */
   .print-badge .sticker-right svg {
-    width: 1.1in !important;
-    height: 1.1in !important;
-    max-width: 1.1in !important;
-    max-height: 1.1in !important;
+    width: 28mm !important;
+    height: 28mm !important;
+    max-width: 28mm !important;
+    max-height: 28mm !important;
     display: block !important;
   }
 
-  /* 4x6 variants - FIXED: Exact sizing with constraints */
+  /* 4x6 variants - FIXED: Exact 100mm × 153mm sizing */
   .print-badge-4x6,
   .print-badge-4x6 * {
     visibility: visible !important;
@@ -708,10 +710,10 @@ main {
     position: absolute !important;
     left: 0 !important;
     top: 0 !important;
-    width: 4in !important;
-    height: 6in !important;
-    max-width: 4in !important;
-    max-height: 6in !important;
+    width: 100mm !important;
+    height: 153mm !important;
+    max-width: 100mm !important;
+    max-height: 153mm !important;
     margin: 0 !important;
     padding: 0 !important;
     background: white !important;
@@ -720,9 +722,9 @@ main {
     transform: none !important;
   }
 
-  /* 4x6 QR code constraints */
+  /* 4x6 QR code constraints - 38mm */
   .print-badge-4x6 svg {
-    max-width: 1.5in !important;
-    max-height: 1.5in !important;
+    max-width: 38mm !important;
+    max-height: 38mm !important;
   }
 }
