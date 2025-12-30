@@ -87,29 +87,32 @@ ${ZPL_PACKING_INIT}
 /**
  * Generate ZPL for 100mm × 153mm badge
  *
+ * FIXED: Content shrunk to 75% to fit properly
  * FIXED: Includes label dimensions to prevent over-feeding
  */
 export function generateBadgeLabel(data: ZPLLabelData & { course?: string }): string {
   const convNum = sanitizeZPL(data.convocationNumber || 'N/A');
-  const name = sanitizeZPL(data.name || 'Unknown');
+  // Truncate long names to fit on badge (max 28 chars)
+  const name = truncateForLabel(sanitizeZPL(data.name || 'Unknown'), 28);
   const course = sanitizeZPL(data.course || 'FMAS Course');
   const ticketUrl = sanitizeZPL(data.ticketUrl || '');
 
+  // Shrunk content sizes (75% of original)
   return `^XA
 ^CI28
 ${ZPL_BADGE_INIT}
-^CF0,50
-^FO50,80^FDCONVOCATION 2026^FS
-^CF0,30
-^FO50,150^FD${course}^FS
-^CF0,40
-^FO50,200^FDDr. ${name}^FS
-^FO130,270^BQN,2,8^FDQA,${ticketUrl}^FS
-^CF0,35
-^FO50,550^FD${convNum}^FS
-^CF0,18
-^FO50,610^FDCollect your certificate on 28th August 2026^FS
-^FO50,640^FDat AMASI Office (Venue)^FS
+^CF0,38
+^FO50,60^FDCONVOCATION 2026^FS
+^CF0,24
+^FO50,110^FD${course}^FS
+^CF0,32
+^FO50,150^FDDr. ${name}^FS
+^FO180,200^BQN,2,6^FDQA,${ticketUrl}^FS
+^CF0,28
+^FO50,420^FD${convNum}^FS
+^CF0,14
+^FO50,470^FDCollect your certificate on 28th August 2026^FS
+^FO50,495^FDat AMASI Office (Venue)^FS
 ^XZ`;
 }
 

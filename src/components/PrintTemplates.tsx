@@ -120,7 +120,7 @@ Sticker3x2.displayName = 'Sticker3x2';
 
 // 100mm × 153mm badge for registration - BLACK ONLY for thermal/label printer
 // Pre-printed overlay has orange header/footer - we print only black content
-// FIXED: Exact sizing in millimeters for thermal printer
+// FIXED: Content shrunk to 75% to fit properly on thermal printer
 // MUST MATCH digital badge layout exactly for alignment with pre-printed paper
 export const Badge4x6 = forwardRef<HTMLDivElement, PrintProps>(({ graduate }, ref) => {
   // Generate Tito ticket URL for QR code
@@ -142,107 +142,107 @@ export const Badge4x6 = forwardRef<HTMLDivElement, PrintProps>(({ graduate }, re
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        paddingTop: '19mm',    // Skip overlay header
-        paddingBottom: '10mm', // Skip overlay footer
-        paddingLeft: '4mm',
-        paddingRight: '4mm',
+        paddingTop: '14mm',    // Skip overlay header (reduced)
+        paddingBottom: '8mm',  // Skip overlay footer (reduced)
+        paddingLeft: '3mm',
+        paddingRight: '3mm',
         boxSizing: 'border-box',
         overflow: 'hidden',
       }}
     >
-      {/* CONVOCATION 2026 - Black, large, bold */}
-      <div
-        style={{
-          fontSize: '21pt',
-          fontWeight: 'bold',
-          color: '#000',
-          textAlign: 'center',
-          marginBottom: '8pt',
-          letterSpacing: '1px',
-        }}
-      >
-        CONVOCATION 2026
-      </div>
-
-      {/* Course name - Black bold text */}
+      {/* CONVOCATION 2026 - Shrunk to 75% */}
       <div
         style={{
           fontSize: '16pt',
           fontWeight: 'bold',
           color: '#000',
           textAlign: 'center',
-          marginBottom: '10pt',
+          marginBottom: '6pt',
+          letterSpacing: '0.5px',
+        }}
+      >
+        CONVOCATION 2026
+      </div>
+
+      {/* Course name - Shrunk */}
+      <div
+        style={{
+          fontSize: '12pt',
+          fontWeight: 'bold',
+          color: '#000',
+          textAlign: 'center',
+          marginBottom: '8pt',
         }}
       >
         {graduate.course || 'FMAS Course'}
       </div>
 
-      {/* Name with Dr. prefix - Black, large, bold */}
+      {/* Name with Dr. prefix - Shrunk */}
       <div
         style={{
-          fontSize: '19pt',
+          fontSize: '14pt',
           fontWeight: 'bold',
           color: '#000',
           textAlign: 'center',
-          marginBottom: '10pt',
+          marginBottom: '8pt',
           lineHeight: '1.2',
         }}
       >
         Dr. {graduate.name}
       </div>
 
-      {/* QR Code - centered, constrained to 38mm */}
+      {/* QR Code - Shrunk to 28mm */}
       <div
         style={{
           display: 'flex',
           justifyContent: 'center',
-          marginBottom: '3mm',
+          marginBottom: '2mm',
         }}
       >
         <QRCode
           value={titoUrl}
-          size={144}
+          size={106}
           level="M"   // Medium error correction for better scanning
           style={{
-            width: '38mm',
-            height: '38mm',
-            maxWidth: '38mm',
-            maxHeight: '38mm',
+            width: '28mm',
+            height: '28mm',
+            maxWidth: '28mm',
+            maxHeight: '28mm',
           }}
         />
       </div>
 
-      {/* Convocation Number - Black, bold */}
+      {/* Convocation Number - Shrunk */}
       <div
         style={{
-          fontSize: '17pt',
+          fontSize: '13pt',
           fontWeight: 'bold',
           color: '#000',
           textAlign: 'center',
-          letterSpacing: '1px',
-          marginBottom: '12pt',
+          letterSpacing: '0.5px',
+          marginBottom: '10pt',
         }}
       >
         {graduate.convocationNumber || ''}
       </div>
 
-      {/* Collection Info */}
+      {/* Collection Info - Shrunk */}
       <div
         style={{
-          fontSize: '9pt',
+          fontSize: '7pt',
           color: '#333',
           textAlign: 'center',
-          marginBottom: '2pt',
+          marginBottom: '1pt',
         }}
       >
         Collect your certificate on 28th August 2026
       </div>
       <div
         style={{
-          fontSize: '9pt',
+          fontSize: '7pt',
           color: '#333',
           textAlign: 'center',
-          marginBottom: '10pt',
+          marginBottom: '8pt',
         }}
       >
         at AMASI Office (Venue)
@@ -251,20 +251,20 @@ export const Badge4x6 = forwardRef<HTMLDivElement, PrintProps>(({ graduate }, re
       {/* Separator line */}
       <div
         style={{
-          width: '80%',
+          width: '70%',
           height: '1px',
           backgroundColor: '#ccc',
-          marginBottom: '8pt',
+          marginBottom: '6pt',
         }}
       />
 
-      {/* Disclaimer note */}
+      {/* Disclaimer note - Shrunk */}
       <div
         style={{
-          fontSize: '6pt',
+          fontSize: '5pt',
           color: '#666',
           textAlign: 'center',
-          lineHeight: '1.4',
+          lineHeight: '1.3',
         }}
       >
         This badge is valid for Convocation Ceremony only,
@@ -768,68 +768,68 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 19mm 4mm 10mm 4mm; /* Skip overlay areas */
+  padding: 14mm 3mm 8mm 3mm; /* Reduced padding */
   overflow: hidden;
 }
 .title {
-  font-size: 21pt;
-  font-weight: bold;
-  color: #000;
-  text-align: center;
-  margin-bottom: 3mm;
-  letter-spacing: 1px;
-}
-.course {
   font-size: 16pt;
   font-weight: bold;
   color: #000;
   text-align: center;
-  margin-bottom: 3mm;
+  margin-bottom: 2mm;
+  letter-spacing: 0.5px;
 }
-.name {
-  font-size: 19pt;
+.course {
+  font-size: 12pt;
   font-weight: bold;
   color: #000;
   text-align: center;
-  margin-bottom: 3mm;
+  margin-bottom: 2mm;
+}
+.name {
+  font-size: 14pt;
+  font-weight: bold;
+  color: #000;
+  text-align: center;
+  margin-bottom: 2mm;
   line-height: 1.2;
 }
 .qr-container {
   display: flex;
   justify-content: center;
-  margin-bottom: 3mm;
+  margin-bottom: 2mm;
 }
 .qr-container svg {
-  width: 38mm !important;
-  height: 38mm !important;
-  max-width: 38mm !important;
-  max-height: 38mm !important;
+  width: 28mm !important;
+  height: 28mm !important;
+  max-width: 28mm !important;
+  max-height: 28mm !important;
 }
 .conv-number {
-  font-size: 17pt;
+  font-size: 13pt;
   font-weight: bold;
   color: #000;
   text-align: center;
-  letter-spacing: 1px;
-  margin-bottom: 4mm;
+  letter-spacing: 0.5px;
+  margin-bottom: 3mm;
 }
 .collection-info {
-  font-size: 9pt;
+  font-size: 7pt;
   color: #333;
   text-align: center;
   margin-bottom: 1mm;
 }
 .separator {
-  width: 80%;
+  width: 70%;
   height: 1px;
   background: #ccc;
-  margin: 3mm auto;
+  margin: 2mm auto;
 }
 .note {
-  font-size: 6pt;
+  font-size: 5pt;
   color: #666;
   text-align: center;
-  line-height: 1.4;
+  line-height: 1.3;
 }
 </style>
 </head>
