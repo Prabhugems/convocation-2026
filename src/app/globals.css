@@ -588,6 +588,8 @@ main {
     padding: 0 !important;
     background: white !important;
     overflow: hidden !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
   }
 
   body * {

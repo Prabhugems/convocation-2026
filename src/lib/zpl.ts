@@ -2,7 +2,10 @@
  * ZPL (Zebra Programming Language) Template Generator
  * For Zebra ZD230 Thermal Printer
  *
- * Label size: 3 x 2 inches (609 x 406 dots at 203 DPI)
+ * Packing Label: 75mm × 50mm (609 x 406 dots at 203 DPI)
+ * Badge Label: 100mm × 153mm (803 x 1229 dots at 203 DPI)
+ *
+ * FIXED: Added label dimensions and media type to prevent over-feeding
  */
 
 export interface ZPLLabelData {
@@ -12,11 +15,30 @@ export interface ZPLLabelData {
 }
 
 /**
- * Generate ZPL code for 3x2 inch packing label
+ * ZPL initialization commands for label dimensions
+ * Prevents printer from feeding extra labels
+ */
+const ZPL_PACKING_INIT = `
+^PW609
+^LL406
+^MNY
+^POI
+`.trim();  // 75mm×50mm, gap sensing, inverted orientation
+
+const ZPL_BADGE_INIT = `
+^PW803
+^LL1229
+^MNY
+`.trim();  // 100mm×153mm, gap sensing
+
+/**
+ * Generate ZPL code for 75mm × 50mm packing label
  *
  * Layout:
  * - Left side: CON. No- label, convocation number (bold), Dr. Name
  * - Right side: QR code with ticket URL
+ *
+ * FIXED: Includes label dimensions to prevent over-feeding
  */
 export function generatePackingLabel(data: ZPLLabelData): string {
   // Sanitize inputs to prevent ZPL injection
@@ -26,6 +48,10 @@ export function generatePackingLabel(data: ZPLLabelData): string {
 
   // ZPL commands:
   // ^XA - Start label format
+  // ^PW609 - Print Width 609 dots (75mm at 203 DPI)
+  // ^LL406 - Label Length 406 dots (50mm at 203 DPI)
+  // ^MNY - Media type: Gap/notch sensing
+  // ^POI - Print Orientation Inverted (fixes upside down)
   // ^CF0,size - Change font (font 0, height in dots)
   // ^FO x,y - Field origin (position from top-left)
   // ^FD text ^FS - Field data and separator
@@ -34,6 +60,7 @@ export function generatePackingLabel(data: ZPLLabelData): string {
 
   return `^XA
 ^CI28
+${ZPL_PACKING_INIT}
 ^CF0,25
 ^FO30,25^FDCON. No-^FS
 ^CF0,45
@@ -45,7 +72,9 @@ export function generatePackingLabel(data: ZPLLabelData): string {
 }
 
 /**
- * Generate ZPL for 4x6 inch badge
+ * Generate ZPL for 100mm × 153mm badge
+ *
+ * FIXED: Includes label dimensions to prevent over-feeding
  */
 export function generateBadgeLabel(data: ZPLLabelData & { course?: string }): string {
   const convNum = sanitizeZPL(data.convocationNumber || 'N/A');
@@ -55,6 +84,7 @@ export function generateBadgeLabel(data: ZPLLabelData & { course?: string }): st
 
   return `^XA
 ^CI28
+${ZPL_BADGE_INIT}
 ^CF0,50
 ^FO50,80^FDCONVOCATION 2026^FS
 ^CF0,30
@@ -68,6 +98,16 @@ export function generateBadgeLabel(data: ZPLLabelData & { course?: string }): st
 ^FO50,610^FDCollect your certificate on 28th August 2026^FS
 ^FO50,640^FDat AMASI Office (Venue)^FS
 ^XZ`;
+}
+
+/**
+ * Generate ZPL calibration command
+ * Call this once when loading new label stock
+ */
+export function generateCalibrationCommand(): string {
+  return `~JC^XA^JUS^XZ`;
+  // ~JC = Calibrate label length sensor
+  // ^JUS = Save settings to printer
 }
 
 /**
