@@ -516,6 +516,7 @@ body{font-family:Helvetica,Arial,sans-serif}
 
 // Dedicated 75mm × 50mm sticker print - guaranteed single page
 // FIXED: Exact sizing in millimeters for thermal printer
+// FIXED: Correct font sizes (7pt, 10pt, 8pt) and rotation
 function print3x2Sticker(convNumber: string, name: string, qrSvgHtml: string): void {
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
@@ -525,6 +526,7 @@ function print3x2Sticker(convNumber: string, name: string, qrSvgHtml: string): v
 
   // Minimal HTML - EXACT 75mm × 50mm sizing for thermal printer
   // FIXED: rotate(180deg) to fix reversed/upside-down print on Zebra ZD230
+  // FIXED: Font sizes 7pt/10pt/8pt as specified
   const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -532,18 +534,19 @@ function print3x2Sticker(convNumber: string, name: string, qrSvgHtml: string): v
 <title>Sticker</title>
 <style>
 @page{size:75mm 50mm;margin:0!important}
+@media print{html{page-break-after:avoid;page-break-before:avoid;page-break-inside:avoid}}
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{width:75mm!important;height:50mm!important;max-width:75mm!important;max-height:50mm!important;overflow:hidden!important;font-family:Helvetica,Arial,sans-serif;background:#fff}
-.s{width:75mm;height:50mm;max-width:75mm;max-height:50mm;display:flex;align-items:center;justify-content:space-between;padding:4mm;background:#fff;overflow:hidden;box-sizing:border-box;transform:rotate(180deg)}
-.l{flex:0 0 43mm;max-width:43mm;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
-.t{font-size:9pt;color:#333;margin-bottom:1mm}
-.n{font-size:11pt;font-weight:700;margin-bottom:2mm;word-wrap:break-word}
-.m{font-size:10pt;line-height:1.2;word-wrap:break-word}
-.r{flex:0 0 27mm;width:27mm;height:27mm;display:flex;align-items:center;justify-content:flex-end}
-.r svg{width:27mm!important;height:27mm!important;max-width:27mm!important;max-height:27mm!important;display:block}
+html,body{width:75mm!important;height:50mm!important;max-width:75mm!important;max-height:50mm!important;overflow:hidden!important;font-family:Helvetica,Arial,sans-serif;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.s{width:75mm;height:50mm;max-width:75mm;max-height:50mm;display:flex;align-items:center;justify-content:space-between;padding:3mm;background:#fff;overflow:hidden;box-sizing:border-box;transform:rotate(180deg);-webkit-transform:rotate(180deg)}
+.l{flex:0 0 40mm;max-width:40mm;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
+.t{font-size:7pt;color:#333;margin-bottom:1mm}
+.n{font-size:10pt;font-weight:700;margin-bottom:2mm;word-wrap:break-word}
+.m{font-size:8pt;line-height:1.2;word-wrap:break-word}
+.r{flex:0 0 28mm;width:28mm;height:28mm;display:flex;align-items:center;justify-content:flex-end}
+.r svg{width:28mm!important;height:28mm!important;max-width:28mm!important;max-height:28mm!important;display:block}
 </style>
 </head>
-<body><div class="s"><div class="l"><div class="t">CON. No-</div><div class="n">${convNumber}</div><div class="m">${name}</div></div><div class="r">${qrSvgHtml}</div></div></body>
+<body><div class="s"><div class="l"><div class="t">CON. No-</div><div class="n">${convNumber}</div><div class="m">Dr. ${name}</div></div><div class="r">${qrSvgHtml}</div></div></body>
 </html>`;
 
   printWindow.document.write(html);
@@ -601,11 +604,15 @@ export function printSticker3x2(graduate: Graduate, elementRef?: HTMLElement | n
     const titoUrl = graduate.ticketSlug
       ? `https://ti.to/tickets/${graduate.ticketSlug}`
       : graduate.registrationNumber;
-    svgHtml = `<div style="width:27mm;height:27mm;border:1px solid #000;display:flex;align-items:center;justify-content:center;font-size:6pt;text-align:center;word-break:break-all;padding:2mm">${titoUrl}</div>`;
+    svgHtml = `<div style="width:28mm;height:28mm;border:1px solid #000;display:flex;align-items:center;justify-content:center;font-size:6pt;text-align:center;word-break:break-all;padding:2mm">${titoUrl}</div>`;
   }
+
+  console.log('[Print] Using browser fallback print for sticker');
+  console.log('[Print] To fix extra labels: Go to Admin > Settings > Calibrate Printer');
 
   // EXACT 75mm × 50mm sizing for thermal printer
   // FIXED: rotate(180deg) to fix reversed/upside-down print on Zebra ZD230
+  // FIXED: Font sizes 7pt/10pt/8pt as specified
   const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -613,6 +620,7 @@ export function printSticker3x2(graduate: Graduate, elementRef?: HTMLElement | n
 <title>Sticker</title>
 <style>
 @page { size: 75mm 50mm; margin: 0 !important; }
+@media print { html { page-break-after: avoid; page-break-before: avoid; page-break-inside: avoid; } }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body {
   width: 75mm !important;
@@ -622,6 +630,8 @@ html, body {
   overflow: hidden !important;
   font-family: Helvetica, Arial, sans-serif;
   background: #fff;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 .s {
   width: 75mm;
@@ -631,35 +641,36 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4mm;
+  padding: 3mm;
   overflow: hidden;
   box-sizing: border-box;
   transform: rotate(180deg);
+  -webkit-transform: rotate(180deg);
 }
 .l {
-  flex: 0 0 43mm;
-  max-width: 43mm;
+  flex: 0 0 40mm;
+  max-width: 40mm;
   display: flex;
   flex-direction: column;
   justify-content: center;
   overflow: hidden;
 }
-.t { font-size: 9pt; color: #333; margin-bottom: 1mm; }
-.n { font-size: 11pt; font-weight: 700; margin-bottom: 2mm; word-wrap: break-word; }
-.m { font-size: 10pt; line-height: 1.2; word-wrap: break-word; }
+.t { font-size: 7pt; color: #333; margin-bottom: 1mm; }
+.n { font-size: 10pt; font-weight: 700; margin-bottom: 2mm; word-wrap: break-word; }
+.m { font-size: 8pt; line-height: 1.2; word-wrap: break-word; }
 .r {
-  flex: 0 0 27mm;
-  width: 27mm;
-  height: 27mm;
+  flex: 0 0 28mm;
+  width: 28mm;
+  height: 28mm;
   display: flex;
   align-items: center;
   justify-content: flex-end;
 }
 .r svg {
-  width: 27mm !important;
-  height: 27mm !important;
-  max-width: 27mm !important;
-  max-height: 27mm !important;
+  width: 28mm !important;
+  height: 28mm !important;
+  max-width: 28mm !important;
+  max-height: 28mm !important;
   display: block;
 }
 </style>
