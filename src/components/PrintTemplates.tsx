@@ -117,6 +117,7 @@ Sticker3x2.displayName = 'Sticker3x2';
 
 // 4x6 inch badge for registration - BLACK ONLY for thermal/label printer
 // Pre-printed overlay has orange header/footer - we print only black content
+// FIXED: Exact 4in × 6in sizing with proper constraints
 // MUST MATCH digital badge layout exactly for alignment with pre-printed paper
 export const Badge4x6 = forwardRef<HTMLDivElement, PrintProps>(({ graduate }, ref) => {
   // Generate Tito ticket URL for QR code
@@ -131,6 +132,8 @@ export const Badge4x6 = forwardRef<HTMLDivElement, PrintProps>(({ graduate }, re
       style={{
         width: '4in',
         height: '6in',
+        maxWidth: '4in',
+        maxHeight: '6in',
         backgroundColor: 'white',
         fontFamily: 'Arial, Helvetica, sans-serif',
         display: 'flex',
@@ -141,6 +144,7 @@ export const Badge4x6 = forwardRef<HTMLDivElement, PrintProps>(({ graduate }, re
         paddingLeft: '0.15in',
         paddingRight: '0.15in',
         boxSizing: 'border-box',
+        overflow: 'hidden',
       }}
     >
       {/* CONVOCATION 2026 - Black, large, bold */}
@@ -184,7 +188,7 @@ export const Badge4x6 = forwardRef<HTMLDivElement, PrintProps>(({ graduate }, re
         Dr. {graduate.name}
       </div>
 
-      {/* QR Code - centered, larger */}
+      {/* QR Code - centered, constrained to 1.5in */}
       <div
         style={{
           display: 'flex',
@@ -192,7 +196,16 @@ export const Badge4x6 = forwardRef<HTMLDivElement, PrintProps>(({ graduate }, re
           marginBottom: '10pt',
         }}
       >
-        <QRCode value={titoUrl} size={130} />
+        <QRCode
+          value={titoUrl}
+          size={144}
+          style={{
+            width: '1.5in',
+            height: '1.5in',
+            maxWidth: '1.5in',
+            maxHeight: '1.5in',
+          }}
+        />
       </div>
 
       {/* Convocation Number - Black, bold */}
@@ -273,6 +286,7 @@ export interface AddressLabelData {
 }
 
 // 4x6 inch address label - INK-SAVING design for WHITE LABEL PAPER
+// FIXED: Exact 4in × 6in sizing with proper constraints
 // No filled bars - just text and thin lines
 export const AddressLabel4x6 = forwardRef<HTMLDivElement, { data: AddressLabelData }>(({ data }, ref) => {
   // Generate Tito ticket URL for QR code
@@ -287,11 +301,14 @@ export const AddressLabel4x6 = forwardRef<HTMLDivElement, { data: AddressLabelDa
       style={{
         width: '4in',
         height: '6in',
+        maxWidth: '4in',
+        maxHeight: '6in',
         backgroundColor: 'white',
         fontFamily: 'Helvetica, Arial, sans-serif',
         display: 'flex',
         flexDirection: 'column',
         boxSizing: 'border-box',
+        overflow: 'hidden',
         paddingTop: '20pt',
         paddingLeft: '15pt',
         paddingRight: '15pt',
@@ -360,15 +377,28 @@ export const AddressLabel4x6 = forwardRef<HTMLDivElement, { data: AddressLabelDa
             )}
           </div>
 
-          {/* Right side - QR Code */}
+          {/* Right side - QR Code - constrained to 1in */}
           <div
             style={{
               display: 'flex',
               alignItems: 'flex-start',
               justifyContent: 'flex-end',
+              width: '1in',
+              height: '1in',
+              maxWidth: '1in',
+              maxHeight: '1in',
             }}
           >
-            <QRCode value={titoUrl} size={80} />
+            <QRCode
+              value={titoUrl}
+              size={96}
+              style={{
+                width: '1in',
+                height: '1in',
+                maxWidth: '1in',
+                maxHeight: '1in',
+              }}
+            />
           </div>
         </div>
 
@@ -670,6 +700,7 @@ html, body {
 }
 
 // Print 4x6 Badge - BLACK ONLY for thermal/label printer
+// FIXED: Exact 4in × 6in sizing with proper constraints
 // Uses different approach for iOS (window.print) vs desktop (iframe)
 export function printBadge4x6(graduate: Graduate, elementRef?: HTMLElement | null): void {
   // On iOS/iPad, use window.print() directly
@@ -701,75 +732,82 @@ export function printBadge4x6(graduate: Graduate, elementRef?: HTMLElement | nul
     const titoUrl = graduate.ticketSlug
       ? `https://ti.to/tickets/${graduate.ticketSlug}`
       : graduate.registrationNumber;
-    svgHtml = `<div style="width:110pt;height:110pt;border:2px solid #000;display:flex;align-items:center;justify-content:center;font-size:8pt;text-align:center;word-break:break-all;padding:6pt">${titoUrl}</div>`;
+    svgHtml = `<div style="width:1.5in;height:1.5in;border:2px solid #000;display:flex;align-items:center;justify-content:center;font-size:8pt;text-align:center;word-break:break-all;padding:6pt">${titoUrl}</div>`;
   }
 
-  // 4x6 inch = 288 x 432 points
+  // EXACT 4x6 inch sizing with constraints
   const html = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <title>Badge - ${graduate.convocationNumber}</title>
 <style>
-@page { size: 288pt 432pt; margin: 0; }
+@page { size: 4in 6in; margin: 0 !important; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body {
-  width: 288pt;
-  height: 432pt;
-  overflow: hidden;
+  width: 4in !important;
+  height: 6in !important;
+  max-width: 4in !important;
+  max-height: 6in !important;
+  overflow: hidden !important;
   font-family: Helvetica, Arial, sans-serif;
   background: #fff;
 }
 .badge {
-  width: 288pt;
-  height: 432pt;
+  width: 4in;
+  height: 6in;
+  max-width: 4in;
+  max-height: 6in;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 60pt 12pt 25pt 12pt; /* Skip overlay areas */
+  padding: 0.75in 0.15in 0.4in 0.15in; /* Skip overlay areas */
+  overflow: hidden;
 }
 .title {
-  font-size: 28pt;
+  font-size: 21pt;
   font-weight: bold;
   color: #000;
   text-align: center;
-  margin-bottom: 12pt;
+  margin-bottom: 8pt;
   letter-spacing: 1px;
 }
 .course {
-  font-size: 14pt;
+  font-size: 16pt;
   font-weight: bold;
   color: #000;
   text-align: center;
-  margin-bottom: 15pt;
+  margin-bottom: 10pt;
 }
 .name {
-  font-size: 22pt;
+  font-size: 19pt;
   font-weight: bold;
   color: #000;
   text-align: center;
-  margin-bottom: 15pt;
+  margin-bottom: 10pt;
   line-height: 1.2;
 }
 .qr-container {
   display: flex;
   justify-content: center;
-  margin-bottom: 12pt;
+  margin-bottom: 10pt;
 }
 .qr-container svg {
-  width: 110pt;
-  height: 110pt;
+  width: 1.5in !important;
+  height: 1.5in !important;
+  max-width: 1.5in !important;
+  max-height: 1.5in !important;
 }
 .conv-number {
-  font-size: 18pt;
+  font-size: 17pt;
   font-weight: bold;
   color: #000;
   text-align: center;
   letter-spacing: 1px;
-  margin-bottom: 8pt;
+  margin-bottom: 12pt;
 }
 .collection-info {
-  font-size: 8pt;
+  font-size: 9pt;
   color: #333;
   text-align: center;
   margin-bottom: 2pt;
@@ -784,7 +822,7 @@ html, body {
   font-size: 6pt;
   color: #666;
   text-align: center;
-  line-height: 1.3;
+  line-height: 1.4;
 }
 </style>
 </head>
@@ -861,6 +899,7 @@ function generateBarcodeSvg(text: string): string {
 }
 
 // Print Address Label 4x6 - INK-SAVING for WHITE LABEL PAPER
+// FIXED: Exact 4in × 6in sizing with proper constraints
 // Uses different approach for iOS (window.print) vs desktop (iframe)
 export function printAddressLabel4x6(data: AddressLabelData, elementRef?: HTMLElement | null): void {
   // On iOS/iPad, use window.print() directly
@@ -892,7 +931,7 @@ export function printAddressLabel4x6(data: AddressLabelData, elementRef?: HTMLEl
     const titoUrl = data.ticketSlug
       ? `https://ti.to/tickets/${data.ticketSlug}`
       : data.registrationNumber;
-    qrSvgHtml = `<div style="width:80pt;height:80pt;border:1px solid #000;display:flex;align-items:center;justify-content:center;font-size:6pt;text-align:center;word-break:break-all;padding:4pt">${titoUrl}</div>`;
+    qrSvgHtml = `<div style="width:1in;height:1in;border:1px solid #000;display:flex;align-items:center;justify-content:center;font-size:6pt;text-align:center;word-break:break-all;padding:4pt">${titoUrl}</div>`;
   }
 
   // Generate barcode if DTDC available
@@ -914,28 +953,33 @@ export function printAddressLabel4x6(data: AddressLabelData, elementRef?: HTMLEl
     `${data.address.state}- ${data.address.pincode}`,
   ].filter(Boolean);
 
-  // 4x6 inch = 288 x 432 points
+  // EXACT 4x6 inch sizing with constraints
   const html = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <title>Address Label - ${data.convocationNumber}</title>
 <style>
-@page { size: 288pt 432pt; margin: 0; }
+@page { size: 4in 6in; margin: 0 !important; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body {
-  width: 288pt;
-  height: 432pt;
-  overflow: hidden;
+  width: 4in !important;
+  height: 6in !important;
+  max-width: 4in !important;
+  max-height: 6in !important;
+  overflow: hidden !important;
   font-family: Helvetica, Arial, sans-serif;
   background: #fff;
 }
 .label {
-  width: 288pt;
-  height: 432pt;
+  width: 4in;
+  height: 6in;
+  max-width: 4in;
+  max-height: 6in;
   display: flex;
   flex-direction: column;
-  padding: 20pt 15pt 15pt 15pt;
+  padding: 0.25in 0.2in 0.2in 0.2in;
+  overflow: hidden;
 }
 .course-header {
   font-size: 16pt;
@@ -994,10 +1038,14 @@ html, body {
   display: flex;
   align-items: flex-start;
   justify-content: flex-end;
+  width: 1in;
+  max-width: 1in;
 }
 .qr-section svg {
-  width: 80pt;
-  height: 80pt;
+  width: 1in !important;
+  height: 1in !important;
+  max-width: 1in !important;
+  max-height: 1in !important;
 }
 .spacer {
   flex: 1;
@@ -1013,8 +1061,9 @@ html, body {
   margin-bottom: 6pt;
 }
 .barcode-container svg {
-  width: 200pt;
-  height: 50pt;
+  width: 2.5in;
+  max-width: 2.5in;
+  height: 0.5in;
 }
 .tracking-text {
   font-size: 11pt;

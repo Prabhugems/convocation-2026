@@ -697,7 +697,7 @@ main {
     display: block !important;
   }
 
-  /* 4x6 variants */
+  /* 4x6 variants - FIXED: Exact sizing with constraints */
   .print-badge-4x6,
   .print-badge-4x6 * {
     visibility: visible !important;
@@ -710,9 +710,19 @@ main {
     top: 0 !important;
     width: 4in !important;
     height: 6in !important;
+    max-width: 4in !important;
+    max-height: 6in !important;
     margin: 0 !important;
     padding: 0 !important;
     background: white !important;
     z-index: 999999 !important;
+    overflow: hidden !important;
+    transform: none !important;
+  }
+
+  /* 4x6 QR code constraints */
+  .print-badge-4x6 svg {
+    max-width: 1.5in !important;
+    max-height: 1.5in !important;
   }
 }
