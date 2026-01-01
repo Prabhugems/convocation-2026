@@ -56,8 +56,9 @@ export async function printBadge4x6PDF(data: BadgeData, qrElement?: HTMLElement 
 
   // Calculate content heights to center vertically
   const qrSize = 40; // Reduced from 50mm
-  const totalContentHeight = 10 + 8 + 8 + qrSize + 8 + 8 + 5 + 8; // ~95mm
-  const startY = printableStart + (printableHeight - totalContentHeight) / 2 + 5;
+  const totalContentHeight = 10 + 8 + 8 + qrSize + 8 + 8 + 5 + 10; // ~97mm
+  // Start higher to ensure disclaimer stays above orange footer (145mm)
+  const startY = printableStart + 8;  // Start 8mm after header
 
   let currentY = startY;
 
@@ -114,15 +115,15 @@ export async function printBadge4x6PDF(data: BadgeData, qrElement?: HTMLElement 
   currentY += 6;
 
   // Separator line
-  doc.setDrawColor(204, 204, 204);
+  doc.setDrawColor(180, 180, 180);
   doc.line(20, currentY, 80, currentY);
   currentY += 4;
 
-  // Disclaimer
-  doc.setFontSize(5);
-  doc.setTextColor(128, 128, 128);
+  // Disclaimer - darker text, ensure it stays in white area (before 145mm footer)
+  doc.setFontSize(6);
+  doc.setTextColor(80, 80, 80);  // Darker gray
   doc.text('This badge is valid for Convocation Ceremony only,', centerX, currentY, { align: 'center' });
-  currentY += 2.5;
+  currentY += 3;
   doc.text('not for AMASICON 2026 conference registration.', centerX, currentY, { align: 'center' });
 
   // AUTO-DOWNLOAD the PDF
