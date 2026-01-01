@@ -10,12 +10,28 @@ interface BadgeData {
 }
 
 /**
- * Generate and print 4x6 badge PDF for Zebra thermal printer
- * Page size: 100mm × 153mm (4" × 6")
- * Content is rotated 180° for correct orientation on Zebra ZD230
+ * Generate and print 4x6 badge PDF for Zebra ZD230 thermal printer
+ *
+ * PAGE SIZE: 100mm × 153mm (4" × 6")
+ *
+ * PRE-PRINTED LABEL LAYOUT:
+ * - Orange header: 22mm (with AMASI & FMAS logos) - DO NOT PRINT HERE
+ * - White printable area: 123mm
+ * - Orange footer: 8mm - DO NOT PRINT HERE
+ *
+ * QR CODE: 50mm × 50mm (2" × 2")
+ *
+ * FONT SIZES:
+ * - Title "CONVOCATION 2026": 18pt bold
+ * - Course: 14pt bold
+ * - Name: 16pt bold
+ * - Convocation Number: 14pt bold
+ * - Collection info: 9pt
+ * - Disclaimer: 6pt gray
+ *
+ * NOTE: Content is NOT rotated. Zebra printer handles orientation.
  */
 export async function printBadge4x6PDF(data: BadgeData, qrElement?: HTMLElement | null): Promise<void> {
-  // Create PDF with exact dimensions (100mm × 153mm)
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -24,6 +40,9 @@ export async function printBadge4x6PDF(data: BadgeData, qrElement?: HTMLElement 
 
   const pageWidth = 100;
   const centerX = pageWidth / 2;
+
+  // ALIGNMENT VALUES (based on pre-printed label)
+  const headerHeight = 22;  // Orange header - skip this area
 
   // Get QR code as data URL
   let qrDataUrl = data.qrCodeDataUrl;
@@ -34,78 +53,75 @@ export async function printBadge4x6PDF(data: BadgeData, qrElement?: HTMLElement 
     }
   }
 
-  // Since Zebra prints from bottom, we need content rotated 180°
-  // jsPDF doesn't support page rotation, so we position content from bottom-up
-  // and use text rotation
+  // Start content after header + small gap
+  let currentY = headerHeight + 5;
 
-  // All Y positions are calculated from BOTTOM of page (for 180° effect)
-  // When printed on Zebra, bottom becomes top
+  // Title - CONVOCATION 2026
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
+  doc.text('CONVOCATION 2026', centerX, currentY, { align: 'center' });
+  currentY += 10;
 
-  // --- CONTENT (positioned from bottom, will appear from top after print) ---
+  // Course
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text(data.course || 'FMAS Course', centerX, currentY, { align: 'center' });
+  currentY += 10;
 
-  // Disclaimer (at bottom of PDF = top of printed label, near orange header)
-  doc.setFontSize(5);
-  doc.setTextColor(102, 102, 102);
+  // Name
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Dr. ${data.name}`, centerX, currentY, { align: 'center' });
+  currentY += 10;
+
+  // QR Code - 50mm × 50mm (2" × 2")
+  const qrSize = 50;
+  if (qrDataUrl) {
+    try {
+      doc.addImage(qrDataUrl, 'PNG', centerX - qrSize / 2, currentY, qrSize, qrSize);
+    } catch (e) {
+      console.error('Failed to add QR code:', e);
+      // Draw placeholder rectangle
+      doc.setDrawColor(0);
+      doc.rect(centerX - qrSize / 2, currentY, qrSize, qrSize);
+    }
+  } else {
+    // Draw placeholder if no QR
+    doc.setDrawColor(0);
+    doc.rect(centerX - qrSize / 2, currentY, qrSize, qrSize);
+    doc.setFontSize(8);
+    doc.text('QR CODE', centerX, currentY + qrSize / 2, { align: 'center' });
+  }
+  currentY += qrSize + 6;
+
+  // Convocation Number
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
+  doc.text(data.convocationNumber || '', centerX, currentY, { align: 'center' });
+  currentY += 10;
+
+  // Collection Info
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-
-  const disclaimerY = 145; // Near bottom of page
-  doc.text('This badge is valid for Convocation Ceremony only,', centerX, disclaimerY - 3, {
-    align: 'center',
-    angle: 180
-  });
-  doc.text('not for AMASICON 2026 conference registration.', centerX, disclaimerY, {
-    align: 'center',
-    angle: 180
-  });
+  doc.setTextColor(51, 51, 51);
+  doc.text('Collect your certificate on 28th August 2026', centerX, currentY, { align: 'center' });
+  currentY += 5;
+  doc.text('at AMASI Office (Venue)', centerX, currentY, { align: 'center' });
+  currentY += 6;
 
   // Separator line
   doc.setDrawColor(204, 204, 204);
-  doc.line(15, disclaimerY - 8, 85, disclaimerY - 8);
+  doc.line(15, currentY, 85, currentY);
+  currentY += 5;
 
-  // Collection info
-  doc.setFontSize(7);
-  doc.setTextColor(51, 51, 51);
-  doc.text('at AMASI Office (Venue)', centerX, disclaimerY - 12, { align: 'center', angle: 180 });
-  doc.text('Collect your certificate on 28th August 2026', centerX, disclaimerY - 16, { align: 'center', angle: 180 });
-
-  // Convocation Number
-  doc.setFontSize(13);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(0, 0, 0);
-  doc.text(data.convocationNumber || '', centerX, disclaimerY - 24, { align: 'center', angle: 180 });
-
-  // QR Code (28mm × 28mm)
-  const qrSize = 28;
-  const qrY = disclaimerY - 56; // Position for QR code
-
-  if (qrDataUrl) {
-    // For 180° rotation, we need to position and rotate the image
-    // jsPDF addImage doesn't support rotation, so we add it normally
-    // The content flow handles the visual positioning
-    try {
-      doc.addImage(qrDataUrl, 'PNG', centerX - qrSize/2, qrY, qrSize, qrSize);
-    } catch (e) {
-      console.error('Failed to add QR code:', e);
-      // Draw placeholder
-      doc.setDrawColor(0);
-      doc.rect(centerX - qrSize/2, qrY, qrSize, qrSize);
-      doc.setFontSize(6);
-      doc.text('QR Code', centerX, qrY + qrSize/2, { align: 'center' });
-    }
-  }
-
-  // Name
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Dr. ${data.name}`, centerX, qrY - 6, { align: 'center', angle: 180 });
-
-  // Course
-  doc.setFontSize(12);
-  doc.text(data.course || 'FMAS Course', centerX, qrY - 14, { align: 'center', angle: 180 });
-
-  // Title
-  doc.setFontSize(16);
-  doc.text('CONVOCATION 2026', centerX, qrY - 24, { align: 'center', angle: 180 });
+  // Disclaimer
+  doc.setFontSize(6);
+  doc.setTextColor(102, 102, 102);
+  doc.text('This badge is valid for Convocation Ceremony only,', centerX, currentY, { align: 'center' });
+  currentY += 3;
+  doc.text('not for AMASICON 2026 conference registration.', centerX, currentY, { align: 'center' });
 
   // Open PDF in new window and trigger print
   const pdfBlob = doc.output('blob');
@@ -128,6 +144,15 @@ export async function printBadge4x6PDF(data: BadgeData, qrElement?: HTMLElement 
 /**
  * Generate and print 3x2 sticker PDF for Zebra thermal printer
  * Page size: 75mm × 50mm (3" × 2")
+ *
+ * LAYOUT:
+ * - Left side: Text (CON. No, Number, Name)
+ * - Right side: QR code (28mm × 28mm)
+ *
+ * FONT SIZES:
+ * - CON. No- label: 7pt
+ * - Convocation Number: 10pt bold
+ * - Name: 8pt
  */
 export async function printSticker3x2PDF(data: BadgeData, qrElement?: HTMLElement | null): Promise<void> {
   // Create PDF with exact dimensions (75mm × 50mm)
@@ -149,12 +174,9 @@ export async function printSticker3x2PDF(data: BadgeData, qrElement?: HTMLElemen
     }
   }
 
-  // Apply 180° rotation by positioning content accordingly
-  // Content positioned from bottom-right will appear top-left after rotation
-
   // QR Code on right side (28mm × 28mm)
   const qrSize = 28;
-  const qrX = pageWidth - qrSize - 3; // 3mm from right edge
+  const qrX = pageWidth - qrSize - 5; // 5mm from right edge
   const qrY = (pageHeight - qrSize) / 2; // Centered vertically
 
   if (qrDataUrl) {
@@ -165,28 +187,33 @@ export async function printSticker3x2PDF(data: BadgeData, qrElement?: HTMLElemen
       doc.setDrawColor(0);
       doc.rect(qrX, qrY, qrSize, qrSize);
     }
+  } else {
+    doc.setDrawColor(0);
+    doc.rect(qrX, qrY, qrSize, qrSize);
   }
 
   // Text on left side
   const textX = 5; // 5mm from left edge
-  const textCenterY = pageHeight / 2;
+  let textY = 15;
 
   // CON. No- label
   doc.setFontSize(7);
   doc.setTextColor(51, 51, 51);
   doc.setFont('helvetica', 'normal');
-  doc.text('CON. No-', textX, textCenterY - 8, { angle: 180 });
+  doc.text('CON. No-', textX, textY);
+  textY += 6;
 
   // Convocation Number
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
-  doc.text(data.convocationNumber || 'N/A', textX, textCenterY, { angle: 180 });
+  doc.text(data.convocationNumber || 'N/A', textX, textY);
+  textY += 8;
 
   // Name
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Dr. ${data.name}`, textX, textCenterY + 8, { angle: 180 });
+  doc.text(`Dr. ${data.name}`, textX, textY);
 
   // Open PDF in new window and trigger print
   const pdfBlob = doc.output('blob');
@@ -217,8 +244,8 @@ export async function downloadBadge4x6PDF(data: BadgeData, qrElement?: HTMLEleme
 
   const pageWidth = 100;
   const centerX = pageWidth / 2;
+  const headerHeight = 22;
 
-  // Get QR code
   let qrDataUrl = data.qrCodeDataUrl;
   if (!qrDataUrl && qrElement) {
     const svgElement = qrElement.querySelector('svg');
@@ -227,34 +254,30 @@ export async function downloadBadge4x6PDF(data: BadgeData, qrElement?: HTMLEleme
     }
   }
 
-  // Content positioned for 180° rotation effect
-  // Top padding: 14mm (skip pre-printed header)
-  // Bottom padding: 8mm (skip pre-printed footer)
-
-  let currentY = 22; // Start after top padding
+  let currentY = headerHeight + 5;
 
   // Title
-  doc.setFontSize(16);
+  doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
   doc.text('CONVOCATION 2026', centerX, currentY, { align: 'center' });
-  currentY += 8;
+  currentY += 10;
 
   // Course
-  doc.setFontSize(12);
+  doc.setFontSize(14);
   doc.text(data.course || 'FMAS Course', centerX, currentY, { align: 'center' });
-  currentY += 8;
+  currentY += 10;
 
   // Name
-  doc.setFontSize(14);
+  doc.setFontSize(16);
   doc.text(`Dr. ${data.name}`, centerX, currentY, { align: 'center' });
   currentY += 10;
 
-  // QR Code
-  const qrSize = 28;
+  // QR Code - 50mm × 50mm
+  const qrSize = 50;
   if (qrDataUrl) {
     try {
-      doc.addImage(qrDataUrl, 'PNG', centerX - qrSize/2, currentY, qrSize, qrSize);
+      doc.addImage(qrDataUrl, 'PNG', centerX - qrSize / 2, currentY, qrSize, qrSize);
     } catch (e) {
       console.error('Failed to add QR code:', e);
     }
@@ -262,16 +285,16 @@ export async function downloadBadge4x6PDF(data: BadgeData, qrElement?: HTMLEleme
   currentY += qrSize + 6;
 
   // Convocation Number
-  doc.setFontSize(13);
+  doc.setFontSize(14);
   doc.text(data.convocationNumber || '', centerX, currentY, { align: 'center' });
   currentY += 10;
 
-  // Collection info
-  doc.setFontSize(7);
+  // Collection Info
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(51, 51, 51);
   doc.text('Collect your certificate on 28th August 2026', centerX, currentY, { align: 'center' });
-  currentY += 4;
+  currentY += 5;
   doc.text('at AMASI Office (Venue)', centerX, currentY, { align: 'center' });
   currentY += 6;
 
@@ -281,14 +304,70 @@ export async function downloadBadge4x6PDF(data: BadgeData, qrElement?: HTMLEleme
   currentY += 5;
 
   // Disclaimer
-  doc.setFontSize(5);
+  doc.setFontSize(6);
   doc.setTextColor(102, 102, 102);
   doc.text('This badge is valid for Convocation Ceremony only,', centerX, currentY, { align: 'center' });
   currentY += 3;
   doc.text('not for AMASICON 2026 conference registration.', centerX, currentY, { align: 'center' });
 
-  // Save file
   doc.save(`badge-${data.convocationNumber || 'unknown'}.pdf`);
+}
+
+/**
+ * Download sticker as PDF file (for manual printing)
+ */
+export async function downloadSticker3x2PDF(data: BadgeData, qrElement?: HTMLElement | null): Promise<void> {
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: [75, 50],
+  });
+
+  const pageWidth = 75;
+  const pageHeight = 50;
+
+  let qrDataUrl = data.qrCodeDataUrl;
+  if (!qrDataUrl && qrElement) {
+    const svgElement = qrElement.querySelector('svg');
+    if (svgElement) {
+      qrDataUrl = await svgToDataUrl(svgElement);
+    }
+  }
+
+  // QR Code on right side
+  const qrSize = 28;
+  const qrX = pageWidth - qrSize - 5;
+  const qrY = (pageHeight - qrSize) / 2;
+
+  if (qrDataUrl) {
+    try {
+      doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+    } catch (e) {
+      console.error('Failed to add QR code:', e);
+    }
+  }
+
+  // Text on left side
+  const textX = 5;
+  let textY = 15;
+
+  doc.setFontSize(7);
+  doc.setTextColor(51, 51, 51);
+  doc.setFont('helvetica', 'normal');
+  doc.text('CON. No-', textX, textY);
+  textY += 6;
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
+  doc.text(data.convocationNumber || 'N/A', textX, textY);
+  textY += 8;
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Dr. ${data.name}`, textX, textY);
+
+  doc.save(`sticker-${data.convocationNumber || 'unknown'}.pdf`);
 }
 
 /**
@@ -333,10 +412,9 @@ async function svgToDataUrl(svgElement: SVGElement): Promise<string> {
 }
 
 /**
- * Generate QR code data URL using canvas
+ * Generate QR code data URL using qrcode library
  */
 export async function generateQRDataUrl(text: string, size: number = 200): Promise<string> {
-  // This requires qrcode library
   const QRCode = await import('qrcode');
   return QRCode.toDataURL(text, {
     width: size,
