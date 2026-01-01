@@ -119,9 +119,9 @@ export async function printBadge4x6PDF(data: BadgeData, qrElement?: HTMLElement 
   doc.line(20, currentY, 80, currentY);
   currentY += 4;
 
-  // Disclaimer - darker text, ensure it stays in white area (before 145mm footer)
+  // Disclaimer - BLACK text
   doc.setFontSize(6);
-  doc.setTextColor(80, 80, 80);  // Darker gray
+  doc.setTextColor(0, 0, 0);  // Pure black
   doc.text('This badge is valid for Convocation Ceremony only,', centerX, currentY, { align: 'center' });
   currentY += 3;
   doc.text('not for AMASICON 2026 conference registration.', centerX, currentY, { align: 'center' });
