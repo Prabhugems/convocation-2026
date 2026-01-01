@@ -5,7 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import GlassCard from '@/components/GlassCard';
 import UniversalScanner, { SearchInputType } from '@/components/UniversalScanner';
 import StatusBadge from '@/components/StatusBadge';
-import { Sticker3x2, Badge4x6, AddressLabel4x6, AddressLabelData, printElement, printSticker3x2, printBadge4x6, printAddressLabel4x6 } from '@/components/PrintTemplates';
+import { Sticker3x2, Badge4x6, AddressLabel4x6, AddressLabelData, printElement, printSticker3x2, printAddressLabel4x6 } from '@/components/PrintTemplates';
+import { printBadge4x6PDF, generateQRDataUrl } from '@/lib/pdfPrint';
 import { stations, getStation } from '@/lib/stations';
 import { Graduate, StationId, Address, AirtableGraduateData } from '@/types';
 import {
@@ -169,6 +170,22 @@ export default function StationPage() {
     }
   }, [result]);
 
+  // Helper function to print 4x6 badge using jsPDF
+  const handlePrintBadge4x6 = async (graduate: Graduate) => {
+    const titoUrl = graduate.ticketSlug
+      ? `https://ti.to/tickets/${graduate.ticketSlug}`
+      : `https://ti.to/amasi/convocation-2026-kolkata/tickets/${graduate.convocationNumber || graduate.registrationNumber}`;
+    
+    const qrDataUrl = await generateQRDataUrl(titoUrl, 200);
+    
+    await printBadge4x6PDF({
+      name: graduate.name,
+      course: graduate.course,
+      convocationNumber: graduate.convocationNumber,
+      qrCodeDataUrl: qrDataUrl,
+    });
+  };
+
   // Process a graduate at this station
   const processGraduate = async (graduate: Graduate) => {
     setLoading(true);
@@ -242,11 +259,12 @@ export default function StationPage() {
             }
           }
         } else if (station!.printType) {
-          setTimeout(() => {
+          setTimeout(async () => {
             if (station!.printType === '3x2-sticker' && data.data) {
               printSticker3x2(data.data, printRef.current);
             } else if (station!.printType === '4x6-badge' && data.data) {
-              printBadge4x6(data.data, printRef.current);
+              // USE NEW jsPDF PRINT FUNCTION
+              await handlePrintBadge4x6(data.data);
             } else if (printRef.current) {
               printElement(printRef.current, station!.printType);
             }
@@ -674,10 +692,15 @@ export default function StationPage() {
                   </h3>
                   {station.printType && lastScanned && (
                     <button
-                      onClick={() => {
-                        // One-tap direct print to Zebra (with browser fallback)
-                        const printType = station.printType === '3x2-sticker' ? 'packing' : 'badge';
-                        printLabel(lastScanned, printType, printRef.current);
+                      onClick={async () => {
+                        if (station.printType === '4x6-badge') {
+                          // USE NEW jsPDF PRINT FOR REPRINT
+                          await handlePrintBadge4x6(lastScanned);
+                        } else {
+                          // Use old method for other print types
+                          const printType = station.printType === '3x2-sticker' ? 'packing' : 'badge';
+                          printLabel(lastScanned, printType, printRef.current);
+                        }
                       }}
                       disabled={printStatus === 'printing'}
                       className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-white text-sm transition-all ${
