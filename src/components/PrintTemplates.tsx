@@ -121,6 +121,7 @@ Sticker3x2.displayName = 'Sticker3x2';
 // 100mm × 153mm badge for registration - BLACK ONLY for thermal/label printer
 // Pre-printed overlay has orange header/footer - we print only black content
 // FIXED: Content shrunk to 75% to fit properly on thermal printer
+// FIXED: rotate(180deg) to fix reversed/upside-down print on Zebra ZD230
 // MUST MATCH digital badge layout exactly for alignment with pre-printed paper
 export const Badge4x6 = forwardRef<HTMLDivElement, PrintProps>(({ graduate }, ref) => {
   // Generate Tito ticket URL for QR code
@@ -148,7 +149,7 @@ export const Badge4x6 = forwardRef<HTMLDivElement, PrintProps>(({ graduate }, re
         paddingRight: '3mm',
         boxSizing: 'border-box',
         overflow: 'hidden',
-        transform: 'rotate(180deg)',  // Fix reversed print on Zebra ZD230
+        transform: 'rotate(180deg)',  // FIXED: Fix reversed print on Zebra ZD230
       }}
     >
       {/* CONVOCATION 2026 - Shrunk to 75% */}
@@ -682,6 +683,7 @@ html,body{width:75mm!important;height:50mm!important;overflow:hidden!important;f
 
 // Print 100mm × 153mm Badge - BLACK ONLY for thermal/label printer
 // FIXED: Exact sizing in millimeters for thermal printer
+// FIXED: rotate(180deg) to fix reversed/upside-down print on Zebra ZD230
 // Uses different approach for iOS (window.print) vs desktop (iframe)
 export function printBadge4x6(graduate: Graduate, elementRef?: HTMLElement | null): void {
   // On iOS/iPad, use window.print() directly
@@ -717,7 +719,8 @@ export function printBadge4x6(graduate: Graduate, elementRef?: HTMLElement | nul
   }
 
   // EXACT 100mm × 153mm sizing for thermal printer
-  // FIXED: 180° rotation for Zebra ZD230 (prints bottom-to-top)
+  // FIXED: Added 180° rotation for Zebra ZD230
+  // FIXED: Added page-break rules to prevent extra blank pages
   const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -725,7 +728,18 @@ export function printBadge4x6(graduate: Graduate, elementRef?: HTMLElement | nul
 <title>Badge - ${graduate.convocationNumber}</title>
 <style>
 @page { size: 100mm 153mm; margin: 0 !important; }
-@media print{html,body{page-break-after:avoid!important;page-break-before:avoid!important;page-break-inside:avoid!important}}
+@media print {
+  html, body {
+    page-break-after: avoid !important;
+    page-break-before: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  .badge {
+    page-break-after: avoid !important;
+    page-break-before: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body {
   width: 100mm !important;
@@ -748,11 +762,14 @@ html, body {
   align-items: center;
   padding: 14mm 3mm 8mm 3mm;
   overflow: hidden;
-  /* 180° rotation for Zebra ZD230 - all browser prefixes */
+  /* FIXED: 180° rotation for Zebra ZD230 thermal printer */
   transform: rotate(180deg);
   -webkit-transform: rotate(180deg);
   -moz-transform: rotate(180deg);
   -ms-transform: rotate(180deg);
+  /* FIXED: Prevent extra pages */
+  page-break-inside: avoid;
+  break-inside: avoid;
 }
 .title {
   font-size: 16pt;
