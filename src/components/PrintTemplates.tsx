@@ -148,6 +148,7 @@ export const Badge4x6 = forwardRef<HTMLDivElement, PrintProps>(({ graduate }, re
         paddingRight: '3mm',
         boxSizing: 'border-box',
         overflow: 'hidden',
+        transform: 'rotate(180deg)',  // Fix reversed print on Zebra ZD230
       }}
     >
       {/* CONVOCATION 2026 - Shrunk to 75% */}
@@ -716,6 +717,7 @@ export function printBadge4x6(graduate: Graduate, elementRef?: HTMLElement | nul
   }
 
   // EXACT 100mm × 153mm sizing for thermal printer
+  // FIXED: 180° rotation for Zebra ZD230 (prints bottom-to-top)
   const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -723,6 +725,7 @@ export function printBadge4x6(graduate: Graduate, elementRef?: HTMLElement | nul
 <title>Badge - ${graduate.convocationNumber}</title>
 <style>
 @page { size: 100mm 153mm; margin: 0 !important; }
+@media print{html,body{page-break-after:avoid!important;page-break-before:avoid!important;page-break-inside:avoid!important}}
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body {
   width: 100mm !important;
@@ -732,6 +735,8 @@ html, body {
   overflow: hidden !important;
   font-family: Helvetica, Arial, sans-serif;
   background: #fff;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 .badge {
   width: 100mm;
@@ -741,8 +746,13 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 14mm 3mm 8mm 3mm; /* Reduced padding */
+  padding: 14mm 3mm 8mm 3mm;
   overflow: hidden;
+  /* 180° rotation for Zebra ZD230 - all browser prefixes */
+  transform: rotate(180deg);
+  -webkit-transform: rotate(180deg);
+  -moz-transform: rotate(180deg);
+  -ms-transform: rotate(180deg);
 }
 .title {
   font-size: 16pt;
