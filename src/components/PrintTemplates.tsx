@@ -293,6 +293,7 @@ export interface AddressLabelData {
 
 // 100mm × 153mm address label - INK-SAVING design for WHITE LABEL PAPER
 // FIXED: Exact sizing in millimeters for thermal printer
+// FIXED: Content shrunk to 80% (20% shrink) to fit properly on thermal printer
 // No filled bars - just text and thin lines
 export const AddressLabel4x6 = forwardRef<HTMLDivElement, { data: AddressLabelData }>(({ data }, ref) => {
   // Generate Tito ticket URL for QR code
@@ -319,6 +320,8 @@ export const AddressLabel4x6 = forwardRef<HTMLDivElement, { data: AddressLabelDa
         paddingLeft: '5mm',
         paddingRight: '5mm',
         paddingBottom: '5mm',
+        transform: 'scale(0.8)',  // 20% shrink
+        transformOrigin: 'top left',
       }}
     >
       {/* TOP: Course name (bold text, no bar) + thin separator line */}
@@ -907,6 +910,7 @@ function generateBarcodeSvg(text: string): string {
 
 // Print Address Label 4x6 - INK-SAVING for WHITE LABEL PAPER
 // FIXED: Exact 4in × 6in sizing with proper constraints
+// FIXED: Content shrunk to 80% (20% shrink) to fit properly on thermal printer
 // Uses different approach for iOS (window.print) vs desktop (iframe)
 export function printAddressLabel4x6(data: AddressLabelData, elementRef?: HTMLElement | null): void {
   // On iOS/iPad, use window.print() directly
@@ -987,6 +991,12 @@ html, body {
   flex-direction: column;
   padding: 0.25in 0.2in 0.2in 0.2in;
   overflow: hidden;
+  /* 20% shrink */
+  transform: scale(0.8);
+  -webkit-transform: scale(0.8);
+  -moz-transform: scale(0.8);
+  -ms-transform: scale(0.8);
+  transform-origin: top left;
 }
 .course-header {
   font-size: 16pt;
