@@ -25,14 +25,14 @@ function WindowsIcon({ className }: { className?: string }) {
 
 // GitHub repository for releases
 const GITHUB_REPO = 'Prabhugems/convocation-2026';
-const LATEST_VERSION = 'v1.0.0';
+const LATEST_VERSION = 'v1.0.2';
 
 export default function PrintStationPage() {
   // GitHub Releases URLs - filenames match electron-builder output
   const downloadUrls = {
-    mac: `https://github.com/${GITHUB_REPO}/releases/download/${LATEST_VERSION}/AMASI.Print.Station-1.0.0-arm64.dmg`,
-    macIntel: `https://github.com/${GITHUB_REPO}/releases/download/${LATEST_VERSION}/AMASI.Print.Station-1.0.0.dmg`,
-    windows: `https://github.com/${GITHUB_REPO}/releases/download/${LATEST_VERSION}/AMASI.Print.Station.Setup.1.0.0.exe`,
+    mac: `https://github.com/${GITHUB_REPO}/releases/download/${LATEST_VERSION}/AMASI.Print.Station-1.0.2-arm64.dmg`,
+    macIntel: `https://github.com/${GITHUB_REPO}/releases/download/${LATEST_VERSION}/AMASI.Print.Station-1.0.2.dmg`,
+    windows: `https://github.com/${GITHUB_REPO}/releases/download/${LATEST_VERSION}/AMASI.Print.Station.Setup.1.0.2.exe`,
     releases: `https://github.com/${GITHUB_REPO}/releases`,
   };
 
@@ -323,7 +323,7 @@ export default function PrintStationPage() {
       {/* Footer */}
       <footer className="border-t border-white/10 mt-12 py-8">
         <div className="max-w-4xl mx-auto px-6 text-center text-white/50 text-sm">
-          AMASI Print Station v1.0.0 • AMASICON 2026 Convocation
+          AMASI Print Station v1.0.2 • AMASICON 2026 Convocation
         </div>
       </footer>
     </div>
