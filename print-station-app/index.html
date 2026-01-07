@@ -478,9 +478,14 @@
         </svg>
         <span>AMASI</span> Print Station
       </h1>
-      <div class="connection-status">
-        <div class="status-dot" id="connectionDot"></div>
-        <span id="connectionText">Not Connected</span>
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <div id="sessionCounter" style="padding: 8px 16px; background: var(--bg-card); border-radius: 8px; font-size: 14px;">
+          🖨️ <span id="printCount">0</span> printed
+        </div>
+        <div class="connection-status">
+          <div class="status-dot" id="connectionDot"></div>
+          <span id="connectionText">Not Connected</span>
+        </div>
       </div>
     </header>
 
@@ -524,14 +529,43 @@
             <p>Scan a QR code to preview badge</p>
           </div>
 
-          <button id="printButton" class="print-button" disabled>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="6 9 6 2 18 2 18 9"></polyline>
-              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-              <rect x="6" y="14" width="12" height="8"></rect>
-            </svg>
-            Print Badge
-          </button>
+          <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            <button id="printButton" class="print-button" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                <rect x="6" y="14" width="12" height="8"></rect>
+              </svg>
+              Print Badge
+            </button>
+            <button id="previewZplButton" class="btn btn-secondary" disabled style="padding: 16px 24px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px; margin-right: 8px;">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+              Preview ZPL
+            </button>
+          </div>
+
+          <!-- ZPL Preview Modal -->
+          <div id="zplPreviewModal" style="display: none; margin-top: 16px;">
+            <div style="background: #1a1a2e; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <span style="font-weight: 600;">ZPL Code Preview</span>
+                <div id="rotationStatus" style="padding: 4px 12px; border-radius: 4px; font-size: 12px;"></div>
+              </div>
+              <pre id="zplPreviewCode" style="background: #0d0d1a; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 11px; max-height: 300px; overflow-y: auto; margin: 0;"></pre>
+              <button id="closeZplPreview" class="btn btn-secondary" style="margin-top: 12px;">Close Preview</button>
+            </div>
+          </div>
+
+          <!-- Keyboard shortcuts hint -->
+          <div style="margin-top: 20px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; font-size: 12px; color: rgba(255,255,255,0.5);">
+            <strong>Keyboard Shortcuts:</strong>
+            <span style="margin-left: 16px;">⌘/Ctrl + P = Print</span>
+            <span style="margin-left: 16px;">Esc = Clear & Focus Scanner</span>
+            <span style="margin-left: 16px;">Enter = Scan</span>
+          </div>
         </div>
       </div>
 
@@ -604,6 +638,10 @@
     let printHistory = [];
     let settings = {};
     let isConnected = false;
+    let sessionPrintCount = 0;
+    let printedInSession = new Set(); // Track printed IDs to warn duplicates
+    let reconnectAttempts = 0;
+    const MAX_RECONNECT_ATTEMPTS = 3;
 
     // DOM Elements
     const scannerInput = document.getElementById('scannerInput');
@@ -632,6 +670,31 @@
 
       // Test connection
       await testPrinterConnection();
+
+      // Keyboard shortcuts
+      document.addEventListener('keydown', (e) => {
+        // Ctrl/Cmd + P to print
+        if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+          e.preventDefault();
+          if (!printButton.disabled) {
+            handlePrint();
+          }
+        }
+        // Escape to clear scanner input
+        if (e.key === 'Escape') {
+          scannerInput.value = '';
+          scannerInput.focus();
+        }
+      });
+
+      // Auto-reconnect every 30 seconds if disconnected
+      setInterval(async () => {
+        if (!isConnected && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+          reconnectAttempts++;
+          await testPrinterConnection();
+          if (isConnected) reconnectAttempts = 0;
+        }
+      }, 30000);
     }
 
     // Tab Navigation
@@ -687,6 +750,7 @@
 
         showStatus('Ready to print', 'success');
         printButton.disabled = false;
+        document.getElementById('previewZplButton').disabled = false;
 
         // Auto print if enabled
         if (settings.autoPrint) {
@@ -775,8 +839,9 @@
       const lineMargin = Math.round(W * 0.08);
       const lineWidth = W - (lineMargin * 2);
 
-      // Rotation based on settings
-      const rotation = settings.rotatePrint !== false ? '^POI\n' : '';
+      // Rotation based on checkbox (read directly from UI)
+      const rotatePrint = document.getElementById('rotatePrint').checked;
+      const rotation = rotatePrint ? '^POI\n' : '';
 
       return `^XA
 ^CI28
@@ -810,10 +875,19 @@ ${rotation}^LH0,0
     }
 
     // Handle print
-    async function handlePrint() {
+    async function handlePrint(skipDuplicateCheck = false) {
       if (!currentBadgeData) {
         showStatus('No badge data. Scan a QR code first.', 'error');
         return;
+      }
+
+      // Check for duplicate print
+      if (!skipDuplicateCheck && printedInSession.has(currentRegistrationId)) {
+        const confirmed = confirm(`⚠️ WARNING: This badge (${currentRegistrationId}) was already printed in this session.\n\nPrint again anyway?`);
+        if (!confirmed) {
+          showStatus('Print cancelled - duplicate avoided', 'info');
+          return;
+        }
       }
 
       printButton.disabled = true;
@@ -838,6 +912,17 @@ ${rotation}^LH0,0
           Printed!
         `;
         showStatus('Badge printed successfully!', 'success');
+
+        // Update session counter
+        sessionPrintCount++;
+        printedInSession.add(currentRegistrationId);
+        document.getElementById('printCount').textContent = sessionPrintCount;
+
+        // Flash success animation
+        document.getElementById('sessionCounter').style.background = '#22c55e';
+        setTimeout(() => {
+          document.getElementById('sessionCounter').style.background = 'var(--bg-card)';
+        }, 500);
 
         // Mark as printed in database
         try {
@@ -897,6 +982,38 @@ ${rotation}^LH0,0
     }
 
     printButton.addEventListener('click', handlePrint);
+
+    // Preview ZPL button
+    const previewZplButton = document.getElementById('previewZplButton');
+    const zplPreviewModal = document.getElementById('zplPreviewModal');
+    const zplPreviewCode = document.getElementById('zplPreviewCode');
+    const rotationStatus = document.getElementById('rotationStatus');
+    const closeZplPreview = document.getElementById('closeZplPreview');
+
+    previewZplButton.addEventListener('click', () => {
+      if (!currentBadgeData) return;
+
+      const zpl = generateBadgeZPL(currentBadgeData);
+      zplPreviewCode.textContent = zpl;
+
+      // Check if rotation is enabled
+      const hasRotation = zpl.includes('^POI');
+      if (hasRotation) {
+        rotationStatus.textContent = '🔄 ROTATION: ON (180°)';
+        rotationStatus.style.background = '#22c55e';
+        rotationStatus.style.color = '#000';
+      } else {
+        rotationStatus.textContent = '➡️ ROTATION: OFF (Normal)';
+        rotationStatus.style.background = '#f59e0b';
+        rotationStatus.style.color = '#000';
+      }
+
+      zplPreviewModal.style.display = 'block';
+    });
+
+    closeZplPreview.addEventListener('click', () => {
+      zplPreviewModal.style.display = 'none';
+    });
 
     // Add to print history
     function addToHistory(badge) {
