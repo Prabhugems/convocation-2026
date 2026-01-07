@@ -851,16 +851,16 @@
 
       if (rotatePrint) {
         // Inverted: elements positioned for upside-down reading
-        // Content moved 1 inch down + reversed order
-        yDisc = HEADER + Math.round(WORK * 0.08);
-        yLine = HEADER + Math.round(WORK * 0.14);
-        yColl2 = HEADER + Math.round(WORK * 0.20);
-        yColl1 = HEADER + Math.round(WORK * 0.26);
-        yCert = HEADER + Math.round(WORK * 0.34);
-        yQr = HEADER + Math.round(WORK * 0.42);
-        yName = HEADER + Math.round(WORK * 0.72);
-        yCourse = HEADER + Math.round(WORK * 0.80);
-        yTitle = HEADER + Math.round(WORK * 0.88);
+        // Adjusted Y positions (moved away from header)
+        yDisc = HEADER + Math.round(WORK * 0.04);      // 218
+        yLine = HEADER + Math.round(WORK * 0.10);      // 274
+        yColl2 = HEADER + Math.round(WORK * 0.16);     // 331
+        yColl1 = HEADER + Math.round(WORK * 0.22);     // 387
+        yCert = HEADER + Math.round(WORK * 0.30);      // 462
+        yQr = HEADER + Math.round(WORK * 0.37);        // 527
+        yName = HEADER + Math.round(WORK * 0.68);      // 818
+        yCourse = HEADER + Math.round(WORK * 0.76);    // 893
+        yTitle = HEADER + Math.round(WORK * 0.83);     // 958
       } else {
         // Normal Y positions - content prints from top to bottom
         yTitle = Y_TITLE;
@@ -888,7 +888,7 @@
 
 ^FO0,${yName}^FB${W},1,0,C,0^A0${fontOrient},${F_NAME},${F_NAME}^FDDr. ${safeName}^FS
 
-^FO${qrX},${yQr}^BQN,2,${qrMag}^FDQA,${qrUrl}^FS
+^FO${rotatePrint ? 256 : qrX},${yQr}^BQ${fontOrient},2,${qrMag}^FDQA,${qrUrl}^FS
 
 ^FO0,${yCert}^FB${W},1,0,C,0^A0${fontOrient},${F_CERT},${F_CERT}^FD${safeConvNum}^FS
 
