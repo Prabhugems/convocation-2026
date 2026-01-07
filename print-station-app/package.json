@@ -5,6 +5,10 @@
   "main": "main.js",
   "author": "AMASI",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Prabhugems/convocation-2026.git"
+  },
   "scripts": {
     "start": "electron .",
     "build": "electron-builder --mac --win",
@@ -15,6 +19,7 @@
   "build": {
     "appId": "com.amasi.printstation",
     "productName": "AMASI Print Station",
+    "publish": null,
     "directories": {
       "output": "dist"
     },
