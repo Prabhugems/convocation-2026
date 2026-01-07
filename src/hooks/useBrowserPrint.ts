@@ -90,7 +90,6 @@ export function useBrowserPrint(): UseBrowserPrintReturn {
           course: graduate.course,
           convocationNumber: graduate.convocationNumber || 'N/A',
           registrationId: graduate.ticketSlug || graduate.registrationNumber,
-          eventName: 'AMASICON 2026 Convocation',
         };
 
         const zpl = generateConvocationBadgeZPL(badgeData);
