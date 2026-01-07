@@ -10,6 +10,9 @@ on:
         required: false
         default: 'dev'
 
+permissions:
+  contents: write
+
 jobs:
   build-mac:
     runs-on: macos-latest
@@ -36,18 +39,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: mac-installer
-          path: |
-            print-station-app/dist/*.dmg
-            print-station-app/dist/*.zip
+          path: print-station-app/dist/*.dmg
           if-no-files-found: error
 
       - name: Upload to Release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v1
         with:
-          files: |
-            print-station-app/dist/*.dmg
-            print-station-app/dist/*.zip
+          files: print-station-app/dist/*.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
