@@ -816,19 +816,20 @@
       const F_NAME = 43;       // Name
       const F_CERT = 39;       // Certificate ID
       const F_COLLECT = 26;    // Collection lines
-      const F_DISCLAIM = 18;   // Disclaimer
+      const F_DISCLAIM = 22;   // Disclaimer (larger for single line)
 
       // Y positions (% of work area + header offset)
-      const Y_TITLE = HEADER + Math.round(WORK * 0.03);     // 3%
-      const Y_COURSE = HEADER + Math.round(WORK * 0.10);    // 10%
-      const Y_NAME = HEADER + Math.round(WORK * 0.18);      // 18%
-      const Y_QR = HEADER + Math.round(WORK * 0.30);        // 30% - more space from name
-      const Y_CERT = HEADER + Math.round(WORK * 0.58);      // 58%
-      const Y_COLL1 = HEADER + Math.round(WORK * 0.70);     // 70%
-      const Y_COLL2 = HEADER + Math.round(WORK * 0.76);     // 76%
-      const Y_LINE = HEADER + Math.round(WORK * 0.83);      // 83%
-      const Y_DISC1 = HEADER + Math.round(WORK * 0.87);     // 87%
-      const Y_DISC2 = HEADER + Math.round(WORK * 0.92);     // 92%
+      // Added 1 inch (203 dots) offset to move content down
+      const OFFSET = 203;  // 1 inch at 203 DPI
+      const Y_TITLE = HEADER + OFFSET + Math.round(WORK * 0.01);     // 1%
+      const Y_COURSE = HEADER + OFFSET + Math.round(WORK * 0.07);    // 7%
+      const Y_NAME = HEADER + OFFSET + Math.round(WORK * 0.14);      // 14%
+      const Y_QR = HEADER + OFFSET + Math.round(WORK * 0.24);        // 24%
+      const Y_CERT = HEADER + OFFSET + Math.round(WORK * 0.50);      // 50%
+      const Y_COLL1 = HEADER + OFFSET + Math.round(WORK * 0.60);     // 60%
+      const Y_COLL2 = HEADER + OFFSET + Math.round(WORK * 0.65);     // 65%
+      const Y_LINE = HEADER + OFFSET + Math.round(WORK * 0.71);      // 71%
+      const Y_DISC = HEADER + OFFSET + Math.round(WORK * 0.75);      // 75% - single disclaimer line
 
       // QR Code: smaller size with mag 6
       const qrMag = 6;
@@ -846,22 +847,20 @@
       const fontOrient = rotatePrint ? 'I' : 'N';
 
       // Y positions based on rotation
-      let yTitle, yCourse, yName, yQr, yCert, yColl1, yColl2, yLine, yDisc1, yDisc2;
+      let yTitle, yCourse, yName, yQr, yCert, yColl1, yColl2, yLine, yDisc;
 
       if (rotatePrint) {
         // Inverted: elements positioned for upside-down reading
-        // When text is rotated 180° (^A0I), it prints "upside down" at the position
-        // So we put Title near FOOTER, Disclaimer near HEADER
-        yDisc2 = HEADER + Math.round(WORK * 0.05);
-        yDisc1 = HEADER + Math.round(WORK * 0.10);
-        yLine = HEADER + Math.round(WORK * 0.15);
+        // Content moved 1 inch down + reversed order
+        yDisc = HEADER + Math.round(WORK * 0.08);
+        yLine = HEADER + Math.round(WORK * 0.14);
         yColl2 = HEADER + Math.round(WORK * 0.20);
         yColl1 = HEADER + Math.round(WORK * 0.26);
-        yCert = HEADER + Math.round(WORK * 0.35);
+        yCert = HEADER + Math.round(WORK * 0.34);
         yQr = HEADER + Math.round(WORK * 0.42);
-        yName = HEADER + Math.round(WORK * 0.75);
-        yCourse = HEADER + Math.round(WORK * 0.83);
-        yTitle = HEADER + Math.round(WORK * 0.91);
+        yName = HEADER + Math.round(WORK * 0.72);
+        yCourse = HEADER + Math.round(WORK * 0.80);
+        yTitle = HEADER + Math.round(WORK * 0.88);
       } else {
         // Normal Y positions - content prints from top to bottom
         yTitle = Y_TITLE;
@@ -872,8 +871,7 @@
         yColl1 = Y_COLL1;
         yColl2 = Y_COLL2;
         yLine = Y_LINE;
-        yDisc1 = Y_DISC1;
-        yDisc2 = Y_DISC2;
+        yDisc = Y_DISC;
       }
 
       return `^XA
@@ -900,9 +898,7 @@
 
 ^FO${lineMargin},${yLine}^GB${lineWidth},1,1^FS
 
-^FO0,${yDisc1}^FB${W},1,0,C,0^A0${fontOrient},${F_DISCLAIM},${F_DISCLAIM}^FDThis badge is valid for Convocation^FS
-
-^FO0,${yDisc2}^FB${W},1,0,C,0^A0${fontOrient},${F_DISCLAIM},${F_DISCLAIM}^FDCeremony only, not for AMASICON 2026^FS
+^FO0,${yDisc}^FB${W},1,0,C,0^A0${fontOrient},${F_DISCLAIM},${F_DISCLAIM}^FDThis badge is valid for Convocation Ceremony only^FS
 
 ^XZ`.trim();
     }
