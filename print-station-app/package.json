@@ -1,6 +1,6 @@
 {
   "name": "amasi-print-station",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "AMASI Print Station - Convocation Badge Printing for Zebra ZD230",
   "main": "main.js",
   "author": "AMASI",
