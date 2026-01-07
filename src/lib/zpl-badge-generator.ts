@@ -2,21 +2,27 @@
  * ZPL Badge Generator for Convocation 2026
  *
  * Generates ZPL code for 4x6 inch badges (812 x 1218 dots at 203 DPI)
+ * MATCHES the existing badge layout from pdfPrint.ts and PrintTemplates.tsx
+ *
  * Designed for Zebra ZD230 and compatible thermal printers.
  */
 
 export interface ConvocationBadgeData {
   name: string;
-  course: string; // e.g., "FMAS", "DiPMAS", "MMAS", "120 FMAS Kolkata"
-  institution?: string;
+  course: string; // e.g., "120 FMAS Kolkata"
   convocationNumber: string;
-  registrationId: string; // Tito ticket slug or reference
-  eventName?: string;
+  registrationId: string; // Tito ticket slug or reference (for QR code)
 }
 
 // Label dimensions for 4x6 inch (203 DPI)
 const LABEL_WIDTH = 812; // 4 inches * 203 DPI
-const LABEL_HEIGHT = 1218; // 6 inches * 203 DPI
+const LABEL_HEIGHT = 1218; // 6 inches * 203 DPI (approx 153mm)
+
+// Pre-printed label zones (in dots at 203 DPI)
+// Orange header: ~22mm = ~177 dots - DON'T PRINT HERE
+// Orange footer: ~8mm = ~64 dots - DON'T PRINT HERE
+const HEADER_ZONE = 177;
+const FOOTER_ZONE = 64;
 
 /**
  * Sanitize text for ZPL to prevent injection and encoding issues
@@ -31,101 +37,48 @@ function sanitizeZPL(text: string): string {
 }
 
 /**
- * Extract course abbreviation from full course name
- * e.g., "120 FMAS Kolkata" -> "FMAS"
- */
-function extractCourseAbbrev(course: string): string {
-  if (!course) return '';
-
-  // Look for common course abbreviations
-  const abbrevs = ['FMAS', 'DiPMAS', 'MMAS', 'DipMAS'];
-  for (const abbrev of abbrevs) {
-    if (course.toUpperCase().includes(abbrev.toUpperCase())) {
-      return abbrev;
-    }
-  }
-
-  // Return original if no match
-  return course;
-}
-
-/**
- * Split name into multiple lines if too long
- * Returns array of name lines (max 2)
- */
-function splitNameForBadge(name: string, maxCharsPerLine: number = 20): string[] {
-  const sanitized = sanitizeZPL(name);
-
-  if (sanitized.length <= maxCharsPerLine) {
-    return [sanitized];
-  }
-
-  // Try to split at space
-  const words = sanitized.split(' ');
-  const lines: string[] = [];
-  let currentLine = '';
-
-  for (const word of words) {
-    if (currentLine.length + word.length + 1 <= maxCharsPerLine) {
-      currentLine = currentLine ? `${currentLine} ${word}` : word;
-    } else {
-      if (currentLine) {
-        lines.push(currentLine);
-      }
-      currentLine = word;
-    }
-
-    // Max 2 lines
-    if (lines.length >= 2) break;
-  }
-
-  if (currentLine && lines.length < 2) {
-    lines.push(currentLine);
-  }
-
-  return lines;
-}
-
-/**
  * Generate ZPL for 4x6 Convocation Badge
  *
- * Layout (top to bottom):
- * - Event name (centered, top)
- * - Name (large, centered, 1-2 lines)
- * - Course/Degree (centered)
- * - Institution (if provided)
- * - "Graduate" badge box (centered)
+ * MATCHES EXISTING LAYOUT from PrintTemplates.tsx Badge4x6:
+ * - CONVOCATION 2026 (title)
+ * - Course name
+ * - Dr. [Name]
+ * - QR Code (centered)
  * - Convocation Number
- * - QR Code (center)
- * - Registration ID (below QR)
+ * - Collection info
+ * - Separator line
+ * - Disclaimer
+ *
+ * Uses 180° rotation (^POI) to match existing design
  */
 export function generateConvocationBadgeZPL(data: ConvocationBadgeData): string {
   const {
     name,
     course,
-    institution = '',
     convocationNumber,
     registrationId,
-    eventName = 'AMASICON 2026 Convocation',
   } = data;
 
   const sanitizedName = sanitizeZPL(name);
-  const courseAbbrev = extractCourseAbbrev(course);
-  const sanitizedInst = sanitizeZPL(institution);
+  const sanitizedCourse = sanitizeZPL(course) || 'FMAS Course';
   const sanitizedConvNum = sanitizeZPL(convocationNumber);
   const sanitizedRegId = sanitizeZPL(registrationId);
-  const sanitizedEvent = sanitizeZPL(eventName);
-
-  // Split name if needed
-  const nameLines = splitNameForBadge(sanitizedName, 22);
 
   // Center X position
   const centerX = Math.floor(LABEL_WIDTH / 2);
 
-  // Build ZPL
+  // QR code URL
+  const qrUrl = registrationId.startsWith('http')
+    ? sanitizedRegId
+    : `https://ti.to/tickets/${sanitizedRegId}`;
+
+  // Start after header zone (22mm = ~177 dots), add padding
+  let y = HEADER_ZONE + 30;
+
+  // Build ZPL - matches existing Badge4x6 layout
   let zpl = `^XA
 ^CI28
-^PON
+^POI
 ^LH0,0
 ^LL${LABEL_HEIGHT}
 ^PW${LABEL_WIDTH}
@@ -133,81 +86,57 @@ export function generateConvocationBadgeZPL(data: ConvocationBadgeData): string 
 ^MD15
 `;
 
-  // Event name at top (centered)
-  zpl += `^FO0,60^FB${LABEL_WIDTH},1,0,C,0^A0N,40,40^FD${sanitizedEvent}^FS
+  // CONVOCATION 2026 (16pt = ~32 dots height)
+  zpl += `^FO0,${y}^FB${LABEL_WIDTH},1,0,C,0^A0N,32,32^FDCONVOCATION 2026^FS
 `;
+  y += 50;
 
-  // Horizontal line under event
-  zpl += `^FO50,120^GB${LABEL_WIDTH - 100},2,2^FS
+  // Course name (12pt = ~24 dots height)
+  zpl += `^FO0,${y}^FB${LABEL_WIDTH},1,0,C,0^A0N,24,24^FD${sanitizedCourse}^FS
 `;
+  y += 40;
 
-  // Name (large, centered) - handle 1 or 2 lines
-  const nameStartY = 180;
-  const nameFontSize = nameLines.length > 1 ? 55 : 65;
+  // Dr. Name (14pt = ~28 dots height)
+  zpl += `^FO0,${y}^FB${LABEL_WIDTH},1,0,C,0^A0N,28,28^FDDr. ${sanitizedName}^FS
+`;
+  y += 45;
 
-  if (nameLines.length === 1) {
-    zpl += `^FO0,${nameStartY}^FB${LABEL_WIDTH},1,0,C,0^A0N,${nameFontSize},${nameFontSize}^FDDr. ${nameLines[0]}^FS
+  // QR Code (28mm = ~224 dots, centered)
+  // Using magnification 7 gives ~175 dots, magnification 8 gives ~200 dots
+  const qrMag = 7;
+  const qrSize = 25 * qrMag; // Approximate QR size
+  const qrX = centerX - Math.floor(qrSize / 2);
+  zpl += `^FO${qrX},${y}^BQN,2,${qrMag}^FDQA,${qrUrl}^FS
 `;
-  } else {
-    zpl += `^FO0,${nameStartY}^FB${LABEL_WIDTH},1,0,C,0^A0N,${nameFontSize},${nameFontSize}^FDDr. ${nameLines[0]}^FS
-`;
-    zpl += `^FO0,${nameStartY + nameFontSize + 10}^FB${LABEL_WIDTH},1,0,C,0^A0N,${nameFontSize},${nameFontSize}^FD${nameLines[1]}^FS
-`;
-  }
+  y += qrSize + 20;
 
-  // Course/Degree (below name)
-  const courseY = nameLines.length > 1 ? nameStartY + (nameFontSize * 2) + 30 : nameStartY + nameFontSize + 40;
-  zpl += `^FO0,${courseY}^FB${LABEL_WIDTH},1,0,C,0^A0N,50,50^FD${courseAbbrev}^FS
+  // Convocation Number (13pt = ~26 dots height)
+  zpl += `^FO0,${y}^FB${LABEL_WIDTH},1,0,C,0^A0N,26,26^FD${sanitizedConvNum}^FS
 `;
+  y += 45;
 
-  // Institution (if provided)
-  let currentY = courseY + 60;
-  if (sanitizedInst) {
-    zpl += `^FO0,${currentY}^FB${LABEL_WIDTH},1,0,C,0^A0N,30,30^FD${sanitizedInst}^FS
+  // Collection info line 1 (7pt = ~14 dots height)
+  zpl += `^FO0,${y}^FB${LABEL_WIDTH},1,0,C,0^A0N,14,14^FDCollect your certificate on 28th August 2026^FS
 `;
-    currentY += 45;
-  }
+  y += 20;
 
-  // "Graduate" badge box
-  currentY += 20;
-  const badgeBoxWidth = 200;
-  const badgeBoxHeight = 50;
-  const badgeBoxX = centerX - Math.floor(badgeBoxWidth / 2);
-  zpl += `^FO${badgeBoxX},${currentY}^GB${badgeBoxWidth},${badgeBoxHeight},3,B^FS
+  // Collection info line 2
+  zpl += `^FO0,${y}^FB${LABEL_WIDTH},1,0,C,0^A0N,14,14^FDat AMASI Office (Venue)^FS
 `;
-  zpl += `^FO0,${currentY + 12}^FB${LABEL_WIDTH},1,0,C,0^A0N,30,30^FDGraduate^FS
+  y += 30;
+
+  // Separator line (70% width = ~570 dots, centered)
+  const lineWidth = 570;
+  const lineX = centerX - Math.floor(lineWidth / 2);
+  zpl += `^FO${lineX},${y}^GB${lineWidth},2,2^FS
 `;
+  y += 15;
 
-  // Convocation Number
-  currentY += badgeBoxHeight + 40;
-  zpl += `^FO0,${currentY}^FB${LABEL_WIDTH},1,0,C,0^A0N,32,32^FDConv. No: ${sanitizedConvNum}^FS
+  // Disclaimer (5pt = ~10 dots height)
+  zpl += `^FO0,${y}^FB${LABEL_WIDTH},1,0,C,0^A0N,10,10^FDThis badge is valid for Convocation Ceremony only,^FS
 `;
-
-  // QR Code (centered)
-  // QR at magnification 6 is approximately 150x150 dots
-  currentY += 60;
-  const qrSize = 6; // Magnification
-  const qrWidth = 25 * qrSize; // Approximate width
-  const qrX = centerX - Math.floor(qrWidth / 2);
-
-  // QR code with registration ID as data
-  const qrData = registrationId.startsWith('http')
-    ? sanitizedRegId
-    : `https://ti.to/tickets/${sanitizedRegId}`;
-  zpl += `^FO${qrX},${currentY}^BQN,2,${qrSize}^FDQA,${qrData}^FS
-`;
-
-  // Registration ID text below QR
-  currentY += qrWidth + 30;
-  zpl += `^FO0,${currentY}^FB${LABEL_WIDTH},1,0,C,0^A0N,28,28^FD${sanitizedRegId}^FS
-`;
-
-  // Footer line
-  zpl += `^FO50,${LABEL_HEIGHT - 80}^GB${LABEL_WIDTH - 100},2,2^FS
-`;
-
-  // Footer text
-  zpl += `^FO0,${LABEL_HEIGHT - 60}^FB${LABEL_WIDTH},1,0,C,0^A0N,22,22^FDCollect your certificate on 28th August 2026^FS
+  y += 14;
+  zpl += `^FO0,${y}^FB${LABEL_WIDTH},1,0,C,0^A0N,10,10^FDnot for AMASICON 2026 conference registration.^FS
 `;
 
   // End label
@@ -224,22 +153,22 @@ export function generateTestZPL(): string {
 
   return `^XA
 ^CI28
-^PON
+^POI
 ^LH0,0
 ^LL${LABEL_HEIGHT}
 ^PW${LABEL_WIDTH}
 ^MNY
 ^MD15
 
-^FO0,100^FB${LABEL_WIDTH},1,0,C,0^A0N,50,50^FD*** TEST PRINT ***^FS
-^FO0,180^FB${LABEL_WIDTH},1,0,C,0^A0N,35,35^FDZebra Browser Print^FS
-^FO0,240^FB${LABEL_WIDTH},1,0,C,0^A0N,30,30^FDConnection Successful!^FS
-^FO0,310^FB${LABEL_WIDTH},1,0,C,0^A0N,28,28^FD${now}^FS
+^FO0,${HEADER_ZONE + 50}^FB${LABEL_WIDTH},1,0,C,0^A0N,40,40^FD*** TEST PRINT ***^FS
+^FO0,${HEADER_ZONE + 110}^FB${LABEL_WIDTH},1,0,C,0^A0N,28,28^FDZebra Browser Print^FS
+^FO0,${HEADER_ZONE + 150}^FB${LABEL_WIDTH},1,0,C,0^A0N,24,24^FDConnection Successful!^FS
+^FO0,${HEADER_ZONE + 200}^FB${LABEL_WIDTH},1,0,C,0^A0N,20,20^FD${now}^FS
 
-^FO${Math.floor(LABEL_WIDTH / 2) - 75},400^BQN,2,6^FDQA,TEST-PRINT-OK^FS
+^FO${Math.floor(LABEL_WIDTH / 2) - 87},${HEADER_ZONE + 260}^BQN,2,7^FDQA,TEST-PRINT-OK^FS
 
-^FO0,600^FB${LABEL_WIDTH},1,0,C,0^A0N,25,25^FDConvocation 2026 System^FS
-^FO0,640^FB${LABEL_WIDTH},1,0,C,0^A0N,22,22^FDLabel: 4" x 6" (${LABEL_WIDTH} x ${LABEL_HEIGHT} dots)^FS
+^FO0,${HEADER_ZONE + 450}^FB${LABEL_WIDTH},1,0,C,0^A0N,18,18^FDConvocation 2026 System^FS
+^FO0,${HEADER_ZONE + 480}^FB${LABEL_WIDTH},1,0,C,0^A0N,16,16^FDLabel: 4" x 6" (${LABEL_WIDTH} x ${LABEL_HEIGHT} dots)^FS
 
 ^XZ`;
 }
@@ -257,26 +186,4 @@ export function generateCalibrationZPL(): string {
  */
 export function generateClearQueueZPL(): string {
   return `~JA^XA^XZ`;
-}
-
-/**
- * Generate a simple name badge (smaller, for testing)
- */
-export function generateSimpleBadgeZPL(name: string, title: string = 'Graduate'): string {
-  const sanitizedName = sanitizeZPL(name);
-  const sanitizedTitle = sanitizeZPL(title);
-
-  return `^XA
-^CI28
-^PON
-^LH0,0
-^LL${LABEL_HEIGHT}
-^PW${LABEL_WIDTH}
-^MNY
-^MD15
-
-^FO0,200^FB${LABEL_WIDTH},1,0,C,0^A0N,80,80^FD${sanitizedName}^FS
-^FO0,320^FB${LABEL_WIDTH},1,0,C,0^A0N,45,45^FD${sanitizedTitle}^FS
-
-^XZ`;
 }
