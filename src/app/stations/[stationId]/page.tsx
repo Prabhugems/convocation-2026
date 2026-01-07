@@ -34,6 +34,7 @@ import {
   Phone,
   Mail,
   Loader2,
+  Download,
 } from 'lucide-react';
 import { usePrinter } from '@/hooks/usePrinter';
 import { useBrowserPrint } from '@/hooks/useBrowserPrint';
@@ -660,6 +661,19 @@ export default function StationPage() {
               {browserPrint.error && (
                 <p className="text-red-400/70 text-xs mt-2">{browserPrint.error}</p>
               )}
+
+              {/* Desktop App Alternative */}
+              <div className="mt-3 pt-3 border-t border-white/10">
+                <p className="text-white/50 text-xs mb-2">Alternative: Use the Desktop App for direct printing</p>
+                <a
+                  href="/print-station"
+                  target="_blank"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white/70 text-sm hover:bg-white/10 hover:text-white transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  Download Print Station App
+                </a>
+              </div>
             </GlassCard>
           )}
 
