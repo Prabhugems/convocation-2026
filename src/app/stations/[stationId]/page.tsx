@@ -36,6 +36,8 @@ import {
   Loader2,
 } from 'lucide-react';
 import { usePrinter } from '@/hooks/usePrinter';
+import { useBrowserPrint } from '@/hooks/useBrowserPrint';
+import PrinterSetup from '@/components/PrinterSetup';
 import QRCode from 'react-qr-code';
 
 const iconMap: Record<string, React.ElementType> = {
@@ -91,8 +93,12 @@ export default function StationPage() {
 
   const printRef = useRef<HTMLDivElement>(null);
 
-  // Zebra printer direct print
+  // Zebra printer direct print (legacy)
   const { printLabel, status: printStatus } = usePrinter();
+
+  // Zebra Browser Print (for registration station 4x6 badges)
+  const browserPrint = useBrowserPrint();
+  const [showPrinterSetup, setShowPrinterSetup] = useState(false);
 
   // Get the shareable station URL
   const stationUrl = typeof window !== 'undefined'
@@ -170,14 +176,35 @@ export default function StationPage() {
     }
   }, [result]);
 
-  // Helper function to print 4x6 badge using jsPDF
+  // Helper function to print 4x6 badge
+  // Uses Browser Print for registration station, falls back to jsPDF
   const handlePrintBadge4x6 = async (graduate: Graduate) => {
+    // For registration station, try Browser Print first (direct Zebra printing)
+    if (stationId === 'registration') {
+      // Check if Browser Print is running
+      if (!browserPrint.isRunning) {
+        // Show printer setup modal
+        setShowPrinterSetup(true);
+        return;
+      }
+
+      // Print using Browser Print
+      const success = await browserPrint.printBadge(graduate);
+      if (success) {
+        console.log('[Registration] Badge printed via Browser Print');
+        return;
+      }
+      // If Browser Print fails, fall through to jsPDF
+      console.warn('[Registration] Browser Print failed, falling back to PDF');
+    }
+
+    // Fallback: jsPDF print
     const titoUrl = graduate.ticketSlug
       ? `https://ti.to/tickets/${graduate.ticketSlug}`
       : `https://ti.to/amasi/convocation-2026-kolkata/tickets/${graduate.convocationNumber || graduate.registrationNumber}`;
-    
+
     const qrDataUrl = await generateQRDataUrl(titoUrl, 200);
-    
+
     await printBadge4x6PDF({
       name: graduate.name,
       course: graduate.course,
@@ -503,6 +530,32 @@ export default function StationPage() {
         </div>
       )}
 
+      {/* Printer Setup Modal - Registration Station Only */}
+      {showPrinterSetup && stationId === 'registration' && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setShowPrinterSetup(false)}>
+          <div className="bg-slate-900 border border-white/20 rounded-2xl max-w-2xl w-full my-8" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-white/10">
+              <h3 className="text-xl font-bold text-white flex items-center gap-3">
+                <Printer className="w-6 h-6 text-cyan-400" />
+                Printer Setup
+              </h3>
+              <button onClick={() => setShowPrinterSetup(false)} className="p-2 hover:bg-white/10 rounded-lg">
+                <X className="w-5 h-5 text-white/50" />
+              </button>
+            </div>
+            <div className="p-6 max-h-[70vh] overflow-y-auto">
+              <PrinterSetup
+                onPrinterReady={(printer) => {
+                  browserPrint.setSelectedPrinter(printer);
+                  // Auto-close modal after printer is ready
+                  setTimeout(() => setShowPrinterSetup(false), 1000);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Money Alerts */}
       {(station.collectMoney || station.refundMoney) && (
         <div className="mb-8">
@@ -556,6 +609,59 @@ export default function StationPage() {
               placeholder="Name, Conv. No, Mobile, or scan QR/Barcode"
             />
           </GlassCard>
+
+          {/* Browser Print Status - Registration Station Only */}
+          {stationId === 'registration' && (
+            <GlassCard className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Printer className="w-5 h-5 text-cyan-400" />
+                  <div className="flex items-center gap-2">
+                    {browserPrint.isChecking ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
+                        <span className="text-blue-400 text-sm">Checking printer...</span>
+                      </>
+                    ) : browserPrint.isRunning ? (
+                      <>
+                        <CheckCircle className="w-4 h-4 text-green-400" />
+                        <span className="text-green-400 text-sm">
+                          Zebra Printer Ready
+                          {browserPrint.selectedPrinter && ` (${browserPrint.selectedPrinter.name})`}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="w-4 h-4 text-red-400" />
+                        <span className="text-red-400 text-sm">Browser Print not detected</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {!browserPrint.isRunning && (
+                    <button
+                      onClick={() => setShowPrinterSetup(true)}
+                      className="px-3 py-1.5 bg-cyan-500/20 border border-cyan-500/30 rounded-lg text-cyan-400 text-sm hover:bg-cyan-500/30 transition-colors"
+                    >
+                      Setup
+                    </button>
+                  )}
+                  <button
+                    onClick={() => browserPrint.checkStatus()}
+                    disabled={browserPrint.isChecking}
+                    className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                    title="Refresh printer status"
+                  >
+                    <RefreshCw className={`w-4 h-4 text-white/50 ${browserPrint.isChecking ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+              </div>
+              {browserPrint.error && (
+                <p className="text-red-400/70 text-xs mt-2">{browserPrint.error}</p>
+              )}
+            </GlassCard>
+          )}
 
           {/* Final Dispatch Special Inputs */}
           {stationId === 'final-dispatch' && (
@@ -694,7 +800,7 @@ export default function StationPage() {
                     <button
                       onClick={async () => {
                         if (station.printType === '4x6-badge') {
-                          // USE NEW jsPDF PRINT FOR REPRINT
+                          // Use Browser Print for registration, jsPDF fallback for others
                           await handlePrintBadge4x6(lastScanned);
                         } else {
                           // Use old method for other print types
@@ -702,31 +808,31 @@ export default function StationPage() {
                           printLabel(lastScanned, printType, printRef.current);
                         }
                       }}
-                      disabled={printStatus === 'printing'}
+                      disabled={stationId === 'registration' ? browserPrint.state === 'printing' : printStatus === 'printing'}
                       className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-white text-sm transition-all ${
-                        printStatus === 'printing'
+                        (stationId === 'registration' ? browserPrint.state : printStatus) === 'printing'
                           ? 'bg-blue-500/30 cursor-wait'
-                          : printStatus === 'success'
+                          : (stationId === 'registration' ? browserPrint.state : printStatus) === 'success'
                           ? 'bg-green-500/30'
-                          : printStatus === 'error'
+                          : (stationId === 'registration' ? browserPrint.state : printStatus) === 'error'
                           ? 'bg-red-500/30 hover:bg-red-500/40'
                           : 'bg-white/10 hover:bg-white/20'
                       }`}
                     >
-                      {printStatus === 'printing' ? (
+                      {(stationId === 'registration' ? browserPrint.state : printStatus) === 'printing' ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : printStatus === 'success' ? (
+                      ) : (stationId === 'registration' ? browserPrint.state : printStatus) === 'success' ? (
                         <Check className="w-4 h-4 text-green-400" />
-                      ) : printStatus === 'error' ? (
+                      ) : (stationId === 'registration' ? browserPrint.state : printStatus) === 'error' ? (
                         <AlertTriangle className="w-4 h-4 text-red-400" />
                       ) : (
                         <Printer className="w-4 h-4" />
                       )}
-                      {printStatus === 'printing'
+                      {(stationId === 'registration' ? browserPrint.state : printStatus) === 'printing'
                         ? 'Printing...'
-                        : printStatus === 'success'
+                        : (stationId === 'registration' ? browserPrint.state : printStatus) === 'success'
                         ? 'Printed!'
-                        : printStatus === 'error'
+                        : (stationId === 'registration' ? browserPrint.state : printStatus) === 'error'
                         ? 'Retry'
                         : 'Print'}
                     </button>
