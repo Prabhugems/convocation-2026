@@ -23,11 +23,17 @@ function WindowsIcon({ className }: { className?: string }) {
   );
 }
 
+// GitHub repository for releases
+const GITHUB_REPO = 'Prabhugems/convocation-2026';
+const LATEST_VERSION = 'v1.0.0';
+
 export default function PrintStationPage() {
-  // Update these URLs when releases are available
+  // GitHub Releases URLs - these will work once a release is created
   const downloadUrls = {
-    mac: '#', // Will be updated to GitHub Releases URL
-    windows: '#', // Will be updated to GitHub Releases URL
+    mac: `https://github.com/${GITHUB_REPO}/releases/latest/download/AMASI-Print-Station-${LATEST_VERSION}-arm64.dmg`,
+    macIntel: `https://github.com/${GITHUB_REPO}/releases/latest/download/AMASI-Print-Station-${LATEST_VERSION}-x64.dmg`,
+    windows: `https://github.com/${GITHUB_REPO}/releases/latest/download/AMASI-Print-Station-Setup-${LATEST_VERSION}.exe`,
+    releases: `https://github.com/${GITHUB_REPO}/releases`,
   };
 
   return (
@@ -113,9 +119,20 @@ export default function PrintStationPage() {
             </a>
           </div>
 
-          <p className="text-sm text-white/50 mt-6 text-center">
-            Version 1.0.0 • Released January 2026
-          </p>
+          <div className="mt-6 text-center">
+            <p className="text-sm text-white/50 mb-2">
+              Version {LATEST_VERSION} • January 2026
+            </p>
+            <a
+              href={downloadUrls.releases}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-cyan-400 hover:text-cyan-300 inline-flex items-center gap-1"
+            >
+              View all releases
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
         </div>
 
         {/* Setup Instructions */}
