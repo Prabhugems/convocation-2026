@@ -842,22 +842,26 @@
       // Rotation based on checkbox (read directly from UI)
       const rotatePrint = document.getElementById('rotatePrint').checked;
 
-      // If rotation ON, flip all Y positions (calculate from bottom instead of top)
-      // This works when ^POI doesn't work on the printer
+      // Font orientation: N=Normal, I=Inverted (180°)
+      const fontOrient = rotatePrint ? 'I' : 'N';
+
+      // Y positions based on rotation
       let yTitle, yCourse, yName, yQr, yCert, yColl1, yColl2, yLine, yDisc1, yDisc2;
 
       if (rotatePrint) {
-        // Flipped Y positions - content prints from bottom to top
-        yTitle = H - FOOTER - Math.round(WORK * 0.08);       // Near bottom of work area
-        yCourse = H - FOOTER - Math.round(WORK * 0.15);
-        yName = H - FOOTER - Math.round(WORK * 0.23);
-        yQr = H - FOOTER - Math.round(WORK * 0.55);          // QR in middle-upper
-        yCert = H - FOOTER - Math.round(WORK * 0.63);
-        yColl1 = H - FOOTER - Math.round(WORK * 0.75);
-        yColl2 = H - FOOTER - Math.round(WORK * 0.81);
-        yLine = H - FOOTER - Math.round(WORK * 0.86);
-        yDisc1 = H - FOOTER - Math.round(WORK * 0.91);
-        yDisc2 = H - FOOTER - Math.round(WORK * 0.96);
+        // Inverted: elements positioned for upside-down reading
+        // When text is rotated 180° (^A0I), it prints "upside down" at the position
+        // So we put Title near FOOTER, Disclaimer near HEADER
+        yDisc2 = HEADER + Math.round(WORK * 0.05);
+        yDisc1 = HEADER + Math.round(WORK * 0.10);
+        yLine = HEADER + Math.round(WORK * 0.15);
+        yColl2 = HEADER + Math.round(WORK * 0.20);
+        yColl1 = HEADER + Math.round(WORK * 0.26);
+        yCert = HEADER + Math.round(WORK * 0.35);
+        yQr = HEADER + Math.round(WORK * 0.42);
+        yName = HEADER + Math.round(WORK * 0.75);
+        yCourse = HEADER + Math.round(WORK * 0.83);
+        yTitle = HEADER + Math.round(WORK * 0.91);
       } else {
         // Normal Y positions - content prints from top to bottom
         yTitle = Y_TITLE;
@@ -880,25 +884,25 @@
 ^MNY
 ^MD15
 
-^FO0,${yTitle}^FB${W},1,0,C,0^A0N,${F_TITLE},${F_TITLE}^FDCONVOCATION 2026^FS
+^FO0,${yTitle}^FB${W},1,0,C,0^A0${fontOrient},${F_TITLE},${F_TITLE}^FDCONVOCATION 2026^FS
 
-^FO0,${yCourse}^FB${W},1,0,C,0^A0N,${F_COURSE},${F_COURSE}^FD${safeDegree}^FS
+^FO0,${yCourse}^FB${W},1,0,C,0^A0${fontOrient},${F_COURSE},${F_COURSE}^FD${safeDegree}^FS
 
-^FO0,${yName}^FB${W},1,0,C,0^A0N,${F_NAME},${F_NAME}^FDDr. ${safeName}^FS
+^FO0,${yName}^FB${W},1,0,C,0^A0${fontOrient},${F_NAME},${F_NAME}^FDDr. ${safeName}^FS
 
 ^FO${qrX},${yQr}^BQN,2,${qrMag}^FDQA,${qrUrl}^FS
 
-^FO0,${yCert}^FB${W},1,0,C,0^A0N,${F_CERT},${F_CERT}^FD${safeConvNum}^FS
+^FO0,${yCert}^FB${W},1,0,C,0^A0${fontOrient},${F_CERT},${F_CERT}^FD${safeConvNum}^FS
 
-^FO0,${yColl1}^FB${W},1,0,C,0^A0N,${F_COLLECT},${F_COLLECT}^FDCollect your certificate on 28th Aug^FS
+^FO0,${yColl1}^FB${W},1,0,C,0^A0${fontOrient},${F_COLLECT},${F_COLLECT}^FDCollect your certificate on 28th Aug^FS
 
-^FO0,${yColl2}^FB${W},1,0,C,0^A0N,${F_COLLECT},${F_COLLECT}^FDat AMASI Office (Venue)^FS
+^FO0,${yColl2}^FB${W},1,0,C,0^A0${fontOrient},${F_COLLECT},${F_COLLECT}^FDat AMASI Office (Venue)^FS
 
 ^FO${lineMargin},${yLine}^GB${lineWidth},1,1^FS
 
-^FO0,${yDisc1}^FB${W},1,0,C,0^A0N,${F_DISCLAIM},${F_DISCLAIM}^FDThis badge is valid for Convocation^FS
+^FO0,${yDisc1}^FB${W},1,0,C,0^A0${fontOrient},${F_DISCLAIM},${F_DISCLAIM}^FDThis badge is valid for Convocation^FS
 
-^FO0,${yDisc2}^FB${W},1,0,C,0^A0N,${F_DISCLAIM},${F_DISCLAIM}^FDCeremony only, not for AMASICON 2026^FS
+^FO0,${yDisc2}^FB${W},1,0,C,0^A0${fontOrient},${F_DISCLAIM},${F_DISCLAIM}^FDCeremony only, not for AMASICON 2026^FS
 
 ^XZ`.trim();
     }
