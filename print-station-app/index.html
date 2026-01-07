@@ -566,6 +566,14 @@
             </div>
           </div>
 
+          <div class="form-group">
+            <div class="checkbox-group">
+              <input type="checkbox" id="rotatePrint" checked>
+              <label for="rotatePrint" style="margin: 0;">Rotate print 180° (flip orientation)</label>
+            </div>
+            <small>Enable if badge prints upside down</small>
+          </div>
+
           <div class="btn-group">
             <button id="saveSettings" class="btn btn-primary">Save Settings</button>
             <button id="testConnection" class="btn btn-secondary">Test Connection</button>
@@ -613,6 +621,7 @@
       document.getElementById('printerPort').value = settings.printerPort || 9100;
       document.getElementById('apiUrl').value = settings.apiUrl || '';
       document.getElementById('autoPrint').checked = settings.autoPrint || false;
+      document.getElementById('rotatePrint').checked = settings.rotatePrint !== false;
 
       // Load history from localStorage
       const savedHistory = localStorage.getItem('printHistory');
@@ -757,8 +766,8 @@
       const Y_DISC1 = HEADER + Math.round(WORK * 0.87);     // 87%
       const Y_DISC2 = HEADER + Math.round(WORK * 0.92);     // 92%
 
-      // QR Code: 28% of work area = ~263 dots, mag 8 = ~200 dots
-      const qrMag = 8;
+      // QR Code: smaller size with mag 6
+      const qrMag = 6;
       const qrSize = 25 * qrMag;
       const qrX = Math.floor((W - qrSize) / 2);
 
@@ -766,9 +775,12 @@
       const lineMargin = Math.round(W * 0.08);
       const lineWidth = W - (lineMargin * 2);
 
+      // Rotation based on settings
+      const rotation = settings.rotatePrint !== false ? '^POI\n' : '';
+
       return `^XA
 ^CI28
-^LH0,0
+${rotation}^LH0,0
 ^LL${H}
 ^PW${W}
 ^MNY
@@ -967,7 +979,8 @@
         printerIp: document.getElementById('printerIp').value,
         printerPort: parseInt(document.getElementById('printerPort').value) || 9100,
         apiUrl: document.getElementById('apiUrl').value,
-        autoPrint: document.getElementById('autoPrint').checked
+        autoPrint: document.getElementById('autoPrint').checked,
+        rotatePrint: document.getElementById('rotatePrint').checked
       };
 
       const result = await window.printStation.saveSettings(settings);
