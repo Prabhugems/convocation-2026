@@ -703,14 +703,12 @@
     }
 
     // Generate ZPL for 4x6 convocation badge
+    // Based on CONVOCATION BADGE OVERLAY PRINTING SPECIFICATION
     // Label: 4" x 6" = 812 x 1218 dots at 203 DPI
-    // Pre-printed: Header ~22mm (177 dots), Footer ~8mm (64 dots)
-    // Printable area: Y=177 to Y=1154 (with 180° rotation, coordinates flip)
     function generateBadgeZPL(data) {
       const {
         name = 'Guest',
         degree = '',
-        institution = '',
         convocationNumber = '',
         registrationId = ''
       } = data;
@@ -724,68 +722,77 @@
       const safeName = sanitize(name);
       const safeDegree = sanitize(degree) || 'FMAS Course';
       const safeConvNum = sanitize(convocationNumber);
-      const safeRegId = sanitize(registrationId);
 
       // QR code URL
       const qrUrl = registrationId.startsWith('http')
-        ? safeRegId
-        : `https://ti.to/tickets/${safeRegId}`;
+        ? sanitize(registrationId)
+        : `https://ti.to/tickets/${sanitize(registrationId)}`;
 
-      // Label dimensions
-      const LABEL_WIDTH = 812;
-      const LABEL_HEIGHT = 1218;
-      const HEADER_ZONE = 177;  // 22mm pre-printed header
-      const FOOTER_ZONE = 64;   // 8mm pre-printed footer
+      // Label dimensions at 203 DPI
+      const W = 812;   // Width
+      const H = 1218;  // Height
 
-      // With ^POI (180° rotation):
-      // - Content prints upside down relative to ZPL coordinates
-      // - Y=0 in ZPL = physical bottom of label
-      // - We print from Y=FOOTER_ZONE to Y=(LABEL_HEIGHT - HEADER_ZONE)
+      // Pre-printed zones (from spec)
+      const HEADER = 183;  // 15% - Orange header with logos
+      const FOOTER = 97;   // 8% - Orange footer with "DELEGATE"
+      const WORK = H - HEADER - FOOTER;  // 938 dots work area
 
-      // Calculate vertical positions (from physical top, accounting for rotation)
-      // With ^POI, we position from the bottom up in ZPL coordinates
-      // Physical top content appears at higher Y values
+      // Font sizes (from spec - ZPL dots)
+      const F_TITLE = 46;      // CONVOCATION 2026
+      const F_COURSE = 36;     // Course
+      const F_NAME = 43;       // Name
+      const F_CERT = 39;       // Certificate ID
+      const F_COLLECT = 26;    // Collection lines
+      const F_DISCLAIM = 18;   // Disclaimer
 
-      const printableTop = FOOTER_ZONE;  // Start after footer
-      const printableBottom = LABEL_HEIGHT - HEADER_ZONE;  // End before header
-      const printableHeight = printableBottom - printableTop;  // ~977 dots
+      // Y positions (% of work area + header offset)
+      const Y_TITLE = HEADER + Math.round(WORK * 0.05);     // 5%
+      const Y_COURSE = HEADER + Math.round(WORK * 0.10);    // 10%
+      const Y_NAME = HEADER + Math.round(WORK * 0.18);      // 18%
+      const Y_QR = HEADER + Math.round(WORK * 0.28);        // 28%
+      const Y_CERT = HEADER + Math.round(WORK * 0.60);      // 60%
+      const Y_COLL1 = HEADER + Math.round(WORK * 0.70);     // 70%
+      const Y_COLL2 = HEADER + Math.round(WORK * 0.76);     // 76%
+      const Y_LINE = HEADER + Math.round(WORK * 0.83);      // 83%
+      const Y_DISC1 = HEADER + Math.round(WORK * 0.87);     // 87%
+      const Y_DISC2 = HEADER + Math.round(WORK * 0.92);     // 92%
 
-      // Content positioning (Y coordinates with ^POI)
-      // Higher Y = closer to physical top (after header)
-      let y = printableBottom - 40;  // Start 40 dots below header zone
-
-      // Center X for QR code calculation
-      const qrMag = 6;  // QR magnification (size ~150 dots)
+      // QR Code: 28% of work area = ~263 dots, mag 8 = ~200 dots
+      const qrMag = 8;
       const qrSize = 25 * qrMag;
-      const qrX = Math.floor((LABEL_WIDTH - qrSize) / 2);
+      const qrX = Math.floor((W - qrSize) / 2);
+
+      // Divider line: 8% margin on each side
+      const lineMargin = Math.round(W * 0.08);
+      const lineWidth = W - (lineMargin * 2);
 
       return `^XA
 ^CI28
 ^LH0,0
-^LL${LABEL_HEIGHT}
-^PW${LABEL_WIDTH}
+^LL${H}
+^PW${W}
 ^MNY
 ^MD15
 
-^FO0,${HEADER_ZONE + 30}^FB${LABEL_WIDTH},1,0,C,0^A0N,30,30^FDCONVOCATION 2026^FS
+^FO0,${Y_TITLE}^FB${W},1,0,C,0^A0N,${F_TITLE},${F_TITLE}^FDCONVOCATION 2026^FS
 
-^FO0,${HEADER_ZONE + 75}^FB${LABEL_WIDTH},1,0,C,0^A0N,26,26^FD${safeDegree}^FS
+^FO0,${Y_COURSE}^FB${W},1,0,C,0^A0N,${F_COURSE},${F_COURSE}^FD${safeDegree}^FS
 
-^FO0,${HEADER_ZONE + 115}^FB${LABEL_WIDTH},1,0,C,0^A0N,30,30^FDDr. ${safeName}^FS
+^FO0,${Y_NAME}^FB${W},1,0,C,0^A0N,${F_NAME},${F_NAME}^FDDr. ${safeName}^FS
 
-^FO${qrX},${HEADER_ZONE + 160}^BQN,2,${qrMag}^FDQA,${qrUrl}^FS
+^FO${qrX},${Y_QR}^BQN,2,${qrMag}^FDQA,${qrUrl}^FS
 
-^FO0,${HEADER_ZONE + 365}^FB${LABEL_WIDTH},1,0,C,0^A0N,30,30^FD${safeConvNum}^FS
+^FO0,${Y_CERT}^FB${W},1,0,C,0^A0N,${F_CERT},${F_CERT}^FD${safeConvNum}^FS
 
-^FO0,${HEADER_ZONE + 410}^FB${LABEL_WIDTH},1,0,C,0^A0N,18,18^FDCollect your certificate on 28th August 2026^FS
+^FO0,${Y_COLL1}^FB${W},1,0,C,0^A0N,${F_COLLECT},${F_COLLECT}^FDCollect your certificate on 28th Aug^FS
 
-^FO0,${HEADER_ZONE + 435}^FB${LABEL_WIDTH},1,0,C,0^A0N,18,18^FDat AMASI Office (Venue)^FS
+^FO0,${Y_COLL2}^FB${W},1,0,C,0^A0N,${F_COLLECT},${F_COLLECT}^FDat AMASI Office (Venue)^FS
 
-^FO121,${HEADER_ZONE + 465}^GB570,2,2^FS
+^FO${lineMargin},${Y_LINE}^GB${lineWidth},1,1^FS
 
-^FO0,${HEADER_ZONE + 490}^FB${LABEL_WIDTH},1,0,C,0^A0N,12,12^FDThis badge is valid for Convocation Ceremony only,^FS
+^FO0,${Y_DISC1}^FB${W},1,0,C,0^A0N,${F_DISCLAIM},${F_DISCLAIM}^FDThis badge is valid for Convocation^FS
 
-^FO0,${HEADER_ZONE + 508}^FB${LABEL_WIDTH},1,0,C,0^A0N,12,12^FDnot for AMASICON 2026 conference registration.^FS
+^FO0,${Y_DISC2}^FB${W},1,0,C,0^A0N,${F_DISCLAIM},${F_DISCLAIM}^FDCeremony only, not for AMASICON 2026^FS
 
 ^XZ`.trim();
     }
