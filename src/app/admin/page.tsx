@@ -1479,6 +1479,25 @@ export default function AdminPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Print Station Desktop App */}
+                <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-700/50">
+                  <h3 className="text-sm font-medium text-white mb-3 flex items-center gap-2">
+                    <Download className="w-4 h-4 text-cyan-400" />
+                    Print Station Desktop App
+                  </h3>
+                  <p className="text-xs text-slate-400 mb-3">
+                    Desktop application for Station 3 Registration badge printing. Direct TCP connection to Zebra printer.
+                  </p>
+                  <a
+                    href="/print-station"
+                    target="_blank"
+                    className="w-full px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-sm rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download Print Station
+                  </a>
+                </div>
               </div>
             </div>
           )}
