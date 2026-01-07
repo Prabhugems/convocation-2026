@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AMASI Print Station</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --bg-card: #334155;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --accent: #06b6d4;
+      --accent-hover: #22d3ee;
+      --success: #10b981;
+      --error: #ef4444;
+      --warning: #f59e0b;
+      --border: #475569;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      -webkit-app-region: drag;
+    }
+
+    .app {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      background: var(--bg-secondary);
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header h1 {
+      font-size: 20px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header h1 span {
+      color: var(--accent);
+    }
+
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: var(--bg-card);
+      border-radius: 8px;
+      font-size: 14px;
+      -webkit-app-region: no-drag;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--error);
+    }
+
+    .status-dot.connected {
+      background: var(--success);
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      -webkit-app-region: no-drag;
+    }
+
+    .tab {
+      padding: 12px 24px;
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .tab:hover {
+      color: var(--text-primary);
+      background: var(--bg-card);
+    }
+
+    .tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    /* Content */
+    .content {
+      flex: 1;
+      padding: 24px;
+      overflow-y: auto;
+      -webkit-app-region: no-drag;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Scanner Section */
+    .scanner-section {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .scanner-input-wrapper {
+      position: relative;
+      margin-bottom: 24px;
+    }
+
+    .scanner-input {
+      width: 100%;
+      padding: 16px 20px;
+      padding-left: 48px;
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      color: var(--text-primary);
+      font-size: 18px;
+      transition: border-color 0.2s;
+    }
+
+    .scanner-input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .scanner-input::placeholder {
+      color: var(--text-secondary);
+    }
+
+    .scanner-icon {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-secondary);
+    }
+
+    /* Status Message */
+    .status-message {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+      display: none;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status-message.show {
+      display: flex;
+    }
+
+    .status-message.info {
+      background: rgba(6, 182, 212, 0.1);
+      border: 1px solid rgba(6, 182, 212, 0.3);
+      color: var(--accent);
+    }
+
+    .status-message.success {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: var(--success);
+    }
+
+    .status-message.error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: var(--error);
+    }
+
+    /* Badge Preview */
+    .badge-preview {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .badge-preview.empty {
+      padding: 64px 32px;
+      color: var(--text-secondary);
+    }
+
+    .badge-preview h2 {
+      font-size: 14px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .badge-name {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--text-primary);
+    }
+
+    .badge-degree {
+      font-size: 20px;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+
+    .badge-institution {
+      font-size: 16px;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+
+    .badge-conv-number {
+      display: inline-block;
+      background: var(--bg-card);
+      padding: 8px 24px;
+      border-radius: 8px;
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    .badge-reg-id {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-family: monospace;
+    }
+
+    /* Print Button */
+    .print-button {
+      width: 100%;
+      padding: 16px 32px;
+      background: var(--accent);
+      color: var(--bg-primary);
+      border: none;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .print-button:hover:not(:disabled) {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+
+    .print-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .print-button.printing {
+      background: var(--warning);
+    }
+
+    .print-button.success {
+      background: var(--success);
+    }
+
+    /* Settings Section */
+    .settings-section {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 8px;
+      color: var(--text-secondary);
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 16px;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .form-group small {
+      display: block;
+      margin-top: 6px;
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      accent-color: var(--accent);
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: var(--bg-primary);
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--border);
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    /* History Section */
+    .history-section {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .history-header h2 {
+      font-size: 18px;
+    }
+
+    .history-list {
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .history-item {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .history-item:last-child {
+      border-bottom: none;
+    }
+
+    .history-item-info h3 {
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+
+    .history-item-info p {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .history-item-time {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .history-empty {
+      padding: 48px;
+      text-align: center;
+      color: var(--text-secondary);
+    }
+
+    /* Spinner */
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid transparent;
+      border-top-color: currentColor;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* SVG Icons */
+    svg {
+      width: 20px;
+      height: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <header class="header">
+      <h1>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 6 2 18 2 18 9"></polyline>
+          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+          <rect x="6" y="14" width="12" height="8"></rect>
+        </svg>
+        <span>AMASI</span> Print Station
+      </h1>
+      <div class="connection-status">
+        <div class="status-dot" id="connectionDot"></div>
+        <span id="connectionText">Not Connected</span>
+      </div>
+    </header>
+
+    <!-- Tabs -->
+    <nav class="tabs">
+      <button class="tab active" data-tab="scanner">Scanner</button>
+      <button class="tab" data-tab="settings">Settings</button>
+      <button class="tab" data-tab="history">History</button>
+    </nav>
+
+    <!-- Content -->
+    <main class="content">
+      <!-- Scanner Tab -->
+      <div id="scanner" class="tab-content active">
+        <div class="scanner-section">
+          <div class="scanner-input-wrapper">
+            <svg class="scanner-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 7V5a2 2 0 0 1 2-2h2"></path>
+              <path d="M17 3h2a2 2 0 0 1 2 2v2"></path>
+              <path d="M21 17v2a2 2 0 0 1-2 2h-2"></path>
+              <path d="M7 21H5a2 2 0 0 1-2-2v-2"></path>
+              <line x1="7" y1="12" x2="17" y2="12"></line>
+            </svg>
+            <input
+              type="text"
+              id="scannerInput"
+              class="scanner-input"
+              placeholder="Scan QR code or enter registration ID..."
+              autofocus
+            >
+          </div>
+
+          <div id="statusMessage" class="status-message"></div>
+
+          <div id="badgePreview" class="badge-preview empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.5;">
+              <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+              <line x1="7" y1="8" x2="17" y2="8"></line>
+              <line x1="7" y1="12" x2="13" y2="12"></line>
+            </svg>
+            <p>Scan a QR code to preview badge</p>
+          </div>
+
+          <button id="printButton" class="print-button" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 6 2 18 2 18 9"></polyline>
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+              <rect x="6" y="14" width="12" height="8"></rect>
+            </svg>
+            Print Badge
+          </button>
+        </div>
+      </div>
+
+      <!-- Settings Tab -->
+      <div id="settings" class="tab-content">
+        <div class="settings-section">
+          <h2 style="margin-bottom: 24px;">Printer Settings</h2>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Printer IP Address</label>
+              <input type="text" id="printerIp" placeholder="192.168.1.100">
+              <small>IP address of Zebra ZD230 printer</small>
+            </div>
+            <div class="form-group">
+              <label>Port</label>
+              <input type="number" id="printerPort" placeholder="9100" value="9100">
+              <small>Default: 9100</small>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>API URL (Your Vercel App)</label>
+            <input type="text" id="apiUrl" placeholder="https://convocation-2026.vercel.app">
+            <small>Enter your Vercel app URL for fetching registration data</small>
+          </div>
+
+          <div class="form-group">
+            <div class="checkbox-group">
+              <input type="checkbox" id="autoPrint">
+              <label for="autoPrint" style="margin: 0;">Auto-print after successful scan</label>
+            </div>
+          </div>
+
+          <div class="btn-group">
+            <button id="saveSettings" class="btn btn-primary">Save Settings</button>
+            <button id="testConnection" class="btn btn-secondary">Test Connection</button>
+            <button id="testPrint" class="btn btn-secondary">Test Print</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- History Tab -->
+      <div id="history" class="tab-content">
+        <div class="history-section">
+          <div class="history-header">
+            <h2>Print History</h2>
+            <button id="clearHistory" class="btn btn-secondary">Clear History</button>
+          </div>
+          <div id="historyList" class="history-list">
+            <div class="history-empty">No prints yet</div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // State
+    let currentBadgeData = null;
+    let currentRegistrationId = null;
+    let printHistory = [];
+    let settings = {};
+    let isConnected = false;
+
+    // DOM Elements
+    const scannerInput = document.getElementById('scannerInput');
+    const statusMessage = document.getElementById('statusMessage');
+    const badgePreview = document.getElementById('badgePreview');
+    const printButton = document.getElementById('printButton');
+    const connectionDot = document.getElementById('connectionDot');
+    const connectionText = document.getElementById('connectionText');
+
+    // Initialize
+    async function init() {
+      settings = await window.printStation.loadSettings();
+
+      document.getElementById('printerIp').value = settings.printerIp || '';
+      document.getElementById('printerPort').value = settings.printerPort || 9100;
+      document.getElementById('apiUrl').value = settings.apiUrl || '';
+      document.getElementById('autoPrint').checked = settings.autoPrint || false;
+
+      // Load history from localStorage
+      const savedHistory = localStorage.getItem('printHistory');
+      if (savedHistory) {
+        printHistory = JSON.parse(savedHistory);
+        renderHistory();
+      }
+
+      // Test connection
+      await testPrinterConnection();
+    }
+
+    // Tab Navigation
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.tab).classList.add('active');
+
+        if (tab.dataset.tab === 'scanner') {
+          scannerInput.focus();
+        }
+      });
+    });
+
+    // Scanner Input
+    scannerInput.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter' && scannerInput.value.trim()) {
+        await handleScan(scannerInput.value.trim());
+        scannerInput.value = '';
+      }
+    });
+
+    // Show status message
+    function showStatus(message, type = 'info') {
+      statusMessage.textContent = message;
+      statusMessage.className = `status-message show ${type}`;
+    }
+
+    // Handle scan
+    async function handleScan(code) {
+      try {
+        showStatus('Looking up registration...', 'info');
+
+        const apiUrl = settings.apiUrl || 'https://convocation-2026.vercel.app';
+
+        const response = await fetch(`${apiUrl}/api/print/lookup?code=${encodeURIComponent(code)}`);
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          showStatus(`Not found: ${code}`, 'error');
+          return;
+        }
+
+        // Display attendee info
+        displayBadge(data.badge);
+
+        // Store for printing
+        currentBadgeData = data.badge;
+        currentRegistrationId = data.registrationId;
+
+        showStatus('Ready to print', 'success');
+        printButton.disabled = false;
+
+        // Auto print if enabled
+        if (settings.autoPrint) {
+          await handlePrint();
+        }
+
+      } catch (error) {
+        showStatus(`Error: ${error.message}`, 'error');
+      }
+    }
+
+    // Display badge preview
+    function displayBadge(badge) {
+      badgePreview.classList.remove('empty');
+      badgePreview.innerHTML = `
+        <h2>AMASICON 2026 Convocation</h2>
+        <div class="badge-name">Dr. ${badge.name}</div>
+        ${badge.degree ? `<div class="badge-degree">${badge.degree}</div>` : ''}
+        ${badge.institution ? `<div class="badge-institution">${badge.institution}</div>` : ''}
+        ${badge.convocationNumber ? `<div class="badge-conv-number">Conv. No: ${badge.convocationNumber}</div>` : ''}
+        <div class="badge-reg-id">${badge.registrationId}</div>
+      `;
+    }
+
+    // Generate ZPL for 4x6 convocation badge
+    function generateBadgeZPL(data) {
+      const {
+        name = 'Guest',
+        degree = '',
+        institution = '',
+        convocationNumber = '',
+        registrationId = ''
+      } = data;
+
+      // Sanitize text
+      const sanitize = (text) => {
+        if (!text) return '';
+        return text.replace(/[\^~]/g, '').replace(/[\x00-\x1F\x7F]/g, '').trim().slice(0, 100);
+      };
+
+      const safeName = sanitize(name);
+      const safeDegree = sanitize(degree);
+      const safeInstitution = sanitize(institution);
+      const safeConvNum = sanitize(convocationNumber);
+      const safeRegId = sanitize(registrationId);
+
+      // QR URL
+      const qrUrl = registrationId.startsWith('http')
+        ? safeRegId
+        : `https://ti.to/tickets/${safeRegId}`;
+
+      // 4x6 inch label: 812 x 1218 dots at 203 DPI
+      // Pre-printed header ~22mm = 177 dots, footer ~8mm = 64 dots
+      return `^XA
+^CI28
+^POI
+^LH0,0
+^LL1218
+^PW812
+^MNY
+^MD15
+
+^FO0,207^FB812,1,0,C,0^A0N,32,32^FDCONVOCATION 2026^FS
+
+^FO0,257^FB812,1,0,C,0^A0N,24,24^FD${safeDegree || 'FMAS Course'}^FS
+
+^FO0,297^FB812,1,0,C,0^A0N,28,28^FDDr. ${safeName}^FS
+
+^FO319,342^BQN,2,7^FDQA,${qrUrl}^FS
+
+^FO0,537^FB812,1,0,C,0^A0N,26,26^FD${safeConvNum}^FS
+
+^FO0,582^FB812,1,0,C,0^A0N,14,14^FDCollect your certificate on 28th August 2026^FS
+
+^FO0,602^FB812,1,0,C,0^A0N,14,14^FDat AMASI Office (Venue)^FS
+
+^FO121,632^GB570,2,2^FS
+
+^FO0,647^FB812,1,0,C,0^A0N,10,10^FDThis badge is valid for Convocation Ceremony only,^FS
+
+^FO0,661^FB812,1,0,C,0^A0N,10,10^FDnot for AMASICON 2026 conference registration.^FS
+
+^XZ`.trim();
+    }
+
+    // Handle print
+    async function handlePrint() {
+      if (!currentBadgeData) {
+        showStatus('No badge data. Scan a QR code first.', 'error');
+        return;
+      }
+
+      printButton.disabled = true;
+      printButton.classList.add('printing');
+      printButton.innerHTML = '<div class="spinner"></div> Printing...';
+
+      const zpl = generateBadgeZPL(currentBadgeData);
+
+      const result = await window.printStation.printZpl(
+        settings.printerIp,
+        parseInt(settings.printerPort) || 9100,
+        zpl
+      );
+
+      if (result.success) {
+        printButton.classList.remove('printing');
+        printButton.classList.add('success');
+        printButton.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          Printed!
+        `;
+        showStatus('Badge printed successfully!', 'success');
+
+        // Mark as printed in database
+        try {
+          const apiUrl = settings.apiUrl || 'https://convocation-2026.vercel.app';
+          await fetch(`${apiUrl}/api/print/lookup`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ registrationId: currentRegistrationId })
+          });
+        } catch (e) {
+          console.error('Failed to mark as printed:', e);
+        }
+
+        // Add to history
+        addToHistory(currentBadgeData);
+
+        // Reset after 2 seconds
+        setTimeout(() => {
+          printButton.classList.remove('success');
+          printButton.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 6 2 18 2 18 9"></polyline>
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+              <rect x="6" y="14" width="12" height="8"></rect>
+            </svg>
+            Print Badge
+          `;
+          currentBadgeData = null;
+          currentRegistrationId = null;
+          printButton.disabled = true;
+          badgePreview.classList.add('empty');
+          badgePreview.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.5;">
+              <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+              <line x1="7" y1="8" x2="17" y2="8"></line>
+              <line x1="7" y1="12" x2="13" y2="12"></line>
+            </svg>
+            <p>Scan a QR code to preview badge</p>
+          `;
+          statusMessage.classList.remove('show');
+          scannerInput.focus();
+        }, 2000);
+
+      } else {
+        printButton.classList.remove('printing');
+        printButton.disabled = false;
+        printButton.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+            <rect x="6" y="14" width="12" height="8"></rect>
+          </svg>
+          Retry Print
+        `;
+        showStatus(`Print failed: ${result.error}`, 'error');
+      }
+    }
+
+    printButton.addEventListener('click', handlePrint);
+
+    // Add to print history
+    function addToHistory(badge) {
+      printHistory.unshift({
+        ...badge,
+        printedAt: new Date().toISOString()
+      });
+
+      // Keep last 100 entries
+      if (printHistory.length > 100) {
+        printHistory = printHistory.slice(0, 100);
+      }
+
+      localStorage.setItem('printHistory', JSON.stringify(printHistory));
+      renderHistory();
+    }
+
+    // Render history list
+    function renderHistory() {
+      const historyList = document.getElementById('historyList');
+
+      if (printHistory.length === 0) {
+        historyList.innerHTML = '<div class="history-empty">No prints yet</div>';
+        return;
+      }
+
+      historyList.innerHTML = printHistory.map(item => `
+        <div class="history-item">
+          <div class="history-item-info">
+            <h3>Dr. ${item.name}</h3>
+            <p>${item.convocationNumber || item.registrationId}</p>
+          </div>
+          <div class="history-item-time">${formatTime(item.printedAt)}</div>
+        </div>
+      `).join('');
+    }
+
+    function formatTime(isoString) {
+      const date = new Date(isoString);
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    // Clear history
+    document.getElementById('clearHistory').addEventListener('click', () => {
+      if (confirm('Clear all print history?')) {
+        printHistory = [];
+        localStorage.removeItem('printHistory');
+        renderHistory();
+      }
+    });
+
+    // Test printer connection
+    async function testPrinterConnection() {
+      if (!settings.printerIp) {
+        updateConnectionStatus(false, 'No printer configured');
+        return;
+      }
+
+      const result = await window.printStation.testConnection(
+        settings.printerIp,
+        parseInt(settings.printerPort) || 9100
+      );
+
+      if (result.success) {
+        updateConnectionStatus(true, `Connected to ${settings.printerIp}`);
+      } else {
+        updateConnectionStatus(false, result.error || 'Connection failed');
+      }
+    }
+
+    function updateConnectionStatus(connected, message) {
+      isConnected = connected;
+      connectionDot.classList.toggle('connected', connected);
+      connectionText.textContent = message;
+    }
+
+    // Settings
+    document.getElementById('saveSettings').addEventListener('click', async () => {
+      settings = {
+        printerIp: document.getElementById('printerIp').value,
+        printerPort: parseInt(document.getElementById('printerPort').value) || 9100,
+        apiUrl: document.getElementById('apiUrl').value,
+        autoPrint: document.getElementById('autoPrint').checked
+      };
+
+      const result = await window.printStation.saveSettings(settings);
+
+      if (result.success) {
+        showStatus('Settings saved!', 'success');
+        await testPrinterConnection();
+      } else {
+        showStatus('Failed to save settings', 'error');
+      }
+    });
+
+    document.getElementById('testConnection').addEventListener('click', async () => {
+      settings.printerIp = document.getElementById('printerIp').value;
+      settings.printerPort = parseInt(document.getElementById('printerPort').value) || 9100;
+
+      showStatus('Testing connection...', 'info');
+      await testPrinterConnection();
+
+      if (isConnected) {
+        showStatus('Connection successful!', 'success');
+      } else {
+        showStatus('Connection failed. Check IP and port.', 'error');
+      }
+    });
+
+    document.getElementById('testPrint').addEventListener('click', async () => {
+      settings.printerIp = document.getElementById('printerIp').value;
+      settings.printerPort = parseInt(document.getElementById('printerPort').value) || 9100;
+
+      showStatus('Printing test label...', 'info');
+
+      const testZpl = `^XA
+^CI28
+^POI
+^LH0,0
+^LL1218
+^PW812
+^MNY
+^MD15
+
+^FO0,300^FB812,1,0,C,0^A0N,40,40^FD*** TEST PRINT ***^FS
+^FO0,360^FB812,1,0,C,0^A0N,28,28^FDAMASI Print Station^FS
+^FO0,400^FB812,1,0,C,0^A0N,24,24^FDConnection Successful!^FS
+^FO0,450^FB812,1,0,C,0^A0N,20,20^FD${new Date().toLocaleString()}^FS
+
+^FO319,500^BQN,2,7^FDQA,TEST-PRINT-OK^FS
+
+^FO0,700^FB812,1,0,C,0^A0N,18,18^FDConvocation 2026 System^FS
+^FO0,730^FB812,1,0,C,0^A0N,16,16^FDLabel: 4" x 6" (812 x 1218 dots)^FS
+
+^XZ`;
+
+      const result = await window.printStation.printZpl(
+        settings.printerIp,
+        settings.printerPort,
+        testZpl
+      );
+
+      if (result.success) {
+        showStatus('Test print sent successfully!', 'success');
+      } else {
+        showStatus(`Test print failed: ${result.error}`, 'error');
+      }
+    });
+
+    // Initialize
+    init();
+  </script>
+</body>
+</html>
