@@ -524,14 +524,35 @@
             <p>Scan a QR code to preview badge</p>
           </div>
 
-          <button id="printButton" class="print-button" disabled>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="6 9 6 2 18 2 18 9"></polyline>
-              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-              <rect x="6" y="14" width="12" height="8"></rect>
-            </svg>
-            Print Badge
-          </button>
+          <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            <button id="printButton" class="print-button" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                <rect x="6" y="14" width="12" height="8"></rect>
+              </svg>
+              Print Badge
+            </button>
+            <button id="previewZplButton" class="btn btn-secondary" disabled style="padding: 16px 24px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px; margin-right: 8px;">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+              Preview ZPL
+            </button>
+          </div>
+
+          <!-- ZPL Preview Modal -->
+          <div id="zplPreviewModal" style="display: none; margin-top: 16px;">
+            <div style="background: #1a1a2e; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <span style="font-weight: 600;">ZPL Code Preview</span>
+                <div id="rotationStatus" style="padding: 4px 12px; border-radius: 4px; font-size: 12px;"></div>
+              </div>
+              <pre id="zplPreviewCode" style="background: #0d0d1a; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 11px; max-height: 300px; overflow-y: auto; margin: 0;"></pre>
+              <button id="closeZplPreview" class="btn btn-secondary" style="margin-top: 12px;">Close Preview</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -687,6 +708,7 @@
 
         showStatus('Ready to print', 'success');
         printButton.disabled = false;
+        document.getElementById('previewZplButton').disabled = false;
 
         // Auto print if enabled
         if (settings.autoPrint) {
@@ -898,6 +920,38 @@ ${rotation}^LH0,0
     }
 
     printButton.addEventListener('click', handlePrint);
+
+    // Preview ZPL button
+    const previewZplButton = document.getElementById('previewZplButton');
+    const zplPreviewModal = document.getElementById('zplPreviewModal');
+    const zplPreviewCode = document.getElementById('zplPreviewCode');
+    const rotationStatus = document.getElementById('rotationStatus');
+    const closeZplPreview = document.getElementById('closeZplPreview');
+
+    previewZplButton.addEventListener('click', () => {
+      if (!currentBadgeData) return;
+
+      const zpl = generateBadgeZPL(currentBadgeData);
+      zplPreviewCode.textContent = zpl;
+
+      // Check if rotation is enabled
+      const hasRotation = zpl.includes('^POI');
+      if (hasRotation) {
+        rotationStatus.textContent = '🔄 ROTATION: ON (180°)';
+        rotationStatus.style.background = '#22c55e';
+        rotationStatus.style.color = '#000';
+      } else {
+        rotationStatus.textContent = '➡️ ROTATION: OFF (Normal)';
+        rotationStatus.style.background = '#f59e0b';
+        rotationStatus.style.color = '#000';
+      }
+
+      zplPreviewModal.style.display = 'block';
+    });
+
+    closeZplPreview.addEventListener('click', () => {
+      zplPreviewModal.style.display = 'none';
+    });
 
     // Add to print history
     function addToHistory(badge) {
