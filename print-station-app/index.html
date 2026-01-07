@@ -841,35 +841,64 @@
 
       // Rotation based on checkbox (read directly from UI)
       const rotatePrint = document.getElementById('rotatePrint').checked;
-      const rotation = rotatePrint ? '^POI\n' : '';
+
+      // If rotation ON, flip all Y positions (calculate from bottom instead of top)
+      // This works when ^POI doesn't work on the printer
+      let yTitle, yCourse, yName, yQr, yCert, yColl1, yColl2, yLine, yDisc1, yDisc2;
+
+      if (rotatePrint) {
+        // Flipped Y positions - content prints from bottom to top
+        yTitle = H - FOOTER - Math.round(WORK * 0.08);       // Near bottom of work area
+        yCourse = H - FOOTER - Math.round(WORK * 0.15);
+        yName = H - FOOTER - Math.round(WORK * 0.23);
+        yQr = H - FOOTER - Math.round(WORK * 0.55);          // QR in middle-upper
+        yCert = H - FOOTER - Math.round(WORK * 0.63);
+        yColl1 = H - FOOTER - Math.round(WORK * 0.75);
+        yColl2 = H - FOOTER - Math.round(WORK * 0.81);
+        yLine = H - FOOTER - Math.round(WORK * 0.86);
+        yDisc1 = H - FOOTER - Math.round(WORK * 0.91);
+        yDisc2 = H - FOOTER - Math.round(WORK * 0.96);
+      } else {
+        // Normal Y positions - content prints from top to bottom
+        yTitle = Y_TITLE;
+        yCourse = Y_COURSE;
+        yName = Y_NAME;
+        yQr = Y_QR;
+        yCert = Y_CERT;
+        yColl1 = Y_COLL1;
+        yColl2 = Y_COLL2;
+        yLine = Y_LINE;
+        yDisc1 = Y_DISC1;
+        yDisc2 = Y_DISC2;
+      }
 
       return `^XA
 ^CI28
-${rotation}^LH0,0
+^LH0,0
 ^LL${H}
 ^PW${W}
 ^MNY
 ^MD15
 
-^FO0,${Y_TITLE}^FB${W},1,0,C,0^A0N,${F_TITLE},${F_TITLE}^FDCONVOCATION 2026^FS
+^FO0,${yTitle}^FB${W},1,0,C,0^A0N,${F_TITLE},${F_TITLE}^FDCONVOCATION 2026^FS
 
-^FO0,${Y_COURSE}^FB${W},1,0,C,0^A0N,${F_COURSE},${F_COURSE}^FD${safeDegree}^FS
+^FO0,${yCourse}^FB${W},1,0,C,0^A0N,${F_COURSE},${F_COURSE}^FD${safeDegree}^FS
 
-^FO0,${Y_NAME}^FB${W},1,0,C,0^A0N,${F_NAME},${F_NAME}^FDDr. ${safeName}^FS
+^FO0,${yName}^FB${W},1,0,C,0^A0N,${F_NAME},${F_NAME}^FDDr. ${safeName}^FS
 
-^FO${qrX},${Y_QR}^BQN,2,${qrMag}^FDQA,${qrUrl}^FS
+^FO${qrX},${yQr}^BQN,2,${qrMag}^FDQA,${qrUrl}^FS
 
-^FO0,${Y_CERT}^FB${W},1,0,C,0^A0N,${F_CERT},${F_CERT}^FD${safeConvNum}^FS
+^FO0,${yCert}^FB${W},1,0,C,0^A0N,${F_CERT},${F_CERT}^FD${safeConvNum}^FS
 
-^FO0,${Y_COLL1}^FB${W},1,0,C,0^A0N,${F_COLLECT},${F_COLLECT}^FDCollect your certificate on 28th Aug^FS
+^FO0,${yColl1}^FB${W},1,0,C,0^A0N,${F_COLLECT},${F_COLLECT}^FDCollect your certificate on 28th Aug^FS
 
-^FO0,${Y_COLL2}^FB${W},1,0,C,0^A0N,${F_COLLECT},${F_COLLECT}^FDat AMASI Office (Venue)^FS
+^FO0,${yColl2}^FB${W},1,0,C,0^A0N,${F_COLLECT},${F_COLLECT}^FDat AMASI Office (Venue)^FS
 
-^FO${lineMargin},${Y_LINE}^GB${lineWidth},1,1^FS
+^FO${lineMargin},${yLine}^GB${lineWidth},1,1^FS
 
-^FO0,${Y_DISC1}^FB${W},1,0,C,0^A0N,${F_DISCLAIM},${F_DISCLAIM}^FDThis badge is valid for Convocation^FS
+^FO0,${yDisc1}^FB${W},1,0,C,0^A0N,${F_DISCLAIM},${F_DISCLAIM}^FDThis badge is valid for Convocation^FS
 
-^FO0,${Y_DISC2}^FB${W},1,0,C,0^A0N,${F_DISCLAIM},${F_DISCLAIM}^FDCeremony only, not for AMASICON 2026^FS
+^FO0,${yDisc2}^FB${W},1,0,C,0^A0N,${F_DISCLAIM},${F_DISCLAIM}^FDCeremony only, not for AMASICON 2026^FS
 
 ^XZ`.trim();
     }
