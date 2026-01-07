@@ -746,11 +746,11 @@
       const F_DISCLAIM = 18;   // Disclaimer
 
       // Y positions (% of work area + header offset)
-      const Y_TITLE = HEADER + Math.round(WORK * 0.05);     // 5%
+      const Y_TITLE = HEADER + Math.round(WORK * 0.03);     // 3%
       const Y_COURSE = HEADER + Math.round(WORK * 0.10);    // 10%
       const Y_NAME = HEADER + Math.round(WORK * 0.18);      // 18%
-      const Y_QR = HEADER + Math.round(WORK * 0.28);        // 28%
-      const Y_CERT = HEADER + Math.round(WORK * 0.60);      // 60%
+      const Y_QR = HEADER + Math.round(WORK * 0.30);        // 30% - more space from name
+      const Y_CERT = HEADER + Math.round(WORK * 0.58);      // 58%
       const Y_COLL1 = HEADER + Math.round(WORK * 0.70);     // 70%
       const Y_COLL2 = HEADER + Math.round(WORK * 0.76);     // 76%
       const Y_LINE = HEADER + Math.round(WORK * 0.83);      // 83%
@@ -768,7 +768,6 @@
 
       return `^XA
 ^CI28
-^POI
 ^LH0,0
 ^LL${H}
 ^PW${W}
