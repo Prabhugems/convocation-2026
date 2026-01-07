@@ -775,8 +775,9 @@
       const lineMargin = Math.round(W * 0.08);
       const lineWidth = W - (lineMargin * 2);
 
-      // Rotation based on settings
-      const rotation = settings.rotatePrint !== false ? '^POI\n' : '';
+      // Rotation based on checkbox (read directly from UI)
+      const rotatePrint = document.getElementById('rotatePrint').checked;
+      const rotation = rotatePrint ? '^POI\n' : '';
 
       return `^XA
 ^CI28
