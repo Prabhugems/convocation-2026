@@ -21,12 +21,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: print-station-app/package-lock.json
 
       - name: Install dependencies
         working-directory: print-station-app
-        run: npm ci || npm install
+        run: npm install
 
       - name: Build Mac installer
         working-directory: print-station-app
@@ -63,12 +61,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: print-station-app/package-lock.json
 
       - name: Install dependencies
         working-directory: print-station-app
-        run: npm ci || npm install
+        run: npm install
 
       - name: Build Windows installer
         working-directory: print-station-app
