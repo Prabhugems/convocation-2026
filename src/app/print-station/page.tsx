@@ -28,11 +28,11 @@ const GITHUB_REPO = 'Prabhugems/convocation-2026';
 const LATEST_VERSION = 'v1.0.0';
 
 export default function PrintStationPage() {
-  // GitHub Releases URLs
+  // GitHub Releases URLs - filenames match electron-builder output
   const downloadUrls = {
-    mac: `https://github.com/${GITHUB_REPO}/releases/download/${LATEST_VERSION}/AMASI-Print-Station-${LATEST_VERSION}-arm64.dmg`,
-    macIntel: `https://github.com/${GITHUB_REPO}/releases/download/${LATEST_VERSION}/AMASI-Print-Station-${LATEST_VERSION}-x64.dmg`,
-    windows: `https://github.com/${GITHUB_REPO}/releases/download/${LATEST_VERSION}/AMASI-Print-Station-Setup-${LATEST_VERSION}.exe`,
+    mac: `https://github.com/${GITHUB_REPO}/releases/download/${LATEST_VERSION}/AMASI.Print.Station-1.0.0-arm64.dmg`,
+    macIntel: `https://github.com/${GITHUB_REPO}/releases/download/${LATEST_VERSION}/AMASI.Print.Station-1.0.0.dmg`,
+    windows: `https://github.com/${GITHUB_REPO}/releases/download/${LATEST_VERSION}/AMASI.Print.Station.Setup.1.0.0.exe`,
     releases: `https://github.com/${GITHUB_REPO}/releases`,
   };
 
