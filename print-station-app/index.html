@@ -478,9 +478,14 @@
         </svg>
         <span>AMASI</span> Print Station
       </h1>
-      <div class="connection-status">
-        <div class="status-dot" id="connectionDot"></div>
-        <span id="connectionText">Not Connected</span>
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <div id="sessionCounter" style="padding: 8px 16px; background: var(--bg-card); border-radius: 8px; font-size: 14px;">
+          🖨️ <span id="printCount">0</span> printed
+        </div>
+        <div class="connection-status">
+          <div class="status-dot" id="connectionDot"></div>
+          <span id="connectionText">Not Connected</span>
+        </div>
       </div>
     </header>
 
@@ -552,6 +557,14 @@
               <pre id="zplPreviewCode" style="background: #0d0d1a; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 11px; max-height: 300px; overflow-y: auto; margin: 0;"></pre>
               <button id="closeZplPreview" class="btn btn-secondary" style="margin-top: 12px;">Close Preview</button>
             </div>
+          </div>
+
+          <!-- Keyboard shortcuts hint -->
+          <div style="margin-top: 20px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; font-size: 12px; color: rgba(255,255,255,0.5);">
+            <strong>Keyboard Shortcuts:</strong>
+            <span style="margin-left: 16px;">⌘/Ctrl + P = Print</span>
+            <span style="margin-left: 16px;">Esc = Clear & Focus Scanner</span>
+            <span style="margin-left: 16px;">Enter = Scan</span>
           </div>
         </div>
       </div>
@@ -625,6 +638,10 @@
     let printHistory = [];
     let settings = {};
     let isConnected = false;
+    let sessionPrintCount = 0;
+    let printedInSession = new Set(); // Track printed IDs to warn duplicates
+    let reconnectAttempts = 0;
+    const MAX_RECONNECT_ATTEMPTS = 3;
 
     // DOM Elements
     const scannerInput = document.getElementById('scannerInput');
@@ -653,6 +670,31 @@
 
       // Test connection
       await testPrinterConnection();
+
+      // Keyboard shortcuts
+      document.addEventListener('keydown', (e) => {
+        // Ctrl/Cmd + P to print
+        if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+          e.preventDefault();
+          if (!printButton.disabled) {
+            handlePrint();
+          }
+        }
+        // Escape to clear scanner input
+        if (e.key === 'Escape') {
+          scannerInput.value = '';
+          scannerInput.focus();
+        }
+      });
+
+      // Auto-reconnect every 30 seconds if disconnected
+      setInterval(async () => {
+        if (!isConnected && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+          reconnectAttempts++;
+          await testPrinterConnection();
+          if (isConnected) reconnectAttempts = 0;
+        }
+      }, 30000);
     }
 
     // Tab Navigation
@@ -833,10 +875,19 @@ ${rotation}^LH0,0
     }
 
     // Handle print
-    async function handlePrint() {
+    async function handlePrint(skipDuplicateCheck = false) {
       if (!currentBadgeData) {
         showStatus('No badge data. Scan a QR code first.', 'error');
         return;
+      }
+
+      // Check for duplicate print
+      if (!skipDuplicateCheck && printedInSession.has(currentRegistrationId)) {
+        const confirmed = confirm(`⚠️ WARNING: This badge (${currentRegistrationId}) was already printed in this session.\n\nPrint again anyway?`);
+        if (!confirmed) {
+          showStatus('Print cancelled - duplicate avoided', 'info');
+          return;
+        }
       }
 
       printButton.disabled = true;
@@ -861,6 +912,17 @@ ${rotation}^LH0,0
           Printed!
         `;
         showStatus('Badge printed successfully!', 'success');
+
+        // Update session counter
+        sessionPrintCount++;
+        printedInSession.add(currentRegistrationId);
+        document.getElementById('printCount').textContent = sessionPrintCount;
+
+        // Flash success animation
+        document.getElementById('sessionCounter').style.background = '#22c55e';
+        setTimeout(() => {
+          document.getElementById('sessionCounter').style.background = 'var(--bg-card)';
+        }, 500);
 
         // Mark as printed in database
         try {
