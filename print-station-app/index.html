@@ -703,6 +703,9 @@
     }
 
     // Generate ZPL for 4x6 convocation badge
+    // Label: 4" x 6" = 812 x 1218 dots at 203 DPI
+    // Pre-printed: Header ~22mm (177 dots), Footer ~8mm (64 dots)
+    // Printable area: Y=177 to Y=1154 (with 180° rotation, coordinates flip)
     function generateBadgeZPL(data) {
       const {
         name = 'Guest',
@@ -712,53 +715,78 @@
         registrationId = ''
       } = data;
 
-      // Sanitize text
+      // Sanitize text for ZPL
       const sanitize = (text) => {
         if (!text) return '';
         return text.replace(/[\^~]/g, '').replace(/[\x00-\x1F\x7F]/g, '').trim().slice(0, 100);
       };
 
       const safeName = sanitize(name);
-      const safeDegree = sanitize(degree);
-      const safeInstitution = sanitize(institution);
+      const safeDegree = sanitize(degree) || 'FMAS Course';
       const safeConvNum = sanitize(convocationNumber);
       const safeRegId = sanitize(registrationId);
 
-      // QR URL
+      // QR code URL
       const qrUrl = registrationId.startsWith('http')
         ? safeRegId
         : `https://ti.to/tickets/${safeRegId}`;
 
-      // 4x6 inch label: 812 x 1218 dots at 203 DPI
-      // Pre-printed header ~22mm = 177 dots, footer ~8mm = 64 dots
+      // Label dimensions
+      const LABEL_WIDTH = 812;
+      const LABEL_HEIGHT = 1218;
+      const HEADER_ZONE = 177;  // 22mm pre-printed header
+      const FOOTER_ZONE = 64;   // 8mm pre-printed footer
+
+      // With ^POI (180° rotation):
+      // - Content prints upside down relative to ZPL coordinates
+      // - Y=0 in ZPL = physical bottom of label
+      // - We print from Y=FOOTER_ZONE to Y=(LABEL_HEIGHT - HEADER_ZONE)
+
+      // Calculate vertical positions (from physical top, accounting for rotation)
+      // With ^POI, we position from the bottom up in ZPL coordinates
+      // Physical top content appears at higher Y values
+
+      const printableTop = FOOTER_ZONE;  // Start after footer
+      const printableBottom = LABEL_HEIGHT - HEADER_ZONE;  // End before header
+      const printableHeight = printableBottom - printableTop;  // ~977 dots
+
+      // Content positioning (Y coordinates with ^POI)
+      // Higher Y = closer to physical top (after header)
+      let y = printableBottom - 40;  // Start 40 dots below header zone
+
+      // Center X for QR code calculation
+      const qrMag = 6;  // QR magnification (size ~150 dots)
+      const qrSize = 25 * qrMag;
+      const qrX = Math.floor((LABEL_WIDTH - qrSize) / 2);
+
       return `^XA
 ^CI28
 ^POI
 ^LH0,0
-^LL1218
-^PW812
+^LL${LABEL_HEIGHT}
+^PW${LABEL_WIDTH}
 ^MNY
 ^MD15
 
-^FO0,207^FB812,1,0,C,0^A0N,32,32^FDCONVOCATION 2026^FS
+^FO0,${y}^FB${LABEL_WIDTH},1,0,C,0^A0N,50,50^FDCONVOCATION 2026^FS
 
-^FO0,257^FB812,1,0,C,0^A0N,24,24^FD${safeDegree || 'FMAS Course'}^FS
+^FO0,${y - 65}^FB${LABEL_WIDTH},1,0,C,0^A0N,38,38^FD${safeDegree}^FS
 
-^FO0,297^FB812,1,0,C,0^A0N,28,28^FDDr. ${safeName}^FS
+^FO0,${y - 120}^FB${LABEL_WIDTH},1,0,C,0^A0N,44,44^FDDr. ${safeName}^FS
 
-^FO319,342^BQN,2,7^FDQA,${qrUrl}^FS
+^FO${qrX},${y - 330}^BQN,2,${qrMag}^FDQA,${qrUrl}^FS
 
-^FO0,537^FB812,1,0,C,0^A0N,26,26^FD${safeConvNum}^FS
+^FO0,${y - 385}^FB${LABEL_WIDTH},1,0,C,0^A0N,40,40^FD${safeConvNum}^FS
 
-^FO0,582^FB812,1,0,C,0^A0N,14,14^FDCollect your certificate on 28th August 2026^FS
+^FO0,${y - 440}^FB${LABEL_WIDTH},1,0,C,0^A0N,22,22^FDCollect your certificate on 28th August 2026^FS
 
-^FO0,602^FB812,1,0,C,0^A0N,14,14^FDat AMASI Office (Venue)^FS
+^FO0,${y - 470}^FB${LABEL_WIDTH},1,0,C,0^A0N,22,22^FDat AMASI Office (Venue)^FS
 
-^FO121,632^GB570,2,2^FS
+^FO121,${y - 510}^GB570,2,2^FS
 
-^FO0,647^FB812,1,0,C,0^A0N,10,10^FDThis badge is valid for Convocation Ceremony only,^FS
+^FO0,${y - 540}^FB${LABEL_WIDTH},1,0,C,0^A0N,18,18^FDThis badge is valid for Convocation Ceremony only,^FS
 
-^FO0,661^FB812,1,0,C,0^A0N,10,10^FDnot for AMASICON 2026 conference registration.^FS
+^FO0,${y - 565}^FB${LABEL_WIDTH},1,0,C,0^A0N,18,18^FDnot for AMASICON 2026 conference registration.^FS
 
 ^XZ`.trim();
     }
@@ -966,6 +994,11 @@
 
       showStatus('Printing test label...', 'info');
 
+      // Test print with proper positioning for 4x6 label with pre-printed zones
+      const LABEL_HEIGHT = 1218;
+      const HEADER_ZONE = 177;
+      const baseY = LABEL_HEIGHT - HEADER_ZONE - 40;  // Start below header
+
       const testZpl = `^XA
 ^CI28
 ^POI
@@ -975,15 +1008,16 @@
 ^MNY
 ^MD15
 
-^FO0,300^FB812,1,0,C,0^A0N,40,40^FD*** TEST PRINT ***^FS
-^FO0,360^FB812,1,0,C,0^A0N,28,28^FDAMASI Print Station^FS
-^FO0,400^FB812,1,0,C,0^A0N,24,24^FDConnection Successful!^FS
-^FO0,450^FB812,1,0,C,0^A0N,20,20^FD${new Date().toLocaleString()}^FS
+^FO0,${baseY}^FB812,1,0,C,0^A0N,40,40^FD*** TEST PRINT ***^FS
+^FO0,${baseY - 60}^FB812,1,0,C,0^A0N,28,28^FDAMASI Print Station^FS
+^FO0,${baseY - 100}^FB812,1,0,C,0^A0N,24,24^FDConnection Successful!^FS
+^FO0,${baseY - 140}^FB812,1,0,C,0^A0N,20,20^FD${new Date().toLocaleString()}^FS
 
-^FO319,500^BQN,2,7^FDQA,TEST-PRINT-OK^FS
+^FO331,${baseY - 330}^BQN,2,6^FDQA,TEST-PRINT-OK^FS
 
-^FO0,700^FB812,1,0,C,0^A0N,18,18^FDConvocation 2026 System^FS
-^FO0,730^FB812,1,0,C,0^A0N,16,16^FDLabel: 4" x 6" (812 x 1218 dots)^FS
+^FO0,${baseY - 380}^FB812,1,0,C,0^A0N,18,18^FDConvocation 2026 System^FS
+^FO0,${baseY - 410}^FB812,1,0,C,0^A0N,16,16^FDLabel: 4" x 6" (812 x 1218 dots)^FS
+^FO0,${baseY - 440}^FB812,1,0,C,0^A0N,14,14^FDPre-printed header: 22mm, footer: 8mm^FS
 
 ^XZ`;
 
