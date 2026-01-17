@@ -22,6 +22,7 @@ export type MobilePrintState = 'idle' | 'printing' | 'success' | 'error';
 export interface UseMobilePrintReturn {
   // Status
   isConfigured: boolean;
+  isLoading: boolean;
   state: MobilePrintState;
   error: string | null;
 
@@ -41,6 +42,21 @@ const DEFAULT_SETTINGS: MobilePrinterSettings = {
   enabled: false,
 };
 
+// Load settings from localStorage (runs once at module load)
+function getInitialSettings(): MobilePrinterSettings {
+  if (typeof window === 'undefined') return DEFAULT_SETTINGS;
+  try {
+    const saved = localStorage.getItem(MOBILE_PRINTER_SETTINGS_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return { ...DEFAULT_SETTINGS, ...parsed };
+    }
+  } catch (err) {
+    console.error('[MobilePrint] Failed to load settings:', err);
+  }
+  return DEFAULT_SETTINGS;
+}
+
 /**
  * Hook for mobile printing via server-side network connection
  *
@@ -48,21 +64,16 @@ const DEFAULT_SETTINGS: MobilePrinterSettings = {
  * via the server API. Works on mobile devices!
  */
 export function useMobilePrint(): UseMobilePrintReturn {
-  const [settings, setSettings] = useState<MobilePrinterSettings>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<MobilePrinterSettings>(getInitialSettings);
   const [state, setState] = useState<MobilePrintState>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load settings from localStorage on mount
+  // Ensure settings are loaded on client side
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(MOBILE_PRINTER_SETTINGS_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        setSettings({ ...DEFAULT_SETTINGS, ...parsed });
-      }
-    } catch (err) {
-      console.error('[MobilePrint] Failed to load settings:', err);
-    }
+    const loaded = getInitialSettings();
+    setSettings(loaded);
+    setIsLoaded(true);
   }, []);
 
   // Save settings to localStorage
@@ -192,6 +203,7 @@ export function useMobilePrint(): UseMobilePrintReturn {
 
   return {
     isConfigured: settings.enabled && settings.ip.length > 0,
+    isLoading: !isLoaded,
     state,
     error,
     settings,

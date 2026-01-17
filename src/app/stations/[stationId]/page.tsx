@@ -206,8 +206,8 @@ export default function StationPage() {
         console.warn('[Registration] Mobile Print failed, falling back to PDF');
       }
 
-      // 3. If neither is available, show printer setup modal
-      if (!browserPrint.isRunning && !mobilePrint.isConfigured) {
+      // 3. If neither is available and settings have loaded, show printer setup modal
+      if (!browserPrint.isRunning && !mobilePrint.isConfigured && !mobilePrint.isLoading) {
         setShowPrinterSetup(true);
         return;
       }
@@ -701,7 +701,16 @@ export default function StationPage() {
                 </div>
 
                 {/* Status Summary */}
-                {!browserPrint.isRunning && !mobilePrint.isConfigured && (
+                {mobilePrint.isLoading && (
+                  <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                    <p className="text-blue-400 text-sm flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Loading printer settings...
+                    </p>
+                  </div>
+                )}
+
+                {!mobilePrint.isLoading && !browserPrint.isRunning && !mobilePrint.isConfigured && (
                   <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
                     <p className="text-amber-400 text-sm flex items-center gap-2">
                       <AlertTriangle className="w-4 h-4" />
@@ -710,7 +719,7 @@ export default function StationPage() {
                   </div>
                 )}
 
-                {(browserPrint.isRunning || mobilePrint.isConfigured) && (
+                {!mobilePrint.isLoading && (browserPrint.isRunning || mobilePrint.isConfigured) && (
                   <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
                     <p className="text-green-400 text-sm flex items-center gap-2">
                       <CheckCircle className="w-4 h-4" />
