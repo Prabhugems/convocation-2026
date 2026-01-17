@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { usePrinter } from '@/hooks/usePrinter';
 import { useBrowserPrint } from '@/hooks/useBrowserPrint';
+import { useMobilePrint } from '@/hooks/useMobilePrint';
 import PrinterSetup from '@/components/PrinterSetup';
 import QRCode from 'react-qr-code';
 
@@ -99,6 +100,8 @@ export default function StationPage() {
 
   // Zebra Browser Print (for registration station 4x6 badges)
   const browserPrint = useBrowserPrint();
+  // Mobile/Network print (works from phone - no software needed)
+  const mobilePrint = useMobilePrint();
   const [showPrinterSetup, setShowPrinterSetup] = useState(false);
 
   // Get the shareable station URL
@@ -178,28 +181,39 @@ export default function StationPage() {
   }, [result]);
 
   // Helper function to print 4x6 badge
-  // Uses Browser Print for registration station, falls back to jsPDF
+  // Uses Browser Print, Mobile Print, or falls back to jsPDF
   const handlePrintBadge4x6 = async (graduate: Graduate) => {
-    // For registration station, try Browser Print first (direct Zebra printing)
+    // For registration station, try different print methods
     if (stationId === 'registration') {
-      // Check if Browser Print is running
-      if (!browserPrint.isRunning) {
-        // Show printer setup modal
+      // 1. Try Browser Print first (desktop with Zebra Browser Print software)
+      if (browserPrint.isRunning) {
+        const success = await browserPrint.printBadge(graduate);
+        if (success) {
+          console.log('[Registration] Badge printed via Browser Print');
+          return;
+        }
+        console.warn('[Registration] Browser Print failed, trying other methods');
+      }
+
+      // 2. Try Mobile/Network Print (works from mobile phones!)
+      if (mobilePrint.isConfigured) {
+        console.log('[Registration] Attempting mobile/network print...');
+        const success = await mobilePrint.printBadge(graduate);
+        if (success) {
+          console.log('[Registration] Badge printed via Mobile/Network Print');
+          return;
+        }
+        console.warn('[Registration] Mobile Print failed, falling back to PDF');
+      }
+
+      // 3. If neither is available, show printer setup modal
+      if (!browserPrint.isRunning && !mobilePrint.isConfigured) {
         setShowPrinterSetup(true);
         return;
       }
-
-      // Print using Browser Print
-      const success = await browserPrint.printBadge(graduate);
-      if (success) {
-        console.log('[Registration] Badge printed via Browser Print');
-        return;
-      }
-      // If Browser Print fails, fall through to jsPDF
-      console.warn('[Registration] Browser Print failed, falling back to PDF');
     }
 
-    // Fallback: jsPDF print
+    // Fallback: jsPDF print (browser print dialog)
     const titoUrl = graduate.ticketSlug
       ? `https://ti.to/tickets/${graduate.ticketSlug}`
       : `https://ti.to/amasi/convocation-2026-kolkata/tickets/${graduate.convocationNumber || graduate.registrationNumber}`;
@@ -551,6 +565,11 @@ export default function StationPage() {
                   // Auto-close modal after printer is ready
                   setTimeout(() => setShowPrinterSetup(false), 1000);
                 }}
+                onMobilePrintReady={() => {
+                  // Auto-close modal after mobile print is configured
+                  setTimeout(() => setShowPrinterSetup(false), 1000);
+                }}
+                showMobileOption={true}
               />
             </div>
           </div>
@@ -611,68 +630,110 @@ export default function StationPage() {
             />
           </GlassCard>
 
-          {/* Browser Print Status - Registration Station Only */}
+          {/* Print Status - Registration Station Only */}
           {stationId === 'registration' && (
             <GlassCard className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Printer className="w-5 h-5 text-cyan-400" />
-                  <div className="flex items-center gap-2">
-                    {browserPrint.isChecking ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
-                        <span className="text-blue-400 text-sm">Checking printer...</span>
-                      </>
-                    ) : browserPrint.isRunning ? (
-                      <>
-                        <CheckCircle className="w-4 h-4 text-green-400" />
-                        <span className="text-green-400 text-sm">
-                          Zebra Printer Ready
-                          {browserPrint.selectedPrinter && ` (${browserPrint.selectedPrinter.name})`}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <XCircle className="w-4 h-4 text-red-400" />
-                        <span className="text-red-400 text-sm">Browser Print not detected</span>
-                      </>
-                    )}
+              <div className="space-y-3">
+                {/* Browser Print Status */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Printer className="w-5 h-5 text-cyan-400" />
+                    <div className="flex items-center gap-2">
+                      {browserPrint.isChecking ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
+                          <span className="text-blue-400 text-sm">Checking...</span>
+                        </>
+                      ) : browserPrint.isRunning ? (
+                        <>
+                          <CheckCircle className="w-4 h-4 text-green-400" />
+                          <span className="text-green-400 text-sm">
+                            Browser Print
+                            {browserPrint.selectedPrinter && ` (${browserPrint.selectedPrinter.name})`}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="w-4 h-4 text-white/40" />
+                          <span className="text-white/40 text-sm">Browser Print (desktop)</span>
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {!browserPrint.isRunning && (
-                    <button
-                      onClick={() => setShowPrinterSetup(true)}
-                      className="px-3 py-1.5 bg-cyan-500/20 border border-cyan-500/30 rounded-lg text-cyan-400 text-sm hover:bg-cyan-500/30 transition-colors"
-                    >
-                      Setup
-                    </button>
-                  )}
                   <button
                     onClick={() => browserPrint.checkStatus()}
                     disabled={browserPrint.isChecking}
                     className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-                    title="Refresh printer status"
+                    title="Refresh status"
                   >
                     <RefreshCw className={`w-4 h-4 text-white/50 ${browserPrint.isChecking ? 'animate-spin' : ''}`} />
                   </button>
                 </div>
-              </div>
-              {browserPrint.error && (
-                <p className="text-red-400/70 text-xs mt-2">{browserPrint.error}</p>
-              )}
 
-              {/* Desktop App Alternative */}
-              <div className="mt-3 pt-3 border-t border-white/10">
-                <p className="text-white/50 text-xs mb-2">Alternative: Use the Desktop App for direct printing</p>
-                <a
-                  href="/print-station"
-                  target="_blank"
-                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white/70 text-sm hover:bg-white/10 hover:text-white transition-colors"
+                {/* Mobile Print Status */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Phone className="w-5 h-5 text-green-400" />
+                    <div className="flex items-center gap-2">
+                      {mobilePrint.isConfigured ? (
+                        <>
+                          <CheckCircle className="w-4 h-4 text-green-400" />
+                          <span className="text-green-400 text-sm">
+                            Mobile Print ({mobilePrint.settings.ip})
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="w-4 h-4 text-white/40" />
+                          <span className="text-white/40 text-sm">Mobile Print (network)</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {!mobilePrint.isConfigured && (
+                    <button
+                      onClick={() => setShowPrinterSetup(true)}
+                      className="px-3 py-1.5 bg-green-500/20 border border-green-500/30 rounded-lg text-green-400 text-sm hover:bg-green-500/30 transition-colors"
+                    >
+                      Setup
+                    </button>
+                  )}
+                </div>
+
+                {/* Status Summary */}
+                {!browserPrint.isRunning && !mobilePrint.isConfigured && (
+                  <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                    <p className="text-amber-400 text-sm flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4" />
+                      No printer configured. Tap Setup to connect.
+                    </p>
+                  </div>
+                )}
+
+                {(browserPrint.isRunning || mobilePrint.isConfigured) && (
+                  <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+                    <p className="text-green-400 text-sm flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4" />
+                      Ready to print! Scan a QR code to get started.
+                    </p>
+                  </div>
+                )}
+
+                {browserPrint.error && (
+                  <p className="text-red-400/70 text-xs">{browserPrint.error}</p>
+                )}
+                {mobilePrint.error && (
+                  <p className="text-red-400/70 text-xs">{mobilePrint.error}</p>
+                )}
+
+                {/* Settings Button */}
+                <button
+                  onClick={() => setShowPrinterSetup(true)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white/70 text-sm hover:bg-white/10 hover:text-white transition-colors"
                 >
-                  <Download className="w-4 h-4" />
-                  Download Print Station App
-                </a>
+                  <Printer className="w-4 h-4" />
+                  Printer Settings
+                </button>
               </div>
             </GlassCard>
           )}
@@ -810,47 +871,58 @@ export default function StationPage() {
                     <Sparkles className="w-4 h-4" style={{ color: colors.accent }} />
                     Last Scanned
                   </h3>
-                  {station.printType && lastScanned && (
-                    <button
-                      onClick={async () => {
-                        if (station.printType === '4x6-badge') {
-                          // Use Browser Print for registration, jsPDF fallback for others
-                          await handlePrintBadge4x6(lastScanned);
-                        } else {
-                          // Use old method for other print types
-                          const printType = station.printType === '3x2-sticker' ? 'packing' : 'badge';
-                          printLabel(lastScanned, printType, printRef.current);
-                        }
-                      }}
-                      disabled={stationId === 'registration' ? browserPrint.state === 'printing' : printStatus === 'printing'}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-white text-sm transition-all ${
-                        (stationId === 'registration' ? browserPrint.state : printStatus) === 'printing'
-                          ? 'bg-blue-500/30 cursor-wait'
-                          : (stationId === 'registration' ? browserPrint.state : printStatus) === 'success'
-                          ? 'bg-green-500/30'
-                          : (stationId === 'registration' ? browserPrint.state : printStatus) === 'error'
-                          ? 'bg-red-500/30 hover:bg-red-500/40'
-                          : 'bg-white/10 hover:bg-white/20'
-                      }`}
-                    >
-                      {(stationId === 'registration' ? browserPrint.state : printStatus) === 'printing' ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (stationId === 'registration' ? browserPrint.state : printStatus) === 'success' ? (
-                        <Check className="w-4 h-4 text-green-400" />
-                      ) : (stationId === 'registration' ? browserPrint.state : printStatus) === 'error' ? (
-                        <AlertTriangle className="w-4 h-4 text-red-400" />
-                      ) : (
-                        <Printer className="w-4 h-4" />
-                      )}
-                      {(stationId === 'registration' ? browserPrint.state : printStatus) === 'printing'
-                        ? 'Printing...'
-                        : (stationId === 'registration' ? browserPrint.state : printStatus) === 'success'
-                        ? 'Printed!'
-                        : (stationId === 'registration' ? browserPrint.state : printStatus) === 'error'
-                        ? 'Retry'
-                        : 'Print'}
-                    </button>
-                  )}
+                  {station.printType && lastScanned && (() => {
+                    // Determine current print state based on print method
+                    const currentPrintState = stationId === 'registration'
+                      ? (browserPrint.state === 'printing' || mobilePrint.state === 'printing'
+                        ? 'printing'
+                        : browserPrint.state === 'success' || mobilePrint.state === 'success'
+                        ? 'success'
+                        : browserPrint.state === 'error' || mobilePrint.state === 'error'
+                        ? 'error'
+                        : 'idle')
+                      : printStatus;
+
+                    return (
+                      <button
+                        onClick={async () => {
+                          if (station.printType === '4x6-badge') {
+                            await handlePrintBadge4x6(lastScanned);
+                          } else {
+                            const printType = station.printType === '3x2-sticker' ? 'packing' : 'badge';
+                            printLabel(lastScanned, printType, printRef.current);
+                          }
+                        }}
+                        disabled={currentPrintState === 'printing'}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-white text-sm transition-all ${
+                          currentPrintState === 'printing'
+                            ? 'bg-blue-500/30 cursor-wait'
+                            : currentPrintState === 'success'
+                            ? 'bg-green-500/30'
+                            : currentPrintState === 'error'
+                            ? 'bg-red-500/30 hover:bg-red-500/40'
+                            : 'bg-white/10 hover:bg-white/20'
+                        }`}
+                      >
+                        {currentPrintState === 'printing' ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : currentPrintState === 'success' ? (
+                          <Check className="w-4 h-4 text-green-400" />
+                        ) : currentPrintState === 'error' ? (
+                          <AlertTriangle className="w-4 h-4 text-red-400" />
+                        ) : (
+                          <Printer className="w-4 h-4" />
+                        )}
+                        {currentPrintState === 'printing'
+                          ? 'Printing...'
+                          : currentPrintState === 'success'
+                          ? 'Printed!'
+                          : currentPrintState === 'error'
+                          ? 'Retry'
+                          : 'Print'}
+                      </button>
+                    );
+                  })()}
                 </div>
 
                 {/* Graduate Info */}
