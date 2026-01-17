@@ -8,6 +8,7 @@ import {
   ZebraPrinter,
 } from '@/lib/zebra-browser-print';
 import { generateTestZPL, generateCalibrationZPL } from '@/lib/zpl-badge-generator';
+import { useMobilePrint } from '@/hooks/useMobilePrint';
 import {
   Printer,
   CheckCircle,
@@ -21,22 +22,32 @@ import {
   Usb,
   Wifi,
   Settings,
+  Smartphone,
+  Globe,
 } from 'lucide-react';
 import GlassCard from '@/components/GlassCard';
 
 interface PrinterSetupProps {
   onPrinterReady?: (printer: ZebraPrinter) => void;
+  onMobilePrintReady?: () => void;
   compact?: boolean;
+  showMobileOption?: boolean;
 }
 
 type ConnectionStatus = 'checking' | 'connected' | 'disconnected' | 'error';
 
-export default function PrinterSetup({ onPrinterReady, compact = false }: PrinterSetupProps) {
+export default function PrinterSetup({ onPrinterReady, onMobilePrintReady, compact = false, showMobileOption = true }: PrinterSetupProps) {
   const [status, setStatus] = useState<BrowserPrintStatus | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('checking');
   const [selectedPrinter, setSelectedPrinter] = useState<ZebraPrinter | null>(null);
   const [printing, setPrinting] = useState(false);
   const [printResult, setPrintResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  // Mobile/Network printing
+  const mobilePrint = useMobilePrint();
+  const [showMobileSetup, setShowMobileSetup] = useState(false);
+  const [mobileIP, setMobileIP] = useState(mobilePrint.settings.ip);
+  const [mobilePort, setMobilePort] = useState(String(mobilePrint.settings.port));
 
   // Check Browser Print status
   const checkStatus = useCallback(async () => {
@@ -449,6 +460,134 @@ export default function PrinterSetup({ onPrinterReady, compact = false }: Printe
               Run Calibrate after loading new label stock
             </li>
           </ul>
+        </GlassCard>
+      )}
+
+      {/* Mobile/Network Print Option */}
+      {showMobileOption && (
+        <GlassCard className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-white flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
+                <Smartphone className="w-5 h-5 text-green-400" />
+              </div>
+              Mobile / Network Print
+            </h2>
+            {mobilePrint.isConfigured && (
+              <div className="flex items-center gap-2 text-green-400">
+                <CheckCircle className="w-5 h-5" />
+                <span>Configured</span>
+              </div>
+            )}
+          </div>
+
+          <p className="text-white/60 text-sm mb-4">
+            Print directly to a network-connected Zebra printer from your mobile phone or any device.
+            No software installation required!
+          </p>
+
+          {!showMobileSetup ? (
+            <button
+              onClick={() => setShowMobileSetup(true)}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-500/20 border border-green-500/30 rounded-xl text-green-400 hover:bg-green-500/30 transition-colors"
+            >
+              <Globe className="w-5 h-5" />
+              {mobilePrint.isConfigured ? 'Edit Network Printer Settings' : 'Setup Network Printer'}
+            </button>
+          ) : (
+            <div className="space-y-4">
+              {/* Printer IP */}
+              <div>
+                <label className="block text-sm text-white/60 mb-2">Printer IP Address</label>
+                <input
+                  type="text"
+                  value={mobileIP}
+                  onChange={(e) => setMobileIP(e.target.value)}
+                  placeholder="e.g., 10.0.1.12 or 192.168.1.100"
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder:text-white/40 focus:outline-none focus:border-green-500 transition-colors"
+                />
+              </div>
+
+              {/* Printer Port */}
+              <div>
+                <label className="block text-sm text-white/60 mb-2">Printer Port</label>
+                <input
+                  type="text"
+                  value={mobilePort}
+                  onChange={(e) => setMobilePort(e.target.value)}
+                  placeholder="9100 (default)"
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder:text-white/40 focus:outline-none focus:border-green-500 transition-colors"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={async () => {
+                    mobilePrint.saveSettings({
+                      ip: mobileIP,
+                      port: parseInt(mobilePort) || 9100,
+                      enabled: true,
+                    });
+                    const success = await mobilePrint.testConnection();
+                    if (success) {
+                      setPrintResult({ success: true, message: 'Network printer connected! Test label printed.' });
+                      onMobilePrintReady?.();
+                    } else {
+                      setPrintResult({ success: false, message: mobilePrint.error || 'Connection failed' });
+                    }
+                  }}
+                  disabled={mobilePrint.state === 'printing' || !mobileIP}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-500/20 border border-green-500/30 rounded-xl text-green-400 hover:bg-green-500/30 transition-colors disabled:opacity-50"
+                >
+                  {mobilePrint.state === 'printing' ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Printer className="w-4 h-4" />
+                  )}
+                  Test Connection
+                </button>
+                <button
+                  onClick={() => setShowMobileSetup(false)}
+                  className="px-4 py-3 bg-white/10 border border-white/10 rounded-xl text-white/70 hover:bg-white/20 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+
+              {/* Result Message */}
+              {printResult && (
+                <div
+                  className={`p-4 rounded-xl border ${
+                    printResult.success
+                      ? 'bg-green-500/10 border-green-500/30'
+                      : 'bg-red-500/10 border-red-500/30'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    {printResult.success ? (
+                      <CheckCircle className="w-5 h-5 text-green-400" />
+                    ) : (
+                      <XCircle className="w-5 h-5 text-red-400" />
+                    )}
+                    <p className={printResult.success ? 'text-green-400' : 'text-red-400'}>
+                      {printResult.message}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* How to find printer IP */}
+              <div className="p-4 bg-white/5 rounded-xl">
+                <p className="text-white/60 text-sm mb-2">How to find your printer&apos;s IP address:</p>
+                <ul className="text-white/50 text-sm space-y-1">
+                  <li>• Print a configuration label from the printer</li>
+                  <li>• Check your router&apos;s connected devices list</li>
+                  <li>• Use Zebra Setup Utilities on a computer</li>
+                </ul>
+              </div>
+            </div>
+          )}
         </GlassCard>
       )}
     </div>
