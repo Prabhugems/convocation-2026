@@ -195,9 +195,21 @@ export default function StationPage() {
         console.warn('[Registration] Browser Print failed, trying other methods');
       }
 
-      // 2. Try Mobile/Network Print (works from mobile phones!)
-      if (mobilePrint.isConfigured) {
-        console.log('[Registration] Attempting mobile/network print...');
+      // 2. Try Mobile/Network Print - check localStorage directly to avoid stale state
+      let mobileSettings = null;
+      try {
+        const saved = localStorage.getItem('mobile-printer-settings');
+        if (saved) {
+          mobileSettings = JSON.parse(saved);
+        }
+      } catch (e) {
+        console.error('[Registration] Failed to read mobile settings:', e);
+      }
+
+      const isMobileConfigured = mobileSettings?.enabled && mobileSettings?.ip?.length > 0;
+
+      if (isMobileConfigured) {
+        console.log('[Registration] Attempting mobile/network print to', mobileSettings.ip);
         const success = await mobilePrint.printBadge(graduate);
         if (success) {
           console.log('[Registration] Badge printed via Mobile/Network Print');
@@ -206,8 +218,8 @@ export default function StationPage() {
         console.warn('[Registration] Mobile Print failed, falling back to PDF');
       }
 
-      // 3. If neither is available and settings have loaded, show printer setup modal
-      if (!browserPrint.isRunning && !mobilePrint.isConfigured && !mobilePrint.isLoading) {
+      // 3. If neither is available, show printer setup modal
+      if (!browserPrint.isRunning && !isMobileConfigured) {
         setShowPrinterSetup(true);
         return;
       }

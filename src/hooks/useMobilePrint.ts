@@ -188,13 +188,18 @@ export function useMobilePrint(): UseMobilePrintReturn {
     }
   }, [settings.ip, settings.port]);
 
-  // Print graduate badge
+  // Print graduate badge - reads fresh settings from localStorage to avoid stale closures
   const printBadge = useCallback(
     async (graduate: Graduate): Promise<boolean> => {
       setState('printing');
       setError(null);
 
       try {
+        // Read fresh settings from localStorage
+        const freshSettings = getInitialSettings();
+        const printerIP = freshSettings.ip;
+        const printerPort = freshSettings.port;
+
         // Generate badge data from graduate
         const badgeData: ConvocationBadgeData = {
           name: graduate.name,
@@ -205,15 +210,15 @@ export function useMobilePrint(): UseMobilePrintReturn {
 
         const zpl = generateConvocationBadgeZPL(badgeData);
 
-        console.log(`[MobilePrint] Printing badge for ${graduate.name} to ${settings.ip}:${settings.port}`);
+        console.log(`[MobilePrint] Printing badge for ${graduate.name} to ${printerIP}:${printerPort}`);
 
         const response = await fetch('/api/print/zpl/raw', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             zpl,
-            printerIP: settings.ip,
-            printerPort: settings.port,
+            printerIP,
+            printerPort,
           }),
         });
 
@@ -237,7 +242,7 @@ export function useMobilePrint(): UseMobilePrintReturn {
         return false;
       }
     },
-    [settings.ip, settings.port]
+    [] // No dependencies - always reads fresh from localStorage
   );
 
   return {
