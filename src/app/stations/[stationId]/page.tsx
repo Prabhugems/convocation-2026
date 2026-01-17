@@ -39,8 +39,10 @@ import {
 import { usePrinter } from '@/hooks/usePrinter';
 import { useBrowserPrint } from '@/hooks/useBrowserPrint';
 import { useMobilePrint } from '@/hooks/useMobilePrint';
+import { generateConvocationBadgeZPL } from '@/lib/zpl-badge-generator';
 import PrinterSetup from '@/components/PrinterSetup';
 import QRCode from 'react-qr-code';
+import { Share2 } from 'lucide-react';
 
 const iconMap: Record<string, React.ElementType> = {
   Package,
@@ -195,25 +197,38 @@ export default function StationPage() {
         console.warn('[Registration] Browser Print failed, trying other methods');
       }
 
-      // 2. Try Mobile/Network Print (works from mobile phones!)
-      if (mobilePrint.isConfigured) {
-        console.log('[Registration] Attempting mobile/network print...');
+      // 2. Try Mobile/Network Print - check localStorage directly
+      let mobileSettings = null;
+      try {
+        const saved = localStorage.getItem('mobile-printer-settings');
+        console.log('[Registration] Mobile settings from localStorage:', saved);
+        if (saved) {
+          mobileSettings = JSON.parse(saved);
+          console.log('[Registration] Parsed mobile settings:', mobileSettings);
+        }
+      } catch (e) {
+        console.error('[Registration] Failed to read mobile settings:', e);
+      }
+
+      // If we have an IP address, try to print
+      if (mobileSettings?.ip) {
+        console.log('[Registration] Attempting mobile/network print to', mobileSettings.ip);
         const success = await mobilePrint.printBadge(graduate);
         if (success) {
           console.log('[Registration] Badge printed via Mobile/Network Print');
           return;
         }
-        console.warn('[Registration] Mobile Print failed, falling back to PDF');
-      }
-
-      // 3. If neither is available, show printer setup modal
-      if (!browserPrint.isRunning && !mobilePrint.isConfigured) {
-        setShowPrinterSetup(true);
+        console.warn('[Registration] Mobile Print failed');
+        // Don't show modal or fall through - user can use Zebra App button
         return;
       }
+
+      // No print method available - just return, user can use Zebra App button
+      console.log('[Registration] No auto-print available. User can use Zebra App button.');
+      return;
     }
 
-    // Fallback: jsPDF print (browser print dialog)
+    // For non-registration stations: jsPDF print (browser print dialog)
     const titoUrl = graduate.ticketSlug
       ? `https://ti.to/tickets/${graduate.ticketSlug}`
       : `https://ti.to/amasi/convocation-2026-kolkata/tickets/${graduate.convocationNumber || graduate.registrationNumber}`;
@@ -701,7 +716,16 @@ export default function StationPage() {
                 </div>
 
                 {/* Status Summary */}
-                {!browserPrint.isRunning && !mobilePrint.isConfigured && (
+                {mobilePrint.isLoading && (
+                  <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                    <p className="text-blue-400 text-sm flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Loading printer settings...
+                    </p>
+                  </div>
+                )}
+
+                {!mobilePrint.isLoading && !browserPrint.isRunning && !mobilePrint.isConfigured && (
                   <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
                     <p className="text-amber-400 text-sm flex items-center gap-2">
                       <AlertTriangle className="w-4 h-4" />
@@ -710,7 +734,7 @@ export default function StationPage() {
                   </div>
                 )}
 
-                {(browserPrint.isRunning || mobilePrint.isConfigured) && (
+                {!mobilePrint.isLoading && (browserPrint.isRunning || mobilePrint.isConfigured) && (
                   <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
                     <p className="text-green-400 text-sm flex items-center gap-2">
                       <CheckCircle className="w-4 h-4" />
@@ -923,6 +947,48 @@ export default function StationPage() {
                       </button>
                     );
                   })()}
+
+                  {/* Share to Zebra App Button - for mobile */}
+                  {station.printType === '4x6-badge' && lastScanned && (
+                    <button
+                      onClick={async () => {
+                        // Generate ZPL for this graduate
+                        const zpl = generateConvocationBadgeZPL({
+                          name: lastScanned.name,
+                          course: lastScanned.course,
+                          convocationNumber: lastScanned.convocationNumber || 'N/A',
+                          registrationId: lastScanned.ticketSlug || lastScanned.registrationNumber,
+                        });
+
+                        // Try Web Share API first (works on Android)
+                        if (navigator.share) {
+                          try {
+                            await navigator.share({
+                              title: `Badge: ${lastScanned.name}`,
+                              text: zpl,
+                            });
+                            return;
+                          } catch (e) {
+                            // User cancelled or share failed, fall back to clipboard
+                          }
+                        }
+
+                        // Fall back to clipboard
+                        try {
+                          await navigator.clipboard.writeText(zpl);
+                          alert('ZPL code copied! Paste it in Zebra Print Connect app.');
+                        } catch (e) {
+                          // Show ZPL in prompt for manual copy
+                          prompt('Copy this ZPL code and paste in Zebra Print Connect:', zpl);
+                        }
+                      }}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-green-400 text-sm bg-green-500/20 hover:bg-green-500/30 transition-all"
+                      title="Share to Zebra Print Connect app"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      Zebra App
+                    </button>
+                  )}
                 </div>
 
                 {/* Graduate Info */}

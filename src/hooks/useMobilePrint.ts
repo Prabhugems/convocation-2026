@@ -22,12 +22,14 @@ export type MobilePrintState = 'idle' | 'printing' | 'success' | 'error';
 export interface UseMobilePrintReturn {
   // Status
   isConfigured: boolean;
+  isLoading: boolean;
   state: MobilePrintState;
   error: string | null;
 
   // Settings
   settings: MobilePrinterSettings;
   saveSettings: (settings: MobilePrinterSettings) => void;
+  refreshSettings: () => void;
 
   // Actions
   printBadge: (graduate: Graduate) => Promise<boolean>;
@@ -41,6 +43,21 @@ const DEFAULT_SETTINGS: MobilePrinterSettings = {
   enabled: false,
 };
 
+// Load settings from localStorage (runs once at module load)
+function getInitialSettings(): MobilePrinterSettings {
+  if (typeof window === 'undefined') return DEFAULT_SETTINGS;
+  try {
+    const saved = localStorage.getItem(MOBILE_PRINTER_SETTINGS_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return { ...DEFAULT_SETTINGS, ...parsed };
+    }
+  } catch (err) {
+    console.error('[MobilePrint] Failed to load settings:', err);
+  }
+  return DEFAULT_SETTINGS;
+}
+
 /**
  * Hook for mobile printing via server-side network connection
  *
@@ -48,28 +65,61 @@ const DEFAULT_SETTINGS: MobilePrinterSettings = {
  * via the server API. Works on mobile devices!
  */
 export function useMobilePrint(): UseMobilePrintReturn {
-  const [settings, setSettings] = useState<MobilePrinterSettings>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<MobilePrinterSettings>(getInitialSettings);
   const [state, setState] = useState<MobilePrintState>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load settings from localStorage on mount
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(MOBILE_PRINTER_SETTINGS_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        setSettings({ ...DEFAULT_SETTINGS, ...parsed });
-      }
-    } catch (err) {
-      console.error('[MobilePrint] Failed to load settings:', err);
-    }
+  // Refresh settings from localStorage
+  const refreshSettings = useCallback(() => {
+    const loaded = getInitialSettings();
+    setSettings(loaded);
+    console.log('[MobilePrint] Settings refreshed:', loaded);
   }, []);
 
-  // Save settings to localStorage
+  // Ensure settings are loaded on client side and listen for changes
+  useEffect(() => {
+    const loaded = getInitialSettings();
+    setSettings(loaded);
+    setIsLoaded(true);
+
+    // Listen for storage changes from other components/tabs
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === MOBILE_PRINTER_SETTINGS_KEY && e.newValue) {
+        try {
+          const newSettings = JSON.parse(e.newValue);
+          setSettings({ ...DEFAULT_SETTINGS, ...newSettings });
+          console.log('[MobilePrint] Settings synced from storage event:', newSettings);
+        } catch (err) {
+          console.error('[MobilePrint] Failed to parse storage event:', err);
+        }
+      }
+    };
+
+    // Listen for same-tab custom event
+    const handleCustomEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<MobilePrinterSettings>;
+      if (customEvent.detail) {
+        setSettings({ ...DEFAULT_SETTINGS, ...customEvent.detail });
+        console.log('[MobilePrint] Settings synced from custom event:', customEvent.detail);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('mobilePrintSettingsChanged', handleCustomEvent);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('mobilePrintSettingsChanged', handleCustomEvent);
+    };
+  }, []);
+
+  // Save settings to localStorage and dispatch event for same-tab sync
   const saveSettings = useCallback((newSettings: MobilePrinterSettings) => {
     setSettings(newSettings);
     try {
       localStorage.setItem(MOBILE_PRINTER_SETTINGS_KEY, JSON.stringify(newSettings));
+      // Dispatch custom event for same-tab sync (storage event only fires for other tabs)
+      window.dispatchEvent(new CustomEvent('mobilePrintSettingsChanged', { detail: newSettings }));
     } catch (err) {
       console.error('[MobilePrint] Failed to save settings:', err);
     }
@@ -138,13 +188,18 @@ export function useMobilePrint(): UseMobilePrintReturn {
     }
   }, [settings.ip, settings.port]);
 
-  // Print graduate badge
+  // Print graduate badge - reads fresh settings from localStorage to avoid stale closures
   const printBadge = useCallback(
     async (graduate: Graduate): Promise<boolean> => {
       setState('printing');
       setError(null);
 
       try {
+        // Read fresh settings from localStorage
+        const freshSettings = getInitialSettings();
+        const printerIP = freshSettings.ip;
+        const printerPort = freshSettings.port;
+
         // Generate badge data from graduate
         const badgeData: ConvocationBadgeData = {
           name: graduate.name,
@@ -155,15 +210,15 @@ export function useMobilePrint(): UseMobilePrintReturn {
 
         const zpl = generateConvocationBadgeZPL(badgeData);
 
-        console.log(`[MobilePrint] Printing badge for ${graduate.name} to ${settings.ip}:${settings.port}`);
+        console.log(`[MobilePrint] Printing badge for ${graduate.name} to ${printerIP}:${printerPort}`);
 
         const response = await fetch('/api/print/zpl/raw', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             zpl,
-            printerIP: settings.ip,
-            printerPort: settings.port,
+            printerIP,
+            printerPort,
           }),
         });
 
@@ -187,15 +242,17 @@ export function useMobilePrint(): UseMobilePrintReturn {
         return false;
       }
     },
-    [settings.ip, settings.port]
+    [] // No dependencies - always reads fresh from localStorage
   );
 
   return {
     isConfigured: settings.enabled && settings.ip.length > 0,
+    isLoading: !isLoaded,
     state,
     error,
     settings,
     saveSettings,
+    refreshSettings,
     printBadge,
     printTestLabel,
     testConnection,

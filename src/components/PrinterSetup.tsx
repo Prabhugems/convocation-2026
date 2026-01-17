@@ -523,29 +523,21 @@ export default function PrinterSetup({ onPrinterReady, onMobilePrintReady, compa
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-3">
                 <button
-                  onClick={async () => {
+                  onClick={() => {
                     mobilePrint.saveSettings({
                       ip: mobileIP,
                       port: parseInt(mobilePort) || 9100,
                       enabled: true,
                     });
-                    const success = await mobilePrint.testConnection();
-                    if (success) {
-                      setPrintResult({ success: true, message: 'Network printer connected! Test label printed.' });
-                      onMobilePrintReady?.();
-                    } else {
-                      setPrintResult({ success: false, message: mobilePrint.error || 'Connection failed' });
-                    }
+                    setPrintResult({ success: true, message: 'Settings saved! Use "Zebra App" button to print.' });
+                    setShowMobileSetup(false);
+                    onMobilePrintReady?.();
                   }}
-                  disabled={mobilePrint.state === 'printing' || !mobileIP}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-500/20 border border-green-500/30 rounded-xl text-green-400 hover:bg-green-500/30 transition-colors disabled:opacity-50"
+                  disabled={!mobileIP}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-500 border border-green-500 rounded-xl text-white font-medium hover:bg-green-600 transition-colors disabled:opacity-50"
                 >
-                  {mobilePrint.state === 'printing' ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Printer className="w-4 h-4" />
-                  )}
-                  Test Connection
+                  <CheckCircle className="w-4 h-4" />
+                  Save Settings
                 </button>
                 <button
                   onClick={() => setShowMobileSetup(false)}
@@ -553,6 +545,17 @@ export default function PrinterSetup({ onPrinterReady, onMobilePrintReady, compa
                 >
                   Cancel
                 </button>
+              </div>
+
+              {/* Important Note */}
+              <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
+                <p className="text-blue-400 text-sm font-medium mb-2">How to print from mobile:</p>
+                <ol className="text-blue-400/80 text-sm space-y-1">
+                  <li>1. Save your printer IP above</li>
+                  <li>2. Scan a graduate QR code</li>
+                  <li>3. Tap the <strong>&quot;Zebra App&quot;</strong> button</li>
+                  <li>4. Share to Zebra Print Connect app</li>
+                </ol>
               </div>
 
               {/* Result Message */}
