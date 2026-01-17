@@ -195,20 +195,21 @@ export default function StationPage() {
         console.warn('[Registration] Browser Print failed, trying other methods');
       }
 
-      // 2. Try Mobile/Network Print - check localStorage directly to avoid stale state
+      // 2. Try Mobile/Network Print - check localStorage directly
       let mobileSettings = null;
       try {
         const saved = localStorage.getItem('mobile-printer-settings');
+        console.log('[Registration] Mobile settings from localStorage:', saved);
         if (saved) {
           mobileSettings = JSON.parse(saved);
+          console.log('[Registration] Parsed mobile settings:', mobileSettings);
         }
       } catch (e) {
         console.error('[Registration] Failed to read mobile settings:', e);
       }
 
-      const isMobileConfigured = mobileSettings?.enabled && mobileSettings?.ip?.length > 0;
-
-      if (isMobileConfigured) {
+      // If we have an IP address, try to print (don't check enabled flag)
+      if (mobileSettings?.ip) {
         console.log('[Registration] Attempting mobile/network print to', mobileSettings.ip);
         const success = await mobilePrint.printBadge(graduate);
         if (success) {
@@ -216,10 +217,10 @@ export default function StationPage() {
           return;
         }
         console.warn('[Registration] Mobile Print failed, falling back to PDF');
-      }
-
-      // 3. If neither is available, show printer setup modal
-      if (!browserPrint.isRunning && !isMobileConfigured) {
+        // Don't show modal, just fall through to PDF
+      } else {
+        // No mobile settings at all - show setup modal
+        console.log('[Registration] No mobile settings found, showing setup modal');
         setShowPrinterSetup(true);
         return;
       }
