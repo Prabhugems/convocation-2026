@@ -39,8 +39,10 @@ import {
 import { usePrinter } from '@/hooks/usePrinter';
 import { useBrowserPrint } from '@/hooks/useBrowserPrint';
 import { useMobilePrint } from '@/hooks/useMobilePrint';
+import { generateConvocationBadgeZPL } from '@/lib/zpl-badge-generator';
 import PrinterSetup from '@/components/PrinterSetup';
 import QRCode from 'react-qr-code';
+import { Share2 } from 'lucide-react';
 
 const iconMap: Record<string, React.ElementType> = {
   Package,
@@ -945,6 +947,48 @@ export default function StationPage() {
                       </button>
                     );
                   })()}
+
+                  {/* Share to Zebra App Button - for mobile */}
+                  {station.printType === '4x6-badge' && lastScanned && (
+                    <button
+                      onClick={async () => {
+                        // Generate ZPL for this graduate
+                        const zpl = generateConvocationBadgeZPL({
+                          name: lastScanned.name,
+                          course: lastScanned.course,
+                          convocationNumber: lastScanned.convocationNumber || 'N/A',
+                          registrationId: lastScanned.ticketSlug || lastScanned.registrationNumber,
+                        });
+
+                        // Try Web Share API first (works on Android)
+                        if (navigator.share) {
+                          try {
+                            await navigator.share({
+                              title: `Badge: ${lastScanned.name}`,
+                              text: zpl,
+                            });
+                            return;
+                          } catch (e) {
+                            // User cancelled or share failed, fall back to clipboard
+                          }
+                        }
+
+                        // Fall back to clipboard
+                        try {
+                          await navigator.clipboard.writeText(zpl);
+                          alert('ZPL code copied! Paste it in Zebra Print Connect app.');
+                        } catch (e) {
+                          // Show ZPL in prompt for manual copy
+                          prompt('Copy this ZPL code and paste in Zebra Print Connect:', zpl);
+                        }
+                      }}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-green-400 text-sm bg-green-500/20 hover:bg-green-500/30 transition-all"
+                      title="Share to Zebra Print Connect app"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      Zebra App
+                    </button>
+                  )}
                 </div>
 
                 {/* Graduate Info */}
