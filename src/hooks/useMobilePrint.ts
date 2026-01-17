@@ -29,6 +29,7 @@ export interface UseMobilePrintReturn {
   // Settings
   settings: MobilePrinterSettings;
   saveSettings: (settings: MobilePrinterSettings) => void;
+  refreshSettings: () => void;
 
   // Actions
   printBadge: (graduate: Graduate) => Promise<boolean>;
@@ -69,18 +70,56 @@ export function useMobilePrint(): UseMobilePrintReturn {
   const [error, setError] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Ensure settings are loaded on client side
+  // Refresh settings from localStorage
+  const refreshSettings = useCallback(() => {
+    const loaded = getInitialSettings();
+    setSettings(loaded);
+    console.log('[MobilePrint] Settings refreshed:', loaded);
+  }, []);
+
+  // Ensure settings are loaded on client side and listen for changes
   useEffect(() => {
     const loaded = getInitialSettings();
     setSettings(loaded);
     setIsLoaded(true);
+
+    // Listen for storage changes from other components/tabs
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === MOBILE_PRINTER_SETTINGS_KEY && e.newValue) {
+        try {
+          const newSettings = JSON.parse(e.newValue);
+          setSettings({ ...DEFAULT_SETTINGS, ...newSettings });
+          console.log('[MobilePrint] Settings synced from storage event:', newSettings);
+        } catch (err) {
+          console.error('[MobilePrint] Failed to parse storage event:', err);
+        }
+      }
+    };
+
+    // Listen for same-tab custom event
+    const handleCustomEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<MobilePrinterSettings>;
+      if (customEvent.detail) {
+        setSettings({ ...DEFAULT_SETTINGS, ...customEvent.detail });
+        console.log('[MobilePrint] Settings synced from custom event:', customEvent.detail);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('mobilePrintSettingsChanged', handleCustomEvent);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('mobilePrintSettingsChanged', handleCustomEvent);
+    };
   }, []);
 
-  // Save settings to localStorage
+  // Save settings to localStorage and dispatch event for same-tab sync
   const saveSettings = useCallback((newSettings: MobilePrinterSettings) => {
     setSettings(newSettings);
     try {
       localStorage.setItem(MOBILE_PRINTER_SETTINGS_KEY, JSON.stringify(newSettings));
+      // Dispatch custom event for same-tab sync (storage event only fires for other tabs)
+      window.dispatchEvent(new CustomEvent('mobilePrintSettingsChanged', { detail: newSettings }));
     } catch (err) {
       console.error('[MobilePrint] Failed to save settings:', err);
     }
@@ -208,6 +247,7 @@ export function useMobilePrint(): UseMobilePrintReturn {
     error,
     settings,
     saveSettings,
+    refreshSettings,
     printBadge,
     printTestLabel,
     testConnection,
