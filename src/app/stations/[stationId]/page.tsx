@@ -210,7 +210,7 @@ export default function StationPage() {
         console.error('[Registration] Failed to read mobile settings:', e);
       }
 
-      // If we have an IP address, try to print (don't check enabled flag)
+      // If we have an IP address, try to print
       if (mobileSettings?.ip) {
         console.log('[Registration] Attempting mobile/network print to', mobileSettings.ip);
         const success = await mobilePrint.printBadge(graduate);
@@ -218,17 +218,17 @@ export default function StationPage() {
           console.log('[Registration] Badge printed via Mobile/Network Print');
           return;
         }
-        console.warn('[Registration] Mobile Print failed, falling back to PDF');
-        // Don't show modal, just fall through to PDF
-      } else {
-        // No mobile settings at all - show setup modal
-        console.log('[Registration] No mobile settings found, showing setup modal');
-        setShowPrinterSetup(true);
+        console.warn('[Registration] Mobile Print failed');
+        // Don't show modal or fall through - user can use Zebra App button
         return;
       }
+
+      // No print method available - just return, user can use Zebra App button
+      console.log('[Registration] No auto-print available. User can use Zebra App button.');
+      return;
     }
 
-    // Fallback: jsPDF print (browser print dialog)
+    // For non-registration stations: jsPDF print (browser print dialog)
     const titoUrl = graduate.ticketSlug
       ? `https://ti.to/tickets/${graduate.ticketSlug}`
       : `https://ti.to/amasi/convocation-2026-kolkata/tickets/${graduate.convocationNumber || graduate.registrationNumber}`;
