@@ -254,6 +254,8 @@ export default function AdminPage() {
           // Post-event statuses
           case 'at-ho':
             return g.status.returnedToHO;
+          case 'labeled':
+            return g.status.addressLabeled;
           case 'final-dispatched':
             return g.status.finalDispatched;
           default:
@@ -662,7 +664,7 @@ export default function AdminPage() {
                 <div className="space-y-1">
                   {[
                     { label: 'At HO', value: stats?.returnedToHO || 0, color: 'yellow', icon: Building2, filter: 'at-ho' },
-                    { label: 'Labeled', value: 0, color: 'blue', icon: MapPin, filter: 'labeled' },
+                    { label: 'Labeled', value: stats?.addressLabeled || 0, color: 'blue', icon: MapPin, filter: 'labeled' },
                     { label: 'Dispatched', value: stats?.finalDispatched || 0, color: 'indigo', icon: Send, filter: 'final-dispatched' },
                   ].map((step) => {
                     const Icon = step.icon;
