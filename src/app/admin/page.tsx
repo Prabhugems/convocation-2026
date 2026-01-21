@@ -70,7 +70,13 @@ export default function AdminPage() {
   const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set());
   const [sortField, setSortField] = useState<'name' | 'convocationNumber' | 'course' | 'status'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('amasi_theme');
+      return (saved === 'light' || saved === 'dark') ? saved : 'dark';
+    }
+    return 'dark';
+  });
 
   // Refs
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -128,6 +134,11 @@ export default function AdminPage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeNav]);
+
+  // Persist theme to localStorage
+  useEffect(() => {
+    localStorage.setItem('amasi_theme', theme);
+  }, [theme]);
 
   // Get base URL for station links
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
