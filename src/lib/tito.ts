@@ -359,6 +359,79 @@ function mergeWithAirtableData(
   };
 }
 
+// Fetch all check-ins from all check-in lists and build a status map
+// Returns a map of ticketId -> ScanStatus
+async function getAllCheckinsMap(): Promise<Map<number, ScanStatus>> {
+  const statusMap = new Map<number, ScanStatus>();
+
+  // Map station IDs to status keys
+  const stationToStatusKey: Record<StationId, keyof ScanStatus> = {
+    'packing': 'packed',
+    'dispatch-venue': 'dispatchedToVenue',
+    'registration': 'registered',
+    'gown-issue': 'gownIssued',
+    'gown-return': 'gownReturned',
+    'certificate-collection': 'certificateCollected',
+    'return-ho': 'returnedToHO',
+    'address-label': 'addressLabeled',
+    'final-dispatch': 'finalDispatched',
+  };
+
+  // Fetch check-ins from all check-in lists in parallel
+  const checkinPromises = Object.entries(STATION_CHECKIN_MAPPING).map(async ([stationId, checkinListSlug]) => {
+    try {
+      const url = `https://checkin.tito.io/checkin_lists/${checkinListSlug}/checkins`;
+      const response = await fetch(url, {
+        headers: { 'Accept': 'application/json' },
+        next: { revalidate: 60 },
+      });
+
+      if (!response.ok) {
+        console.log(`[Tito Bulk Check-in] Failed to fetch ${stationId}: ${response.status}`);
+        return { stationId: stationId as StationId, checkins: [] };
+      }
+
+      const data = await response.json() as Array<{ ticket_id: number; deleted_at: string | null }>;
+      // Filter out deleted check-ins
+      const validCheckins = data.filter(c => !c.deleted_at);
+      console.log(`[Tito Bulk Check-in] ${stationId}: ${validCheckins.length} check-ins`);
+      return { stationId: stationId as StationId, checkins: validCheckins };
+    } catch (error) {
+      console.error(`[Tito Bulk Check-in] Error fetching ${stationId}:`, error);
+      return { stationId: stationId as StationId, checkins: [] };
+    }
+  });
+
+  const results = await Promise.all(checkinPromises);
+
+  // Build status map from results
+  for (const { stationId, checkins } of results) {
+    const statusKey = stationToStatusKey[stationId];
+    if (!statusKey) continue;
+
+    for (const checkin of checkins) {
+      if (!statusMap.has(checkin.ticket_id)) {
+        statusMap.set(checkin.ticket_id, {
+          packed: false,
+          dispatchedToVenue: false,
+          registered: false,
+          gownIssued: false,
+          gownReturned: false,
+          certificateCollected: false,
+          returnedToHO: false,
+          addressLabeled: false,
+          finalDispatched: false,
+        });
+      }
+      const status = statusMap.get(checkin.ticket_id)!;
+      status[statusKey] = true;
+    }
+  }
+
+  console.log(`[Tito Bulk Check-in] Built status map for ${statusMap.size} tickets`);
+  return statusMap;
+}
+
 // Get all graduates with caching (fetches from Tito + Airtable)
 export async function getAllGraduatesWithCache(): Promise<ApiResponse<Graduate[]>> {
   const now = Date.now();
@@ -383,19 +456,33 @@ export async function getAllGraduatesWithCache(): Promise<ApiResponse<Graduate[]
 
   console.log(`[Tito] Found ${ticketsResult.data.length} tickets`);
 
-  // Fetch Airtable data in parallel
+  // Fetch Airtable data and check-in status in parallel
   console.log('[Airtable] Fetching data for merging...');
-  const airtableResult = await getAirtableDataMap();
+  console.log('[Tito] Fetching all check-ins for status...');
+
+  const [airtableResult, checkinsMap] = await Promise.all([
+    getAirtableDataMap(),
+    getAllCheckinsMap(),
+  ]);
+
   const airtableMap = airtableResult.success && airtableResult.data
     ? airtableResult.data
     : new Map<string, AirtableGraduateData>();
 
   console.log(`[Airtable] Has ${airtableMap.size} records for merging`);
 
-  // Convert tickets to graduates and merge with Airtable data
+  // Convert tickets to graduates and merge with Airtable data + check-in status
   const graduates = ticketsResult.data.map(ticket => {
     const graduate = ticketToGraduate(ticket);
-    return mergeWithAirtableData(graduate, airtableMap);
+    const merged = mergeWithAirtableData(graduate, airtableMap);
+
+    // Merge check-in status if available
+    const checkinStatus = checkinsMap.get(ticket.id);
+    if (checkinStatus) {
+      merged.status = checkinStatus;
+    }
+
+    return merged;
   });
 
   console.log(`[Total] ${graduates.length} graduates after merge`);
