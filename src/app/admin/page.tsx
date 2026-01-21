@@ -238,6 +238,24 @@ export default function AdminPage() {
             return g.status.finalDispatched;
           case 'uncollected':
             return !g.status.certificateCollected && !g.status.finalDispatched;
+          // Pipeline statuses
+          case 'packed':
+            return g.status.packed;
+          case 'at-venue':
+            return g.status.dispatchedToVenue;
+          case 'registered':
+            return g.status.registered;
+          case 'gown-issued':
+            return g.status.gownIssued;
+          case 'gown-returned':
+            return g.status.gownReturned;
+          case 'certificate-collected':
+            return g.status.certificateCollected;
+          // Post-event statuses
+          case 'at-ho':
+            return g.status.returnedToHO;
+          case 'final-dispatched':
+            return g.status.finalDispatched;
           default:
             return true;
         }
@@ -604,28 +622,36 @@ export default function AdminPage() {
               </h3>
               <div className="space-y-1.5">
                 {[
-                  { label: 'Packed', value: stats?.packed || 0, color: 'gray', icon: Package },
-                  { label: 'At Venue', value: stats?.dispatchedToVenue || 0, color: 'purple', icon: Truck },
-                  { label: 'Registered', value: stats?.registered || 0, color: 'cyan', icon: UserCheck },
-                  { label: 'Gown Issued', value: stats?.gownIssued || 0, color: 'orange', icon: Shirt },
-                  { label: 'Gown Return', value: stats?.gownReturned || 0, color: 'amber', icon: Undo2 },
-                  { label: 'Collected', value: stats?.certificateCollected || 0, color: 'green', icon: Award },
+                  { label: 'Packed', value: stats?.packed || 0, color: 'gray', icon: Package, filter: 'packed' },
+                  { label: 'At Venue', value: stats?.dispatchedToVenue || 0, color: 'purple', icon: Truck, filter: 'at-venue' },
+                  { label: 'Registered', value: stats?.registered || 0, color: 'cyan', icon: UserCheck, filter: 'registered' },
+                  { label: 'Gown Issued', value: stats?.gownIssued || 0, color: 'orange', icon: Shirt, filter: 'gown-issued' },
+                  { label: 'Gown Return', value: stats?.gownReturned || 0, color: 'amber', icon: Undo2, filter: 'gown-returned' },
+                  { label: 'Collected', value: stats?.certificateCollected || 0, color: 'green', icon: Award, filter: 'certificate-collected' },
                 ].map((step) => {
                   const percentage = stats?.totalGraduates ? Math.round((step.value / stats.totalGraduates) * 100) : 0;
                   const Icon = step.icon;
                   return (
-                    <div key={step.label} className={`flex items-center justify-between p-2 rounded-lg bg-slate-700/20 hover:bg-slate-700/40 transition-all duration-200 group card-side-accent accent-${step.color}`}>
+                    <button
+                      key={step.label}
+                      onClick={() => {
+                        setFilterStatus(step.filter);
+                        setActiveNav('graduates');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between p-2 rounded-lg bg-slate-700/20 hover:bg-slate-700/40 transition-all duration-200 group card-side-accent accent-${step.color} cursor-pointer ${filterStatus === step.filter ? 'ring-1 ring-white/30' : ''}`}
+                    >
                       <div className="flex items-center gap-2 relative z-10">
                         <div className={`w-6 h-6 rounded-md bg-${step.color}-500/20 flex items-center justify-center`}>
                           <Icon className={`w-3 h-3 text-${step.color}-400`} />
                         </div>
-                        <div>
+                        <div className="text-left">
                           <p className="text-[11px] text-white font-medium leading-tight">{step.label}</p>
                           <p className="text-[9px] text-slate-500">{percentage}%</p>
                         </div>
                       </div>
                       <span className={`text-sm font-bold text-${step.color}-400 relative z-10`}>{step.value}</span>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -635,13 +661,21 @@ export default function AdminPage() {
                 <p className="text-[10px] text-slate-500 font-medium mb-2">Post-Event</p>
                 <div className="space-y-1">
                   {[
-                    { label: 'At HO', value: stats?.returnedToHO || 0, color: 'yellow', icon: Building2 },
-                    { label: 'Labeled', value: 0, color: 'blue', icon: MapPin },
-                    { label: 'Dispatched', value: stats?.finalDispatched || 0, color: 'indigo', icon: Send },
+                    { label: 'At HO', value: stats?.returnedToHO || 0, color: 'yellow', icon: Building2, filter: 'at-ho' },
+                    { label: 'Labeled', value: 0, color: 'blue', icon: MapPin, filter: 'labeled' },
+                    { label: 'Dispatched', value: stats?.finalDispatched || 0, color: 'indigo', icon: Send, filter: 'final-dispatched' },
                   ].map((step) => {
                     const Icon = step.icon;
                     return (
-                      <div key={step.label} className={`flex items-center justify-between p-1.5 rounded-md bg-slate-700/20 hover:bg-slate-700/40 transition-all duration-200 group card-side-accent accent-${step.color}`}>
+                      <button
+                        key={step.label}
+                        onClick={() => {
+                          setFilterStatus(step.filter);
+                          setActiveNav('graduates');
+                          setMobileMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between p-1.5 rounded-md bg-slate-700/20 hover:bg-slate-700/40 transition-all duration-200 group card-side-accent accent-${step.color} cursor-pointer ${filterStatus === step.filter ? 'ring-1 ring-white/30' : ''}`}
+                      >
                         <div className="flex items-center gap-2 relative z-10">
                           <div className={`w-5 h-5 rounded bg-${step.color}-500/20 flex items-center justify-center`}>
                             <Icon className={`w-2.5 h-2.5 text-${step.color}-400`} />
@@ -649,7 +683,7 @@ export default function AdminPage() {
                           <p className="text-[10px] text-slate-300">{step.label}</p>
                         </div>
                         <span className={`text-xs font-bold text-${step.color}-400 relative z-10`}>{step.value}</span>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
