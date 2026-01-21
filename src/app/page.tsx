@@ -49,12 +49,23 @@ function useCountdown(targetTimestamp: number): TimeLeft {
 export default function Home() {
   const targetTimestamp = useMemo(() => CONVOCATION_DATE.getTime(), []);
   const timeLeft = useCountdown(targetTimestamp);
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('amasi_theme');
+      return (saved === 'light' || saved === 'dark') ? saved : 'dark';
+    }
+    return 'dark';
+  });
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Persist theme to localStorage
+  useEffect(() => {
+    localStorage.setItem('amasi_theme', theme);
+  }, [theme]);
 
   // Theme classes
   const themeClasses = {

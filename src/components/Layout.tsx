@@ -31,6 +31,8 @@ function LoginModal() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [showForgotCredentials, setShowForgotCredentials] = useState(false);
+  const [hintRevealed, setHintRevealed] = useState(false);
 
   if (!showLoginModal) return null;
 
@@ -43,10 +45,25 @@ function LoginModal() {
     }
   };
 
+  const handleBackToLogin = () => {
+    setShowForgotCredentials(false);
+    setHintRevealed(false);
+    setError('');
+  };
+
+  const handleClose = () => {
+    setShowLoginModal(false);
+    setShowForgotCredentials(false);
+    setHintRevealed(false);
+    setUsername('');
+    setPassword('');
+    setError('');
+  };
+
   return (
     <div
       className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
-      onClick={() => setShowLoginModal(false)}
+      onClick={handleClose}
     >
       <div
         className="bg-slate-900 border border-white/20 rounded-2xl p-6 max-w-sm w-full shadow-2xl"
@@ -57,54 +74,107 @@ function LoginModal() {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
               <Lock className="w-5 h-5 text-white" />
             </div>
-            <h3 className="text-lg font-bold text-white">Staff Login</h3>
+            <h3 className="text-lg font-bold text-white">
+              {showForgotCredentials ? 'Forgot Credentials' : 'Staff Login'}
+            </h3>
           </div>
           <button
-            onClick={() => setShowLoginModal(false)}
+            onClick={handleClose}
             className="p-2 hover:bg-white/10 rounded-lg transition-colors"
           >
             <X className="w-5 h-5 text-white/50" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm text-white/60 mb-2">Username</label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder:text-white/40 focus:outline-none focus:border-blue-500 transition-colors"
-              placeholder="Enter username"
-              autoFocus
-            />
+        {showForgotCredentials ? (
+          <div className="space-y-4">
+            <p className="text-white/70 text-sm">
+              Need help accessing your staff account? Use the hint below or contact the admin team.
+            </p>
+
+            <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+              <p className="text-white/60 text-xs mb-2">Credential Hints:</p>
+              {hintRevealed ? (
+                <div className="space-y-2">
+                  <p className="text-white/90 text-sm">
+                    <span className="text-white/50">Username:</span> Organization name (lowercase)
+                  </p>
+                  <p className="text-white/90 text-sm">
+                    <span className="text-white/50">Password:</span> conv + event year
+                  </p>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setHintRevealed(true)}
+                  className="text-blue-400 hover:text-blue-300 text-sm transition-colors"
+                >
+                  Click to reveal hints
+                </button>
+              )}
+            </div>
+
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
+              <p className="text-amber-200/80 text-xs">
+                Still having trouble? Contact IT support at support@amasi.edu
+              </p>
+            </div>
+
+            <button
+              onClick={handleBackToLogin}
+              className="w-full py-3 bg-white/10 text-white font-medium rounded-xl hover:bg-white/20 transition-colors"
+            >
+              Back to Login
+            </button>
           </div>
-          <div>
-            <label className="block text-sm text-white/60 mb-2">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder:text-white/40 focus:outline-none focus:border-blue-500 transition-colors"
-              placeholder="Enter password"
-            />
-          </div>
+        ) : (
+          <>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm text-white/60 mb-2">Username</label>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder:text-white/40 focus:outline-none focus:border-blue-500 transition-colors"
+                  placeholder="Enter username"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-white/60 mb-2">Password</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder:text-white/40 focus:outline-none focus:border-blue-500 transition-colors"
+                  placeholder="Enter password"
+                />
+              </div>
 
-          {error && (
-            <p className="text-red-400 text-sm text-center">{error}</p>
-          )}
+              {error && (
+                <p className="text-red-400 text-sm text-center">{error}</p>
+              )}
 
-          <button
-            type="submit"
-            className="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium rounded-xl hover:opacity-90 transition-opacity"
-          >
-            Login
-          </button>
-        </form>
+              <button
+                type="submit"
+                className="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium rounded-xl hover:opacity-90 transition-opacity"
+              >
+                Login
+              </button>
+            </form>
 
-        <p className="text-center text-white/30 text-xs mt-4">
-          For authorized staff only
-        </p>
+            <button
+              onClick={() => setShowForgotCredentials(true)}
+              className="w-full text-center text-blue-400 hover:text-blue-300 text-sm mt-4 transition-colors"
+            >
+              Forgot your credentials?
+            </button>
+
+            <p className="text-center text-white/30 text-xs mt-3">
+              For authorized staff only
+            </p>
+          </>
+        )}
       </div>
     </div>
   );
