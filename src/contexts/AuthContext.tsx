@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 interface AuthContextType {
   isStaff: boolean;
@@ -19,14 +19,15 @@ const STAFF_CREDENTIALS = {
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Use lazy initialization to read from localStorage (avoids useEffect setState)
-  const [isStaff, setIsStaff] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('amasi_staff_logged_in') === 'true';
-    }
-    return false;
-  });
+  const [isStaff, setIsStaff] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+
+  // Sync from localStorage after hydration to avoid server/client mismatch
+  useEffect(() => {
+    if (localStorage.getItem('amasi_staff_logged_in') === 'true') {
+      setIsStaff(true);
+    }
+  }, []);
 
   const login = (username: string, password: string): boolean => {
     if (
