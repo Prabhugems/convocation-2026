@@ -3,7 +3,7 @@
 import { ReactNode, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, QrCode, LayoutDashboard, Search, HelpCircle, LogIn, LogOut, X, Lock } from 'lucide-react';
+import { Home, QrCode, LayoutDashboard, Search, HelpCircle, LogIn, LogOut, X, Lock, Radio } from 'lucide-react';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 
 interface LayoutProps {
@@ -21,6 +21,7 @@ const publicNavItems = [
 const staffNavItems = [
   { href: '/', icon: Home, label: 'Home' },
   { href: '/stations', icon: QrCode, label: 'Stations' },
+  { href: '/staff/rfid/dashboard', icon: Radio, label: 'RFID' },
   { href: '/track', icon: Search, label: 'Track' },
   { href: '/faq', icon: HelpCircle, label: 'FAQ' },
   { href: '/admin', icon: LayoutDashboard, label: 'Admin' },
@@ -185,7 +186,7 @@ function LayoutContent({ children }: LayoutProps) {
   const { isStaff, logout, setShowLoginModal } = useAuth();
 
   // Show staff nav if logged in as staff OR on station pages
-  const isStaffPage = pathname.startsWith('/stations') || pathname.startsWith('/admin');
+  const isStaffPage = pathname.startsWith('/stations') || pathname.startsWith('/admin') || pathname.startsWith('/staff');
   const showStaffNav = isStaff || isStaffPage;
   const navItems = showStaffNav ? staffNavItems : publicNavItems;
 
