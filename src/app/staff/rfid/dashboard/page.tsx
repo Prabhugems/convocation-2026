@@ -42,6 +42,8 @@ interface DashboardStats {
     scannedBy: string;
     action: string;
     epc?: string;
+    graduateName?: string;
+    convocationNumber?: string;
     notes?: string;
   }>;
   boxSummary: {
@@ -763,6 +765,8 @@ export default function RfidDashboardPage() {
                     <thead>
                       <tr className="text-slate-400 border-b border-slate-700/50">
                         <th className="text-left py-2 px-3 font-medium">EPC</th>
+                        <th className="text-left py-2 px-3 font-medium">Conv Number</th>
+                        <th className="text-left py-2 px-3 font-medium">Name</th>
                         <th className="text-left py-2 px-3 font-medium">Station</th>
                         <th className="text-left py-2 px-3 font-medium">Action</th>
                         <th className="text-left py-2 px-3 font-medium">By</th>
@@ -773,7 +777,13 @@ export default function RfidDashboardPage() {
                       {stats.recentScans.slice(0, 20).map((scan, i) => (
                         <tr key={i} className="border-b border-slate-700/30 hover:bg-slate-700/20">
                           <td className="py-2 px-3 font-mono text-xs">
-                            {(scan as { epc?: string }).epc || '-'}
+                            {scan.epc || '-'}
+                          </td>
+                          <td className="py-2 px-3 font-mono text-xs text-slate-400">
+                            {scan.convocationNumber || '-'}
+                          </td>
+                          <td className="py-2 px-3 text-slate-300 text-sm">
+                            {scan.graduateName || '-'}
                           </td>
                           <td className="py-2 px-3 text-slate-300">
                             {STATION_LABELS[scan.station] || scan.station}

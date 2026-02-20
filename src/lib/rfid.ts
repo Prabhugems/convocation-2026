@@ -536,10 +536,10 @@ export async function getRfidDashboardStats(): Promise<ApiResponse<RfidDashboard
   }
 
   // Recent scans (last 50 across all tags)
-  const allScans: (RfidScanRecord & { epc: string })[] = [];
+  const allScans: (RfidScanRecord & { epc: string; graduateName?: string; convocationNumber?: string })[] = [];
   for (const tag of tags) {
     for (const scan of tag.scanHistory) {
-      allScans.push({ ...scan, epc: tag.epc });
+      allScans.push({ ...scan, epc: tag.epc, graduateName: tag.graduateName, convocationNumber: tag.convocationNumber });
     }
   }
   allScans.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
