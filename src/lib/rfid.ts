@@ -621,6 +621,67 @@ export async function processHandover(
   return { success: true, data: { successful, failed, results } };
 }
 
+// ─── Reconciliation ──────────────────────────────────────────────────────────
+
+export interface ReconciliationResult {
+  station: RfidStation;
+  totalEncoded: number;
+  scannedAtStation: number;
+  missingCount: number;
+  missing: Array<{
+    epc: string;
+    graduateName?: string;
+    convocationNumber?: string;
+    status: RfidStatus;
+    currentStation: RfidStation;
+  }>;
+}
+
+export async function getReconciliationForStation(
+  station: RfidStation
+): Promise<ApiResponse<ReconciliationResult>> {
+  const mapResult = await getRfidTagMap();
+  if (!mapResult.success || !mapResult.data) {
+    return { success: false, error: mapResult.error };
+  }
+
+  const tags = Array.from(mapResult.data.values());
+
+  // Only consider non-void graduate and box tags that have been encoded
+  const encodedTags = tags.filter(
+    (t) => t.status !== 'void' && (t.type === 'graduate' || t.type === 'box')
+  );
+
+  const missing: ReconciliationResult['missing'] = [];
+  let scannedAtStation = 0;
+
+  for (const tag of encodedTags) {
+    const hasStationScan = tag.scanHistory.some((s) => s.station === station);
+    if (hasStationScan) {
+      scannedAtStation++;
+    } else {
+      missing.push({
+        epc: tag.epc,
+        graduateName: tag.graduateName,
+        convocationNumber: tag.convocationNumber,
+        status: tag.status,
+        currentStation: tag.currentStation,
+      });
+    }
+  }
+
+  return {
+    success: true,
+    data: {
+      station,
+      totalEncoded: encodedTags.length,
+      scannedAtStation,
+      missingCount: missing.length,
+      missing,
+    },
+  };
+}
+
 // ─── Cache Management ────────────────────────────────────────────────────────
 
 export function clearRfidCache(): void {

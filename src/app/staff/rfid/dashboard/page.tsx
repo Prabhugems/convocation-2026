@@ -22,6 +22,7 @@ import {
   ChevronDown,
   ChevronUp,
   HelpCircle,
+  ClipboardList,
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -77,6 +78,20 @@ interface VerifyResult {
     type: string;
     graduateName?: string;
     status: string;
+  }>;
+}
+
+interface ReconciliationData {
+  station: string;
+  totalEncoded: number;
+  scannedAtStation: number;
+  missingCount: number;
+  missing: Array<{
+    epc: string;
+    graduateName?: string;
+    convocationNumber?: string;
+    status: string;
+    currentStation: string;
   }>;
 }
 
@@ -144,6 +159,38 @@ export default function RfidDashboardPage() {
     failed: number;
   } | null>(null);
   const [showConfirmDispatch, setShowConfirmDispatch] = useState(false);
+
+  // Reconciliation
+  const [reconStation, setReconStation] = useState<string>('packing');
+  const [reconLoading, setReconLoading] = useState(false);
+  const [reconData, setReconData] = useState<ReconciliationData | null>(null);
+  const [reconError, setReconError] = useState<string | null>(null);
+
+  const handleReconcile = async () => {
+    setReconLoading(true);
+    setReconError(null);
+    setReconData(null);
+
+    try {
+      const response = await fetch(
+        `/api/rfid/reconciliation?station=${encodeURIComponent(reconStation)}`
+      );
+      const data = await response.json();
+
+      if (!data.success) {
+        setReconError(data.error || 'Reconciliation failed');
+        return;
+      }
+
+      setReconData(data.data);
+    } catch (err) {
+      setReconError(
+        `Network error: ${err instanceof Error ? err.message : 'Unknown error'}`
+      );
+    } finally {
+      setReconLoading(false);
+    }
+  };
 
   const fetchStats = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -561,6 +608,145 @@ export default function RfidDashboardPage() {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Reconciliation */}
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700/50 p-5 mb-8">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <ClipboardList className="w-5 h-5 text-orange-400" />
+                Reconciliation
+              </h3>
+              <p className="text-sm text-slate-400 mb-4">
+                Check which encoded tags have NOT been scanned at a specific station.
+              </p>
+
+              <div className="flex gap-2 mb-4">
+                <select
+                  value={reconStation}
+                  onChange={(e) => setReconStation(e.target.value)}
+                  className="flex-1 px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-slate-200 focus:outline-none focus:border-orange-500 text-sm"
+                >
+                  {Object.entries(STATION_LABELS).map(([key, label]) => (
+                    <option key={key} value={key}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleReconcile}
+                  disabled={reconLoading}
+                  className="px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-slate-700 rounded-lg transition-colors text-sm font-medium flex items-center gap-2"
+                >
+                  {reconLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <ClipboardList className="w-4 h-4" />
+                  )}
+                  Check
+                </button>
+              </div>
+
+              {reconError && (
+                <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg mb-4">
+                  <p className="text-sm text-red-300">{reconError}</p>
+                </div>
+              )}
+
+              {reconData && reconData.totalEncoded === 0 && (
+                <div className="p-4 bg-slate-900/30 rounded-lg text-center">
+                  <p className="text-sm text-slate-400">No tags to reconcile</p>
+                </div>
+              )}
+
+              {reconData && reconData.totalEncoded > 0 && (
+                <>
+                  {/* Summary bar */}
+                  <div
+                    className={`p-4 rounded-lg border mb-4 ${
+                      reconData.missingCount === 0
+                        ? 'bg-green-500/10 border-green-500/30'
+                        : 'bg-red-500/10 border-red-500/30'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {reconData.missingCount === 0 ? (
+                          <CheckCircle className="w-5 h-5 text-green-400" />
+                        ) : (
+                          <AlertTriangle className="w-5 h-5 text-red-400" />
+                        )}
+                        <span className="text-sm font-medium">
+                          {reconData.scannedAtStation} / {reconData.totalEncoded} scanned
+                          {reconData.missingCount > 0 && (
+                            <span className="text-red-400 ml-2">
+                              &mdash; {reconData.missingCount} missing
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      <span className="text-xs text-slate-400">
+                        at {STATION_LABELS[reconData.station] || reconData.station}
+                      </span>
+                    </div>
+                    {/* Progress bar */}
+                    <div className="mt-3 w-full bg-slate-700 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full transition-all ${
+                          reconData.missingCount === 0 ? 'bg-green-500' : 'bg-orange-500'
+                        }`}
+                        style={{
+                          width: `${(reconData.scannedAtStation / reconData.totalEncoded) * 100}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Missing tags table */}
+                  {reconData.missingCount > 0 && (
+                    <div className="overflow-x-auto max-h-80 overflow-y-auto">
+                      <table className="w-full text-sm">
+                        <thead className="sticky top-0 bg-slate-800">
+                          <tr className="text-slate-400 border-b border-slate-700/50">
+                            <th className="text-left py-2 px-3 font-medium">EPC</th>
+                            <th className="text-left py-2 px-3 font-medium">Graduate Name</th>
+                            <th className="text-left py-2 px-3 font-medium">Conv Number</th>
+                            <th className="text-left py-2 px-3 font-medium">Current Station</th>
+                            <th className="text-left py-2 px-3 font-medium">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {reconData.missing.map((tag) => (
+                            <tr
+                              key={tag.epc}
+                              className="border-b border-slate-700/30 hover:bg-slate-700/20"
+                            >
+                              <td className="py-2 px-3 font-mono text-xs">{tag.epc}</td>
+                              <td className="py-2 px-3 text-slate-300">
+                                {tag.graduateName || '-'}
+                              </td>
+                              <td className="py-2 px-3 font-mono text-xs text-slate-400">
+                                {tag.convocationNumber || '-'}
+                              </td>
+                              <td className="py-2 px-3 text-slate-300">
+                                {STATION_LABELS[tag.currentStation] || tag.currentStation}
+                              </td>
+                              <td className="py-2 px-3">
+                                <span
+                                  className={`text-xs px-2 py-0.5 rounded-full border ${
+                                    STATUS_COLORS[tag.status] || STATUS_COLORS.encoded
+                                  }`}
+                                >
+                                  {tag.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
             {/* Recent Scans */}
