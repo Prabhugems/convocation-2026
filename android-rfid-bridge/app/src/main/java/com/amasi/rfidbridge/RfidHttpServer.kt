@@ -4,8 +4,6 @@ import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.JsonParser
 import fi.iki.elonen.NanoHTTPD
-import java.io.PipedInputStream
-import java.io.PipedOutputStream
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
@@ -23,7 +21,7 @@ class RfidHttpServer(
     }
 
     private val gson = Gson()
-    private val sseClients = ConcurrentLinkedQueue<PipedOutputStream>()
+    private val recentTags = ConcurrentLinkedQueue<Map<String, Any>>()
 
     override fun serve(session: IHTTPSession): Response {
         // Handle CORS preflight
@@ -39,7 +37,7 @@ class RfidHttpServer(
                 uri == "/api/status" && method == Method.GET -> handleStatus()
                 uri == "/api/inventory/start" && method == Method.POST -> handleStartInventory()
                 uri == "/api/inventory/stop" && method == Method.POST -> handleStopInventory()
-                uri == "/api/inventory/stream" && method == Method.GET -> handleStream()
+                uri == "/api/inventory/tags" && method == Method.GET -> handleGetTags()
                 uri == "/api/read" && method == Method.POST -> handleRead(session)
                 uri == "/api/write" && method == Method.POST -> handleWrite(session)
                 uri == "/api/power" && method == Method.GET -> handleGetPower()
@@ -73,41 +71,30 @@ class RfidHttpServer(
     }
 
     private fun handleStartInventory(): Response {
-        val success = rfidManager.startInventory()
-        if (success) {
-            rfidManager.onTagScanned = { epc, rssi ->
-                broadcastTag(epc, rssi)
-            }
+        recentTags.clear()
+        rfidManager.onTagScanned = { epc, rssi ->
+            // Keep only last 500 entries to prevent unbounded growth
+            if (recentTags.size > 500) recentTags.poll()
+            recentTags.add(mapOf("epc" to epc, "rssi" to rssi, "ts" to System.currentTimeMillis()))
         }
+        val success = rfidManager.startInventory()
         return jsonResponse(mapOf("success" to success))
     }
 
     private fun handleStopInventory(): Response {
         rfidManager.onTagScanned = null
         val success = rfidManager.stopInventory()
-        // Close all SSE clients
-        closeSseClients()
         return jsonResponse(mapOf("success" to success))
     }
 
-    private fun handleStream(): Response {
-        val pipedOut = PipedOutputStream()
-        val pipedIn = PipedInputStream(pipedOut, 8192)
-        sseClients.add(pipedOut)
-
-        // Send initial keep-alive comment
-        try {
-            pipedOut.write(": connected\n\n".toByteArray())
-            pipedOut.flush()
-        } catch (e: Exception) {
-            sseClients.remove(pipedOut)
-            throw e
+    /** Returns and clears all tags scanned since the last poll. */
+    private fun handleGetTags(): Response {
+        val tags = mutableListOf<Map<String, Any>>()
+        while (true) {
+            val tag = recentTags.poll() ?: break
+            tags.add(tag)
         }
-
-        val response = newChunkedResponse(Response.Status.OK, "text/event-stream", pipedIn)
-        response.addHeader("Cache-Control", "no-cache")
-        response.addHeader("Connection", "keep-alive")
-        return corsResponse(response)
+        return jsonResponse(mapOf("tags" to tags))
     }
 
     private fun handleRead(session: IHTTPSession): Response {
@@ -143,35 +130,6 @@ class RfidHttpServer(
         val power = body?.get("power")?.asInt ?: return errorResponse("Missing power field")
         val success = rfidManager.setPower(power)
         return jsonResponse(mapOf("success" to success, "power" to rfidManager.getPower()))
-    }
-
-    // ---- SSE broadcast ----
-
-    private fun broadcastTag(epc: String, rssi: Int) {
-        val payload = "data: ${gson.toJson(mapOf("epc" to epc, "rssi" to rssi))}\n\n"
-        val bytes = payload.toByteArray()
-        val deadClients = mutableListOf<PipedOutputStream>()
-
-        for (client in sseClients) {
-            try {
-                client.write(bytes)
-                client.flush()
-            } catch (e: Exception) {
-                deadClients.add(client)
-            }
-        }
-
-        // Prune dead clients
-        sseClients.removeAll(deadClients.toSet())
-    }
-
-    private fun closeSseClients() {
-        while (sseClients.isNotEmpty()) {
-            val client = sseClients.poll() ?: break
-            try {
-                client.close()
-            } catch (_: Exception) {}
-        }
     }
 
     // ---- Helpers ----

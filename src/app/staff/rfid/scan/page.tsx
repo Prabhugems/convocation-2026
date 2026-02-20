@@ -79,7 +79,7 @@ export default function RfidScanPage() {
   const [readerStatus, setReaderStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
   const [isScanning, setIsScanning] = useState(false);
   const [scannedCount, setScannedCount] = useState(0);
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Check RFID reader bridge connection
   const checkReaderStatus = useCallback(async () => {
@@ -106,12 +106,12 @@ export default function RfidScanPage() {
     return () => clearInterval(interval);
   }, [checkReaderStatus]);
 
-  // Cleanup EventSource on unmount
+  // Cleanup polling on unmount
   useEffect(() => {
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
       }
     };
   }, []);
@@ -129,29 +129,27 @@ export default function RfidScanPage() {
       setScannedCount(0);
       setError(null);
 
-      const es = new EventSource('http://localhost:8080/api/inventory/stream');
-      eventSourceRef.current = es;
-
-      es.onmessage = (event) => {
+      // Poll for new tags every 500ms
+      pollIntervalRef.current = setInterval(async () => {
         try {
-          const { epc } = JSON.parse(event.data) as { epc: string; rssi: number };
-          const normalized = epc.toUpperCase().trim();
-          if (!normalized) return;
-          setPendingEpcs(prev => {
-            if (prev.includes(normalized)) return prev;
-            return [...prev, normalized];
-          });
-          setScannedCount(prev => prev + 1);
+          const tagRes = await fetch('http://localhost:8080/api/inventory/tags');
+          if (!tagRes.ok) return;
+          const { tags } = await tagRes.json() as { tags: { epc: string; rssi: number }[] };
+          if (tags && tags.length > 0) {
+            tags.forEach(({ epc }) => {
+              const normalized = epc.toUpperCase().trim();
+              if (!normalized) return;
+              setPendingEpcs(prev => {
+                if (prev.includes(normalized)) return prev;
+                return [...prev, normalized];
+              });
+              setScannedCount(prev => prev + 1);
+            });
+          }
         } catch {
-          // ignore malformed messages
+          // ignore polling errors
         }
-      };
-
-      es.onerror = () => {
-        es.close();
-        eventSourceRef.current = null;
-        setIsScanning(false);
-      };
+      }, 500);
     } catch {
       setError('Failed to start hardware scan');
       setIsScanning(false);
@@ -160,9 +158,9 @@ export default function RfidScanPage() {
 
   // Stop hardware scan
   const handleStopScan = async () => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
     }
     setIsScanning(false);
     try {
