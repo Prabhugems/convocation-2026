@@ -5,9 +5,10 @@ import com.google.gson.Gson
 import com.google.gson.JsonParser
 import fi.iki.elonen.NanoHTTPD
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.atomic.AtomicLong
 
 /**
- * HTTP server exposing the RFID reader over REST + SSE on port 8080.
+ * HTTP server exposing the RFID reader over REST on port 8080.
  * Designed to be consumed by the Convocation web app running in a browser
  * on the same device or local network.
  */
@@ -22,6 +23,10 @@ class RfidHttpServer(
 
     private val gson = Gson()
     private val recentTags = ConcurrentLinkedQueue<Map<String, Any>>()
+    private val totalTagCount = AtomicLong(0)
+
+    /** Callback invoked on the main thread with updated scan count. */
+    var onScanCountUpdated: ((Long) -> Unit)? = null
 
     override fun serve(session: IHTTPSession): Response {
         // Handle CORS preflight
@@ -72,10 +77,13 @@ class RfidHttpServer(
 
     private fun handleStartInventory(): Response {
         recentTags.clear()
+        totalTagCount.set(0)
         rfidManager.onTagScanned = { epc, rssi ->
             // Keep only last 500 entries to prevent unbounded growth
             if (recentTags.size > 500) recentTags.poll()
             recentTags.add(mapOf("epc" to epc, "rssi" to rssi, "ts" to System.currentTimeMillis()))
+            val count = totalTagCount.incrementAndGet()
+            onScanCountUpdated?.invoke(count)
         }
         val success = rfidManager.startInventory()
         return jsonResponse(mapOf("success" to success))

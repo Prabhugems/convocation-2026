@@ -1,19 +1,17 @@
 package com.amasi.rfidbridge
 
 import android.Manifest
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.content.Intent
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.localbroadcastmanager.content.LocalBroadcastManager
 
 class MainActivity : AppCompatActivity() {
 
@@ -28,19 +26,21 @@ class MainActivity : AppCompatActivity() {
     private lateinit var toggleButton: Button
 
     private var serviceRunning = false
-
-    private val statusReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            val connected = intent.getBooleanExtra(RfidBridgeService.EXTRA_CONNECTED, false)
-            val scanning = intent.getBooleanExtra(RfidBridgeService.EXTRA_SCANNING, false)
-            val url = intent.getStringExtra(RfidBridgeService.EXTRA_SERVER_URL) ?: ""
-
+    private val handler = Handler(Looper.getMainLooper())
+    private val uiUpdater = object : Runnable {
+        override fun run() {
+            val state = RfidBridgeService.currentState
             statusText.text = when {
-                scanning -> "Scanning..."
-                connected -> "Reader Connected"
+                state.scanning -> "Scanning — ${state.tagCount} tags"
+                state.connected -> "Reader Connected"
                 else -> "Reader Not Connected"
             }
-            serverUrlText.text = url
+            serverUrlText.text = if (state.connected) "http://localhost:8080" else ""
+            scanCountText.text = state.tagCount.toString()
+            if (state.power > 0) {
+                powerText.text = "${state.power} dBm"
+            }
+            handler.postDelayed(this, 500)
         }
     }
 
@@ -79,17 +79,14 @@ class MainActivity : AppCompatActivity() {
         startBridgeService()
     }
 
-    override fun onResume() {
-        super.onResume()
-        LocalBroadcastManager.getInstance(this).registerReceiver(
-            statusReceiver,
-            IntentFilter(RfidBridgeService.ACTION_STATUS_UPDATE),
-        )
+    override fun onStart() {
+        super.onStart()
+        handler.post(uiUpdater)
     }
 
-    override fun onPause() {
-        super.onPause()
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(statusReceiver)
+    override fun onStop() {
+        super.onStop()
+        handler.removeCallbacks(uiUpdater)
     }
 
     private fun startBridgeService() {

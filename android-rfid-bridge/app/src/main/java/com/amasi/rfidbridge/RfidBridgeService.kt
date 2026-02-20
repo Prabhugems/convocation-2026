@@ -7,10 +7,11 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import androidx.localbroadcastmanager.content.LocalBroadcastManager
 
 /**
  * Foreground service that keeps the HTTP server and RFID reader alive
@@ -18,18 +19,27 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
  */
 class RfidBridgeService : Service() {
 
+    data class State(
+        val connected: Boolean = false,
+        val scanning: Boolean = false,
+        val tagCount: Long = 0,
+        val power: Int = 0,
+    )
+
     companion object {
         private const val TAG = "RfidBridgeService"
         private const val CHANNEL_ID = "rfid_bridge_channel"
         private const val NOTIFICATION_ID = 1
-        const val ACTION_STATUS_UPDATE = "com.amasi.rfidbridge.STATUS_UPDATE"
-        const val EXTRA_CONNECTED = "connected"
-        const val EXTRA_SCANNING = "scanning"
-        const val EXTRA_SERVER_URL = "server_url"
+
+        @Volatile
+        var currentState = State()
+            private set
     }
 
     private var rfidManager: RfidManager? = null
     private var httpServer: RfidHttpServer? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var lastBroadcastCount = 0L
 
     override fun onCreate() {
         super.onCreate()
@@ -49,6 +59,18 @@ class RfidBridgeService : Service() {
         // Start HTTP server
         val server = RfidHttpServer(manager)
         httpServer = server
+
+        // Wire up scan count updates — throttle notification to every 50 reads
+        server.onScanCountUpdated = { count ->
+            currentState = currentState.copy(scanning = true, tagCount = count)
+            if (count - lastBroadcastCount >= 50 || count <= 1) {
+                lastBroadcastCount = count
+                mainHandler.post {
+                    updateNotification("Scanning — $count tags read")
+                }
+            }
+        }
+
         try {
             server.start()
             Log.i(TAG, "HTTP server started on port 8080")
@@ -56,10 +78,10 @@ class RfidBridgeService : Service() {
             Log.e(TAG, "Failed to start HTTP server", e)
         }
 
-        // Update notification and broadcast status
+        // Update notification and state
         val statusText = if (connected) "Reader connected — :8080 ready" else "Reader not connected — :8080 ready"
         updateNotification(statusText)
-        broadcastStatus(connected, false)
+        currentState = State(connected = connected, scanning = false, tagCount = 0, power = manager.getPower())
 
         return START_STICKY
     }
@@ -80,6 +102,7 @@ class RfidBridgeService : Service() {
         }
         rfidManager = null
         httpServer = null
+        currentState = State()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -122,14 +145,4 @@ class RfidBridgeService : Service() {
         manager.notify(NOTIFICATION_ID, notification)
     }
 
-    // ---- Broadcast to MainActivity ----
-
-    private fun broadcastStatus(connected: Boolean, scanning: Boolean) {
-        val intent = Intent(ACTION_STATUS_UPDATE).apply {
-            putExtra(EXTRA_CONNECTED, connected)
-            putExtra(EXTRA_SCANNING, scanning)
-            putExtra(EXTRA_SERVER_URL, "http://localhost:8080")
-        }
-        LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
-    }
 }
