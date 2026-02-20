@@ -5,6 +5,7 @@ import com.xlzn.hcpda.uhf.UHFReader
 import com.xlzn.hcpda.uhf.entity.UHFReaderResult
 import com.xlzn.hcpda.uhf.entity.UHFTagEntity
 import com.xlzn.hcpda.uhf.enums.ConnectState
+import com.xlzn.hcpda.uhf.entity.SelectEntity
 import com.xlzn.hcpda.uhf.interfaces.OnInventoryDataListener
 
 /**
@@ -121,7 +122,15 @@ class RfidManager {
     fun readTag(epc: String?, bank: Int = 1, offset: Int = 2, length: Int = 6, password: String = DEFAULT_PASSWORD): String? {
         if (!isConnected()) return null
         return try {
-            val result: UHFReaderResult<String> = reader.read(password, bank, offset, length, epc)
+            val select = epc?.let {
+                SelectEntity().apply {
+                    option = SelectEntity.OPTION_EPC
+                    data = it
+                    address = 0x20 // EPC starts at bit 32
+                    this.length = it.length * 4 // hex chars to bits
+                }
+            }
+            val result: UHFReaderResult<String> = reader.read(password, bank, offset, length, select)
             if (result.resultCode == UHFReaderResult.ResultCode.CODE_SUCCESS) {
                 Log.i(TAG, "Read tag OK: bank=$bank offset=$offset")
                 result.data
@@ -139,7 +148,15 @@ class RfidManager {
         if (!isConnected()) return false
         return try {
             val length = data.length / 4 // words (2 bytes each, hex = 4 chars)
-            val result: UHFReaderResult<Boolean> = reader.write(password, bank, offset, length, data, epc)
+            val select = epc?.let {
+                SelectEntity().apply {
+                    option = SelectEntity.OPTION_EPC
+                    this.data = it
+                    address = 0x20
+                    this.length = it.length * 4
+                }
+            }
+            val result: UHFReaderResult<Boolean> = reader.write(password, bank, offset, length, data, select)
             if (result.resultCode == UHFReaderResult.ResultCode.CODE_SUCCESS) {
                 Log.i(TAG, "Write tag OK: bank=$bank offset=$offset len=$length")
                 true
