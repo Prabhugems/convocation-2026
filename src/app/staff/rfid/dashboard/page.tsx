@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import {
   Radio,
@@ -23,6 +23,10 @@ import {
   ChevronUp,
   HelpCircle,
   ClipboardList,
+  Download,
+  Ban,
+  ToggleLeft,
+  ToggleRight,
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -162,11 +166,18 @@ export default function RfidDashboardPage() {
   } | null>(null);
   const [showConfirmDispatch, setShowConfirmDispatch] = useState(false);
 
+  // Void tag
+  const [voidDialogOpen, setVoidDialogOpen] = useState(false);
+  const [voidReason, setVoidReason] = useState('');
+  const [voidLoading, setVoidLoading] = useState(false);
+  const [voidSuccess, setVoidSuccess] = useState<string | null>(null);
+
   // Reconciliation
   const [reconStation, setReconStation] = useState<string>('packing');
   const [reconLoading, setReconLoading] = useState(false);
   const [reconData, setReconData] = useState<ReconciliationData | null>(null);
   const [reconError, setReconError] = useState<string | null>(null);
+  const [autoRefresh, setAutoRefresh] = useState(false);
 
   const handleReconcile = async () => {
     setReconLoading(true);
@@ -191,6 +202,105 @@ export default function RfidDashboardPage() {
       );
     } finally {
       setReconLoading(false);
+    }
+  };
+
+  // Auto-refresh reconciliation
+  const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const reconStationRef = useRef(reconStation);
+  reconStationRef.current = reconStation;
+
+  useEffect(() => {
+    if (autoRefresh && reconData) {
+      autoRefreshRef.current = setInterval(async () => {
+        try {
+          const response = await fetch(
+            `/api/rfid/reconciliation?station=${encodeURIComponent(reconStationRef.current)}`
+          );
+          const data = await response.json();
+          if (data.success) {
+            setReconData(data.data);
+          }
+        } catch {
+          // Silently ignore auto-refresh errors
+        }
+      }, 10_000);
+    }
+    return () => {
+      if (autoRefreshRef.current) {
+        clearInterval(autoRefreshRef.current);
+        autoRefreshRef.current = null;
+      }
+    };
+  }, [autoRefresh, reconData]);
+
+  // Stop auto-refresh when station changes
+  useEffect(() => {
+    setAutoRefresh(false);
+  }, [reconStation]);
+
+  // CSV download for missing tags
+  const handleDownloadCsv = () => {
+    if (!reconData || reconData.missingCount === 0) return;
+
+    const header = 'EPC,Graduate Name,Convocation Number,Current Station,Status';
+    const rows = reconData.missing.map((tag) =>
+      [
+        tag.epc,
+        `"${(tag.graduateName || '').replace(/"/g, '""')}"`,
+        tag.convocationNumber || '',
+        STATION_LABELS[tag.currentStation] || tag.currentStation,
+        tag.status,
+      ].join(',')
+    );
+    const csv = [header, ...rows].join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const date = new Date().toISOString().slice(0, 10);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `missing-tags-${reconData.station}-${date}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Void tag handler
+  const handleVoidTag = async () => {
+    if (!verifyResult?.tag || !voidReason.trim()) return;
+    setVoidLoading(true);
+    setVoidSuccess(null);
+
+    const voidedBy = localStorage.getItem('rfid_operator') || 'Dashboard User';
+
+    try {
+      const response = await fetch('/api/rfid/void', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          epc: verifyResult.tag.epc,
+          reason: voidReason.trim(),
+          voidedBy,
+        }),
+      });
+      const data = await response.json();
+
+      if (!data.success) {
+        setVerifyError(data.error || 'Failed to void tag');
+        return;
+      }
+
+      setVoidSuccess(`Tag ${verifyResult.tag.epc} voided successfully`);
+      setVoidDialogOpen(false);
+      setVoidReason('');
+      setVerifyResult(null);
+      fetchStats(true);
+    } catch (err) {
+      setVerifyError(
+        `Network error: ${err instanceof Error ? err.message : 'Unknown error'}`
+      );
+    } finally {
+      setVoidLoading(false);
     }
   };
 
@@ -607,6 +717,27 @@ export default function RfidDashboardPage() {
                         ))}
                       </div>
                     )}
+
+                    {/* Void Tag button */}
+                    {verifyResult.tag.status !== 'void' && (
+                      <button
+                        onClick={() => {
+                          setVoidDialogOpen(true);
+                          setVoidReason('');
+                          setVoidSuccess(null);
+                        }}
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 rounded-lg text-sm text-red-300 transition-colors"
+                      >
+                        <Ban className="w-4 h-4" />
+                        Void Tag
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {voidSuccess && (
+                  <div className="p-2 bg-green-500/10 border border-green-500/30 rounded-lg mt-3">
+                    <p className="text-xs text-green-300">{voidSuccess}</p>
                   </div>
                 )}
               </div>
@@ -646,6 +777,24 @@ export default function RfidDashboardPage() {
                   )}
                   Check
                 </button>
+                {reconData && (
+                  <button
+                    onClick={() => setAutoRefresh(!autoRefresh)}
+                    title={autoRefresh ? 'Stop auto-refresh' : 'Auto-refresh every 10s'}
+                    className={`px-3 py-2 rounded-lg transition-colors text-sm flex items-center gap-2 border ${
+                      autoRefresh
+                        ? 'bg-orange-500/20 border-orange-500/30 text-orange-300'
+                        : 'bg-slate-800/50 border-slate-600 text-slate-400 hover:text-slate-300'
+                    }`}
+                  >
+                    {autoRefresh ? (
+                      <ToggleRight className="w-4 h-4" />
+                    ) : (
+                      <ToggleLeft className="w-4 h-4" />
+                    )}
+                    Auto
+                  </button>
+                )}
               </div>
 
               {reconError && (
@@ -686,9 +835,20 @@ export default function RfidDashboardPage() {
                           )}
                         </span>
                       </div>
-                      <span className="text-xs text-slate-400">
-                        at {STATION_LABELS[reconData.station] || reconData.station}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-400">
+                          at {STATION_LABELS[reconData.station] || reconData.station}
+                        </span>
+                        {reconData.missingCount > 0 && (
+                          <button
+                            onClick={handleDownloadCsv}
+                            className="flex items-center gap-1 px-2 py-1 bg-slate-700/50 hover:bg-slate-600/50 rounded text-xs text-slate-300 transition-colors"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            CSV
+                          </button>
+                        )}
+                      </div>
                     </div>
                     {/* Progress bar */}
                     <div className="mt-3 w-full bg-slate-700 rounded-full h-2">
@@ -966,6 +1126,69 @@ export default function RfidDashboardPage() {
                   'Process Dispatch'
                 ) : (
                   'Process Handover'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Void Tag Confirmation Dialog */}
+      {voidDialogOpen && verifyResult?.tag && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 max-w-md w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <Ban className="w-6 h-6 text-red-400" />
+              <h3 className="text-lg font-semibold">Void Tag</h3>
+            </div>
+
+            <div className="p-3 bg-slate-900/50 rounded-lg mb-4 space-y-1 text-sm">
+              <p className="font-mono text-xs">{verifyResult.tag.epc}</p>
+              {verifyResult.tag.graduateName && (
+                <p className="text-slate-300">{verifyResult.tag.graduateName}</p>
+              )}
+              {verifyResult.tag.convocationNumber && (
+                <p className="text-xs text-slate-500">Conv: {verifyResult.tag.convocationNumber}</p>
+              )}
+            </div>
+
+            <p className="text-sm text-slate-400 mb-3">
+              This tag will be marked as void. You can then encode a new tag for the same graduate.
+            </p>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-slate-300 mb-1">
+                Reason for voiding
+              </label>
+              <input
+                type="text"
+                value={voidReason}
+                onChange={(e) => setVoidReason(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && voidReason.trim() && handleVoidTag()}
+                placeholder="e.g. Damaged tag, lost tag"
+                className="w-full px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-red-500"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setVoidDialogOpen(false)}
+                className="flex-1 py-2.5 px-4 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleVoidTag}
+                disabled={voidLoading || !voidReason.trim()}
+                className="flex-1 py-2.5 px-4 bg-red-600 hover:bg-red-700 disabled:bg-slate-700 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                {voidLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <Ban className="w-4 h-4" />
+                    Confirm Void
+                  </>
                 )}
               </button>
             </div>

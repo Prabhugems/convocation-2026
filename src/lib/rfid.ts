@@ -682,6 +682,45 @@ export async function getReconciliationForStation(
   };
 }
 
+// ─── Void Tag ─────────────────────────────────────────────────────────────────
+
+export async function voidRfidTag(
+  epc: string,
+  reason: string,
+  voidedBy: string
+): Promise<ApiResponse<RfidTag>> {
+  const tagResult = await getTagByEpc(epc);
+  if (!tagResult.success) {
+    return { success: false, error: tagResult.error };
+  }
+  if (!tagResult.data) {
+    return { success: false, error: `Tag ${epc} not found` };
+  }
+
+  const tag = tagResult.data;
+
+  if (tag.status === 'void') {
+    return { success: false, error: `Tag ${epc} is already voided` };
+  }
+
+  const scanRecord: RfidScanRecord = {
+    station: tag.currentStation,
+    timestamp: new Date().toISOString(),
+    scannedBy: voidedBy,
+    action: 'Voided',
+    notes: `Reason: ${reason}`,
+  };
+
+  const updatedHistory = [...tag.scanHistory, scanRecord];
+
+  const result = await updateRfidTag(tag.id, {
+    status: 'void',
+    scanHistory: updatedHistory,
+  });
+
+  return result;
+}
+
 // ─── Cache Management ────────────────────────────────────────────────────────
 
 export function clearRfidCache(): void {
