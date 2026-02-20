@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Radio,
@@ -15,6 +15,8 @@ import {
   Trash2,
   Box,
   Camera,
+  Zap,
+  Search,
 } from 'lucide-react';
 import UniversalScanner, { SearchInputType, extractTicketFromUrl } from '@/components/UniversalScanner';
 
@@ -61,14 +63,46 @@ export default function RfidEncodePage() {
   const [boxItemEpcs, setBoxItemEpcs] = useState<string[]>([]);
   const [newBoxItem, setNewBoxItem] = useState('');
 
-  const generateEpc = useCallback(() => {
-    if (tagType === 'graduate' && convocationNumber) {
-      setEpc(convocationNumber.toUpperCase().trim());
-    } else if (tagType === 'box') {
-      const id = boxId || String(Date.now()).slice(-6);
-      setEpc(`BOX-${id.toUpperCase().trim()}`);
+  // Reader status
+  const [readerDetected, setReaderDetected] = useState(false);
+  const [lastScanTime, setLastScanTime] = useState<number>(0);
+  const epcInputRef = useRef<HTMLInputElement>(null);
+
+  // Track keyboard input speed to detect reader vs manual typing
+  const keyTimestamps = useRef<number[]>([]);
+
+  // Detect rapid keyboard input (reader types very fast, <50ms between keys)
+  const handleEpcKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    const now = Date.now();
+    keyTimestamps.current.push(now);
+
+    // Keep only last 10 timestamps
+    if (keyTimestamps.current.length > 10) {
+      keyTimestamps.current = keyTimestamps.current.slice(-10);
     }
-  }, [tagType, convocationNumber, boxId]);
+
+    // If Enter is pressed and we have rapid input, it's from the reader
+    if (e.key === 'Enter') {
+      const timestamps = keyTimestamps.current;
+      if (timestamps.length >= 5) {
+        const avgGap =
+          (timestamps[timestamps.length - 1] - timestamps[0]) / (timestamps.length - 1);
+        if (avgGap < 50) {
+          setReaderDetected(true);
+          setLastScanTime(now);
+        }
+      }
+      keyTimestamps.current = [];
+      e.preventDefault(); // Don't submit form on Enter from reader
+    }
+  }, []);
+
+  // Auto-focus EPC field after successful encode for quick next scan
+  useEffect(() => {
+    if (successMessage && epcInputRef.current) {
+      setTimeout(() => epcInputRef.current?.focus(), 300);
+    }
+  }, [successMessage]);
 
   // Handle QR scan result — looks up ticket to get convocation number
   const handleScan = useCallback(async (query: string, type: SearchInputType) => {
@@ -84,12 +118,12 @@ export default function RfidEncodePage() {
       } else if (type === 'tito_ticket_id') {
         ticketSlug = query;
       } else if (type === 'convocation_number') {
-        // Scanned a raw convocation number directly
         setConvocationNumber(query.toUpperCase());
-        setEpc(query.toUpperCase());
         setTagType('graduate');
         setShowScanner(false);
         setScanLoading(false);
+        // Auto-lookup name
+        lookupConvocationNumber(query.toUpperCase());
         return;
       }
 
@@ -99,7 +133,6 @@ export default function RfidEncodePage() {
         return;
       }
 
-      // Look up the ticket via API
       const response = await fetch(`/api/tito/ticket/${ticketSlug}`);
       const data = await response.json();
 
@@ -116,13 +149,11 @@ export default function RfidEncodePage() {
         return;
       }
 
-      // Auto-fill the form
       setConvocationNumber(convNum.toUpperCase());
-      setEpc(convNum.toUpperCase());
       setTagType('graduate');
       setLookupName(data.data.name || null);
       setShowScanner(false);
-      setSuccessMessage(`Scanned: ${data.data.name || convNum}`);
+      setSuccessMessage(`Found: ${data.data.name || convNum}`);
     } catch (err) {
       setError(`Lookup failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
@@ -130,9 +161,29 @@ export default function RfidEncodePage() {
     }
   }, []);
 
+  // Look up graduate name from convocation number
+  const lookupConvocationNumber = async (convNum: string) => {
+    if (!convNum || convNum.length < 5) return;
+    try {
+      const response = await fetch(`/api/search?q=${encodeURIComponent(convNum)}`);
+      const data = await response.json();
+      if (data.success && data.data && data.data.length > 0) {
+        const match = data.data.find(
+          (r: { convocationNumber?: string }) =>
+            r.convocationNumber?.toUpperCase() === convNum.toUpperCase()
+        );
+        if (match) {
+          setLookupName(match.name || null);
+        }
+      }
+    } catch {
+      // Silently fail lookup
+    }
+  };
+
   const handlePrepareEncode = () => {
     if (!epc.trim()) {
-      setError('EPC is required');
+      setError('Please scan a tag or enter the EPC from the reader');
       return;
     }
     if (!encodedBy.trim()) {
@@ -144,10 +195,13 @@ export default function RfidEncodePage() {
       return;
     }
 
+    const normalizedEpc = epc.toUpperCase().trim();
+
     setPendingEncode({
-      epc: epc.toUpperCase().trim(),
+      epc: normalizedEpc,
       type: tagType,
-      convocationNumber: tagType === 'graduate' ? convocationNumber.toUpperCase().trim() : undefined,
+      convocationNumber:
+        tagType === 'graduate' ? convocationNumber.toUpperCase().trim() : undefined,
       boxId: tagType === 'box' ? boxId.trim() || undefined : undefined,
       boxLabel: tagType === 'box' ? boxLabel.trim() || undefined : undefined,
     });
@@ -161,7 +215,6 @@ export default function RfidEncodePage() {
     setError(null);
     setSuccessMessage(null);
 
-    // Save encodedBy for next time
     localStorage.setItem('rfid_encoded_by', encodedBy);
 
     try {
@@ -195,16 +248,17 @@ export default function RfidEncodePage() {
       ]);
 
       setSuccessMessage(
-        `Tag ${tag.epc} encoded successfully${tag.graduateName ? ` for ${tag.graduateName}` : ''}`
+        `✅ Linked ${tag.epc.slice(0, 12)}... → ${tag.convocationNumber || tag.boxId || tag.epc}${tag.graduateName ? ` (${tag.graduateName})` : ''}`
       );
 
-      // Reset form (keep encodedBy)
+      // Reset for next scan (keep encodedBy and convocation number cleared)
       setEpc('');
       setConvocationNumber('');
       setBoxId('');
       setBoxLabel('');
       setBoxItemEpcs([]);
       setPendingEncode(null);
+      setLookupName(null);
     } catch (err) {
       setError(`Network error: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
@@ -240,8 +294,33 @@ export default function RfidEncodePage() {
               RFID Tag Encoding
             </h1>
             <p className="text-slate-400 mt-1">
-              Encode UHF RFID tags for graduates and boxes
+              Link RFID tags to certificates — place tag on WD01 reader to scan
             </p>
+          </div>
+        </div>
+
+        {/* Reader Status */}
+        <div
+          className={`mb-6 p-3 rounded-lg flex items-center gap-3 ${
+            readerDetected
+              ? 'bg-green-500/10 border border-green-500/30'
+              : 'bg-slate-800/50 border border-slate-700/50'
+          }`}
+        >
+          <Zap
+            className={`w-5 h-5 ${readerDetected ? 'text-green-400' : 'text-slate-500'}`}
+          />
+          <div>
+            <p className={`text-sm font-medium ${readerDetected ? 'text-green-300' : 'text-slate-400'}`}>
+              {readerDetected
+                ? 'WD01 Reader Detected — scanning via keyboard emulation'
+                : 'Click the EPC field and place a tag on the WD01 reader'}
+            </p>
+            {readerDetected && lastScanTime > 0 && (
+              <p className="text-xs text-green-400/60 mt-0.5">
+                Last scan: {new Date(lastScanTime).toLocaleTimeString()}
+              </p>
+            )}
           </div>
         </div>
 
@@ -249,7 +328,7 @@ export default function RfidEncodePage() {
           {/* Encode Form */}
           <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700/50 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Encode New Tag</h2>
+              <h2 className="text-lg font-semibold">Link Tag to Certificate</h2>
               <button
                 onClick={() => setShowScanner(!showScanner)}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
@@ -279,13 +358,6 @@ export default function RfidEncodePage() {
               </div>
             )}
 
-            {/* Looked up name display */}
-            {lookupName && (
-              <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                <p className="text-sm text-blue-300">Graduate: <span className="font-medium text-blue-200">{lookupName}</span></p>
-              </div>
-            )}
-
             {/* Tag Type Selection */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-slate-300 mb-2">Tag Type</label>
@@ -293,7 +365,6 @@ export default function RfidEncodePage() {
                 <button
                   onClick={() => {
                     setTagType('graduate');
-                    setEpc('');
                     setError(null);
                   }}
                   className={`flex items-center justify-center gap-2 p-3 rounded-lg border transition-all ${
@@ -308,7 +379,6 @@ export default function RfidEncodePage() {
                 <button
                   onClick={() => {
                     setTagType('box');
-                    setEpc('');
                     setError(null);
                   }}
                   className={`flex items-center justify-center gap-2 p-3 rounded-lg border transition-all ${
@@ -335,19 +405,37 @@ export default function RfidEncodePage() {
               />
             </div>
 
-            {/* Graduate Fields */}
+            {/* Step 1: Convocation Number (for graduate) */}
             {tagType === 'graduate' && (
               <div className="mb-4">
                 <label className="block text-sm font-medium text-slate-300 mb-1">
-                  Convocation Number
+                  Step 1: Convocation Number
                 </label>
-                <input
-                  type="text"
-                  value={convocationNumber}
-                  onChange={e => setConvocationNumber(e.target.value)}
-                  placeholder="e.g., 120AEC1003"
-                  className="w-full px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 uppercase"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={convocationNumber}
+                    onChange={e => {
+                      setConvocationNumber(e.target.value);
+                      setLookupName(null);
+                    }}
+                    onBlur={() => lookupConvocationNumber(convocationNumber)}
+                    placeholder="e.g., 119AEC1001"
+                    className="flex-1 px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 uppercase font-mono"
+                  />
+                  <button
+                    onClick={() => lookupConvocationNumber(convocationNumber)}
+                    className="px-3 py-2 text-sm bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+                    title="Look up name"
+                  >
+                    <Search className="w-4 h-4" />
+                  </button>
+                </div>
+                {lookupName && (
+                  <p className="text-sm text-green-400 mt-1.5">
+                    ✓ {lookupName}
+                  </p>
+                )}
               </div>
             )}
 
@@ -386,8 +474,8 @@ export default function RfidEncodePage() {
                       value={newBoxItem}
                       onChange={e => setNewBoxItem(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && addBoxItem()}
-                      placeholder="e.g., 120AEC1003"
-                      className="flex-1 px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 uppercase"
+                      placeholder="Scan or type EPC"
+                      className="flex-1 px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 uppercase font-mono"
                     />
                     <button
                       onClick={addBoxItem}
@@ -418,30 +506,42 @@ export default function RfidEncodePage() {
               </>
             )}
 
-            {/* EPC Field */}
+            {/* Step 2: EPC from Reader */}
             <div className="mb-4">
-              <label className="block text-sm font-medium text-slate-300 mb-1">EPC Tag ID</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">
+                {tagType === 'graduate' ? 'Step 2: ' : ''}Scan Tag (place on WD01 reader)
+              </label>
               <div className="flex gap-2">
                 <input
+                  ref={epcInputRef}
                   type="text"
                   value={epc}
                   onChange={e => setEpc(e.target.value)}
-                  placeholder={
-                    tagType === 'graduate' ? '118AEC1001' : 'BOX-001'
-                  }
-                  className="flex-1 px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 font-mono uppercase"
+                  onKeyDown={handleEpcKeyDown}
+                  placeholder="Click here, then place tag on reader..."
+                  className={`flex-1 px-3 py-3 bg-slate-900/50 border rounded-lg text-slate-200 placeholder:text-slate-500 focus:outline-none font-mono text-sm ${
+                    epc
+                      ? 'border-green-500/50 bg-green-500/5'
+                      : 'border-blue-500/50 focus:border-blue-400 animate-pulse focus:animate-none'
+                  }`}
                 />
-                <button
-                  onClick={generateEpc}
-                  className="px-3 py-2 text-sm bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors whitespace-nowrap"
-                >
-                  Auto-fill
-                </button>
+                {epc && (
+                  <button
+                    onClick={() => {
+                      setEpc('');
+                      epcInputRef.current?.focus();
+                    }}
+                    className="px-3 py-2 text-sm bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+                    title="Clear and re-scan"
+                  >
+                    <XCircle className="w-4 h-4" />
+                  </button>
+                )}
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                {tagType === 'graduate'
-                  ? 'Convocation number e.g., 118AEC1001'
-                  : 'Format: BOX-{BoxID}'}
+                {epc
+                  ? `Tag scanned: ${epc.length} characters`
+                  : 'The reader will type the tag EPC automatically when you place a label on it'}
               </p>
             </div>
 
@@ -474,7 +574,7 @@ export default function RfidEncodePage() {
               ) : (
                 <>
                   <Radio className="w-5 h-5" />
-                  Encode Tag
+                  Link Tag to Certificate
                 </>
               )}
             </button>
@@ -511,18 +611,20 @@ export default function RfidEncodePage() {
                       ) : (
                         <Tag className="w-4 h-4 text-blue-400" />
                       )}
-                      <span className="font-mono text-sm font-medium">{tag.epc}</span>
+                      <span className="font-mono text-xs text-slate-400 truncate max-w-[180px]">
+                        {tag.epc}
+                      </span>
                       <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">
-                        Encoded
+                        Linked
                       </span>
                     </div>
+                    {tag.convocationNumber && (
+                      <p className="text-sm font-medium text-blue-300 ml-6">
+                        {tag.convocationNumber}
+                      </p>
+                    )}
                     {tag.graduateName && (
                       <p className="text-sm text-slate-400 ml-6">{tag.graduateName}</p>
-                    )}
-                    {tag.convocationNumber && (
-                      <p className="text-xs text-slate-500 ml-6 font-mono">
-                        Conv: {tag.convocationNumber}
-                      </p>
                     )}
                     {tag.boxId && (
                       <p className="text-xs text-slate-500 ml-6">Box ID: {tag.boxId}</p>
@@ -541,13 +643,15 @@ export default function RfidEncodePage() {
           <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 max-w-md w-full">
             <div className="flex items-center gap-3 mb-4">
               <AlertTriangle className="w-6 h-6 text-amber-400" />
-              <h3 className="text-lg font-semibold">Confirm Tag Encoding</h3>
+              <h3 className="text-lg font-semibold">Confirm Tag Linking</h3>
             </div>
 
             <div className="space-y-2 mb-6 p-4 bg-slate-900/50 rounded-lg">
               <div className="flex justify-between text-sm">
-                <span className="text-slate-400">EPC:</span>
-                <span className="font-mono font-medium">{pendingEncode.epc}</span>
+                <span className="text-slate-400">Tag EPC:</span>
+                <span className="font-mono text-xs max-w-[200px] truncate">
+                  {pendingEncode.epc}
+                </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-slate-400">Type:</span>
@@ -556,7 +660,15 @@ export default function RfidEncodePage() {
               {pendingEncode.convocationNumber && (
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-400">Conv. Number:</span>
-                  <span className="font-mono">{pendingEncode.convocationNumber}</span>
+                  <span className="font-mono font-medium text-blue-300">
+                    {pendingEncode.convocationNumber}
+                  </span>
+                </div>
+              )}
+              {lookupName && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">Graduate:</span>
+                  <span className="text-green-300">{lookupName}</span>
                 </div>
               )}
               {pendingEncode.boxId && (
@@ -572,9 +684,9 @@ export default function RfidEncodePage() {
             </div>
 
             <p className="text-sm text-slate-400 mb-6">
-              This will permanently associate this EPC with the{' '}
-              {pendingEncode.type === 'graduate' ? 'graduate' : 'box'}. This action cannot be
-              undone.
+              This will permanently link this physical tag to the{' '}
+              {pendingEncode.type === 'graduate' ? 'graduate certificate' : 'box'}. Make sure
+              you stick this label on the correct certificate.
             </p>
 
             <div className="flex gap-3">
@@ -591,7 +703,7 @@ export default function RfidEncodePage() {
                 onClick={handleConfirmEncode}
                 className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
               >
-                Confirm Encode
+                Confirm & Link
               </button>
             </div>
           </div>

@@ -1,0 +1,5 @@
+#!/bin/sh
+# Placeholder — generate with: gradle wrapper
+# Or copy from an existing Android Studio project
+echo "Run 'gradle wrapper' to generate this file, or open in Android Studio."
+exit 1

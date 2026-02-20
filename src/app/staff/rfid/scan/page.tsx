@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Radio,
@@ -20,6 +20,10 @@ import {
   Package,
   ChevronDown,
   ChevronUp,
+  Wifi,
+  WifiOff,
+  Play,
+  Square,
 } from 'lucide-react';
 
 type RfidStation =
@@ -72,6 +76,101 @@ export default function RfidScanPage() {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showResultsExpanded, setShowResultsExpanded] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [readerStatus, setReaderStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+  const [isScanning, setIsScanning] = useState(false);
+  const [scannedCount, setScannedCount] = useState(0);
+  const eventSourceRef = useRef<EventSource | null>(null);
+
+  // Check RFID reader bridge connection
+  const checkReaderStatus = useCallback(async () => {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+      const res = await fetch('http://localhost:8080/api/status', { signal: controller.signal });
+      clearTimeout(timeout);
+      if (res.ok) {
+        const data = await res.json();
+        setReaderStatus(data.connected ? 'connected' : 'disconnected');
+      } else {
+        setReaderStatus('disconnected');
+      }
+    } catch {
+      setReaderStatus('disconnected');
+    }
+  }, []);
+
+  // Poll reader status every 10s
+  useEffect(() => {
+    checkReaderStatus();
+    const interval = setInterval(checkReaderStatus, 10000);
+    return () => clearInterval(interval);
+  }, [checkReaderStatus]);
+
+  // Cleanup EventSource on unmount
+  useEffect(() => {
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+    };
+  }, []);
+
+  // Start hardware scan
+  const handleStartScan = async () => {
+    if (!scannedBy.trim()) {
+      setError('Please enter your name (Scanned By) before scanning');
+      return;
+    }
+    try {
+      const res = await fetch('http://localhost:8080/api/inventory/start', { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to start scan');
+      setIsScanning(true);
+      setScannedCount(0);
+      setError(null);
+
+      const es = new EventSource('http://localhost:8080/api/inventory/stream');
+      eventSourceRef.current = es;
+
+      es.onmessage = (event) => {
+        try {
+          const { epc } = JSON.parse(event.data) as { epc: string; rssi: number };
+          const normalized = epc.toUpperCase().trim();
+          if (!normalized) return;
+          setPendingEpcs(prev => {
+            if (prev.includes(normalized)) return prev;
+            return [...prev, normalized];
+          });
+          setScannedCount(prev => prev + 1);
+        } catch {
+          // ignore malformed messages
+        }
+      };
+
+      es.onerror = () => {
+        es.close();
+        eventSourceRef.current = null;
+        setIsScanning(false);
+      };
+    } catch {
+      setError('Failed to start hardware scan');
+      setIsScanning(false);
+    }
+  };
+
+  // Stop hardware scan
+  const handleStopScan = async () => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+    setIsScanning(false);
+    try {
+      await fetch('http://localhost:8080/api/inventory/stop', { method: 'POST' });
+    } catch {
+      // reader may already be stopped
+    }
+  };
 
   // Add EPC to pending list
   const addEpc = useCallback(() => {
@@ -294,6 +393,51 @@ export default function RfidScanPage() {
 
           {/* Center: Scan Input */}
           <div className="lg:col-span-2 space-y-4">
+            {/* RFID Reader Connection Banner */}
+            {readerStatus === 'checking' && (
+              <div className="flex items-center gap-3 px-4 py-3 bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700/50">
+                <Loader2 className="w-5 h-5 text-slate-400 animate-spin" />
+                <span className="text-sm text-slate-400">Checking RFID reader...</span>
+              </div>
+            )}
+            {readerStatus === 'connected' && (
+              <div className="flex items-center justify-between px-4 py-3 bg-emerald-500/10 backdrop-blur-sm rounded-xl border border-emerald-500/30">
+                <div className="flex items-center gap-3">
+                  <Wifi className="w-5 h-5 text-emerald-400" />
+                  <span className="text-sm font-medium text-emerald-300">RFID Reader Connected</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  {isScanning && (
+                    <span className="text-xs text-emerald-400 font-mono">{scannedCount} reads</span>
+                  )}
+                  {isScanning ? (
+                    <button
+                      onClick={handleStopScan}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded-lg text-sm transition-colors"
+                    >
+                      <Square className="w-3.5 h-3.5" />
+                      Stop Scan
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleStartScan}
+                      disabled={!scannedBy.trim()}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 disabled:text-slate-500 rounded-lg text-sm transition-colors"
+                    >
+                      <Play className="w-3.5 h-3.5" />
+                      Start Scan
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+            {readerStatus === 'disconnected' && (
+              <div className="flex items-center gap-3 px-4 py-3 bg-amber-500/10 backdrop-blur-sm rounded-xl border border-amber-500/30">
+                <WifiOff className="w-5 h-5 text-amber-400" />
+                <span className="text-sm text-amber-300">No RFID Reader — Manual Entry Mode</span>
+              </div>
+            )}
+
             {/* EPC Input */}
             <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700/50 p-4">
               <div className="flex gap-2 mb-3">
@@ -335,6 +479,7 @@ export default function RfidScanPage() {
               </div>
               <p className="text-xs text-slate-500">
                 Enter to add to batch | Shift+Enter for quick single scan
+                {readerStatus === 'connected' && ' | Hardware scan auto-adds tags'}
               </p>
             </div>
 

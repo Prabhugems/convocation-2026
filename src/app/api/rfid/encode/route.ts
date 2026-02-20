@@ -5,7 +5,6 @@ import { getAirtableDataByConvocationNumber } from '@/lib/airtable';
 import {
   RfidTag,
   RfidTagType,
-  EPC_GRADUATE_PATTERN,
   EPC_PREFIX_BOX,
 } from '@/types/rfid';
 
@@ -24,26 +23,34 @@ export async function POST(request: NextRequest) {
     const normalizedEpc = (epc as string).toUpperCase().trim();
     const tagType = type as RfidTagType;
 
-    // Validate EPC format (graduate EPCs are convocation numbers like 118AEC1001)
-    if (tagType === 'graduate' && !EPC_GRADUATE_PATTERN.test(normalizedEpc)) {
+    // Validate EPC — must be non-empty string (factory EPCs are hex strings like C4C2DCAFCE816E0002A5B01180E20030)
+    if (normalizedEpc.length < 4) {
       return NextResponse.json(
-        { success: false, error: 'Graduate EPCs must be a valid convocation number (e.g., 118AEC1001)' },
+        { success: false, error: 'EPC is too short. Place a tag on the reader to scan it.' },
         { status: 400 }
       );
     }
 
-    if (tagType === 'box' && !normalizedEpc.startsWith(EPC_PREFIX_BOX)) {
+    // For graduate tags, convocation number is required (separate from EPC)
+    if (tagType === 'graduate' && !convocationNumber) {
       return NextResponse.json(
-        { success: false, error: `Box EPCs must start with ${EPC_PREFIX_BOX}` },
+        { success: false, error: 'Convocation number is required for graduate tags' },
         { status: 400 }
       );
     }
 
-    // Check for duplicate
+    if (tagType === 'box' && !normalizedEpc.startsWith(EPC_PREFIX_BOX) && !boxId) {
+      return NextResponse.json(
+        { success: false, error: 'Box ID is required for box tags' },
+        { status: 400 }
+      );
+    }
+
+    // Check for duplicate EPC
     const existing = await getTagByEpc(normalizedEpc);
     if (existing.success && existing.data) {
       return NextResponse.json(
-        { success: false, error: `EPC ${normalizedEpc} is already encoded`, data: existing.data },
+        { success: false, error: `This tag is already linked to ${existing.data.convocationNumber || existing.data.boxId || 'another record'}`, data: existing.data },
         { status: 409 }
       );
     }
@@ -52,15 +59,8 @@ export async function POST(request: NextRequest) {
     let titoTicketId: number | undefined;
     let titoTicketSlug: string | undefined;
 
-    // For graduate tags, look up Tito + Airtable data
+    // For graduate tags, look up Tito + Airtable data using convocation number
     if (tagType === 'graduate') {
-      if (!convocationNumber) {
-        return NextResponse.json(
-          { success: false, error: 'Convocation number is required for graduate tags' },
-          { status: 400 }
-        );
-      }
-
       const convNum = (convocationNumber as string).toUpperCase().trim();
 
       // Look up name from Airtable
@@ -72,7 +72,6 @@ export async function POST(request: NextRequest) {
       // Look up Tito ticket by convocation number (stored as tag)
       const titoResult = await searchTickets(convNum);
       if (titoResult.success && titoResult.data && titoResult.data.length > 0) {
-        // Find ticket with matching convocation number in tags
         const matchingTicket = titoResult.data.find(
           t => t.tag_names?.some(tag => tag.toUpperCase() === convNum)
         );
@@ -86,17 +85,21 @@ export async function POST(request: NextRequest) {
       }
 
       console.log(
-        `[RFID Encode] Graduate: ${convNum}, Name: ${graduateName || 'Unknown'}, TicketID: ${titoTicketId || 'None'}`
+        `[RFID Encode] EPC: ${normalizedEpc.slice(0, 12)}..., Graduate: ${convNum}, Name: ${graduateName || 'Unknown'}, TicketID: ${titoTicketId || 'None'}`
       );
     }
 
     // Create the tag record
     const now = new Date().toISOString();
+    const effectiveBoxId = tagType === 'box'
+      ? (boxId as string || (normalizedEpc.startsWith(EPC_PREFIX_BOX) ? normalizedEpc.slice(EPC_PREFIX_BOX.length) : undefined))
+      : undefined;
+
     const newTag: Omit<RfidTag, 'id'> = {
       epc: normalizedEpc,
       type: tagType,
       convocationNumber: tagType === 'graduate' ? (convocationNumber as string).toUpperCase().trim() : undefined,
-      boxId: tagType === 'box' ? (boxId as string || normalizedEpc.slice(EPC_PREFIX_BOX.length)) : undefined,
+      boxId: effectiveBoxId,
       graduateName,
       titoTicketId,
       titoTicketSlug,
@@ -113,7 +116,7 @@ export async function POST(request: NextRequest) {
         },
       ],
       boxContents: tagType === 'box' ? [] : undefined,
-      boxLabel: tagType === 'box' ? (boxLabel as string) || `Box ${boxId || normalizedEpc.slice(EPC_PREFIX_BOX.length)}` : undefined,
+      boxLabel: tagType === 'box' ? (boxLabel as string) || `Box ${effectiveBoxId || '?'}` : undefined,
     };
 
     const createResult = await createRfidTag(newTag);
