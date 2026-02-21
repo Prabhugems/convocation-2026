@@ -28,18 +28,25 @@ class RfidBridgeService : Service() {
     )
 
     data class BarcodeResult(val value: String, val timestamp: Long) {
-        /** Extract convocation number from QR URL (?q=118AEC1001) or raw EPC value */
+        /** Extract convocation number or ticket ID from QR URL */
         val displayValue: String
             get() {
-                // Try to extract ?q= param from URL (e.g. https://domain.com/track?q=118AEC1001)
                 try {
                     if (value.startsWith("http://") || value.startsWith("https://")) {
                         val uri = Uri.parse(value)
+
+                        // Track URL: ?q=118AEC1001
                         val q = uri.getQueryParameter("q")
                         if (!q.isNullOrEmpty()) return q.uppercase()
+
+                        // Tito ticket URL: https://ti.to/tickets/ti_abc123
+                        // or https://ti.to/amasi/convocation-2026-kolkata/tickets/REG_NUMBER
+                        val path = uri.path ?: ""
+                        val ticketMatch = Regex("(?:tickets?/)([^/]+)$").find(path)
+                        if (ticketMatch != null) return ticketMatch.groupValues[1]
                     }
                 } catch (_: Exception) {}
-                // Already a convocation number or raw EPC
+                // Already a convocation number or raw value
                 return value
             }
     }
