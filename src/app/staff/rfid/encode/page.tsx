@@ -417,12 +417,14 @@ export default function RfidEncodePage() {
                     value={convocationNumber}
                     onChange={e => {
                       const val = e.target.value;
-                      // Auto-detect Tito URL pasted into field
-                      if (val.includes('ti.to/') || val.includes('ti_')) {
+                      // Auto-detect Tito URL pasted into field (case-insensitive)
+                      if (/ti[._]to\/|ti_[a-z0-9]/i.test(val)) {
+                        // Extract slug preserving original case from URL
                         const slug = extractTicketFromUrl(val);
                         if (slug) {
-                          setConvocationNumber('');
+                          setConvocationNumber('Looking up...');
                           setLookupName(null);
+                          setError(null);
                           setScanLoading(true);
                           fetch(`/api/tito/ticket/${slug}`)
                             .then(res => res.json())
@@ -432,13 +434,13 @@ export default function RfidEncodePage() {
                                 setLookupName(data.data.name || null);
                                 setSuccessMessage(`Found: ${data.data.name || data.data.convocationNumber}`);
                               } else {
-                                setError('Could not find convocation number for this ticket');
-                                setConvocationNumber(val);
+                                setError(`Ticket not found. Slug: ${slug}`);
+                                setConvocationNumber('');
                               }
                             })
                             .catch(() => {
                               setError('Failed to look up ticket');
-                              setConvocationNumber(val);
+                              setConvocationNumber('');
                             })
                             .finally(() => setScanLoading(false));
                           return;
@@ -449,7 +451,7 @@ export default function RfidEncodePage() {
                     }}
                     onBlur={() => lookupConvocationNumber(convocationNumber)}
                     placeholder="Convocation no. or scan QR / paste Tito URL"
-                    className="flex-1 px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 uppercase font-mono"
+                    className="flex-1 px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 font-mono"
                   />
                   <button
                     onClick={() => lookupConvocationNumber(convocationNumber)}

@@ -42,8 +42,9 @@ const CAMERA_PREFERENCE_KEY = 'scanner_camera_id';
 // Detect input type
 export function detectInputType(input: string): SearchInputType {
   const trimmed = input.trim();
+  const lower = trimmed.toLowerCase();
 
-  if (trimmed.includes('ti.to/') || trimmed.includes('tito.io/')) {
+  if (lower.includes('ti.to/') || lower.includes('tito.io/')) {
     return 'tito_url';
   }
 
@@ -75,7 +76,7 @@ export function detectInputType(input: string): SearchInputType {
 }
 
 export function extractTicketFromUrl(url: string): string | null {
-  const match = url.match(/ti_[a-zA-Z0-9]+/);
+  const match = url.match(/ti_[a-zA-Z0-9]+/i);
   return match ? match[0] : null;
 }
 
