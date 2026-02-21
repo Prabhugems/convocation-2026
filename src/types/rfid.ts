@@ -144,6 +144,40 @@ export interface AirtableRfidRecord {
   };
 }
 
+// WD01 desktop reader → UHF EPC conversion
+// WD01 reads TID (32 hex / 16 bytes), UHF scanner reads EPC bank (24 hex / 12 bytes)
+// The WD01 TID contains the UHF EPC in reversed byte order:
+//   WD01: C4C2 DCAFCE816E0002A5B01180E2 0030
+//   Reversed bytes: 3000 E28011B0A502006E81CEAFDC C2C4
+//   UHF EPC (bytes 2-13): E28011B0A502006E81CEAFDC
+export function isWd01Format(epc: string): boolean {
+  return /^[0-9A-Fa-f]{32}$/.test(epc) && epc.toUpperCase().endsWith('0030');
+}
+
+export function convertWd01ToUhfEpc(wd01Epc: string): string {
+  const hex = wd01Epc.toUpperCase();
+  // Split into bytes, reverse order
+  const bytes: string[] = [];
+  for (let i = 0; i < hex.length; i += 2) {
+    bytes.push(hex.slice(i, i + 2));
+  }
+  bytes.reverse();
+  // Skip first 2 bytes (PC word), take next 12 bytes (96-bit EPC)
+  return bytes.slice(2, 14).join('');
+}
+
+// Reverse: given a 24-char UHF EPC, produce the reversed-byte substring
+// that would appear inside any WD01 TID storing the same tag
+export function uhfEpcToReversedHex(uhfEpc: string): string {
+  const hex = uhfEpc.toUpperCase();
+  const bytes: string[] = [];
+  for (let i = 0; i < hex.length; i += 2) {
+    bytes.push(hex.slice(i, i + 2));
+  }
+  bytes.reverse();
+  return bytes.join('');
+}
+
 // EPC pattern constants
 // Graduate EPCs: convocation numbers like 118AEC1001 (AEC = AMASI Exam Category, WEC = Without Exam Category)
 export const EPC_GRADUATE_PATTERN = /^\d+(?:AEC|WEC)\d+$/i;

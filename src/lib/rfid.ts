@@ -9,6 +9,7 @@ import {
   AirtableRfidRecord,
   EPC_GRADUATE_PATTERN,
   RFID_TO_TITO_STATION,
+  uhfEpcToReversedHex,
 } from '@/types/rfid';
 import { checkinAtStation } from './tito';
 import { StationId } from '@/types';
@@ -202,6 +203,16 @@ export async function getTagByEpc(epc: string): Promise<ApiResponse<RfidTag | nu
   if (mapResult.success && mapResult.data) {
     const tag = mapResult.data.get(normalizedEpc);
     if (tag) return { success: true, data: tag };
+
+    // Fallback: search cache for WD01-format EPCs containing reversed UHF bytes
+    if (/^[0-9A-F]{24}$/.test(normalizedEpc)) {
+      const reversedHex = uhfEpcToReversedHex(normalizedEpc);
+      for (const [cachedEpc, cachedTag] of mapResult.data) {
+        if (cachedEpc.length === 32 && cachedEpc.includes(reversedHex)) {
+          return { success: true, data: cachedTag };
+        }
+      }
+    }
   }
 
   // Direct Airtable lookup (fresh, bypasses cache)
@@ -215,6 +226,19 @@ export async function getTagByEpc(epc: string): Promise<ApiResponse<RfidTag | nu
   }
 
   if (response.data.records.length === 0) {
+    // Fallback: the scanned UHF EPC (24 chars) might be stored in WD01 TID format (32 chars)
+    // Search for records where the stored EPC contains the reversed UHF bytes
+    if (/^[0-9A-F]{24}$/.test(normalizedEpc)) {
+      const reversedHex = uhfEpcToReversedHex(normalizedEpc);
+      const fallbackFormula = encodeURIComponent(`FIND("${reversedHex}", {EPC}) > 0`);
+      const fallbackResponse = await rfidAirtableFetch<{ records: AirtableRfidRecord[] }>(
+        `?filterByFormula=${fallbackFormula}`
+      );
+      if (fallbackResponse.success && fallbackResponse.data && fallbackResponse.data.records.length > 0) {
+        const foundTag = parseRfidRecord(fallbackResponse.data.records[0]);
+        return { success: true, data: foundTag };
+      }
+    }
     return { success: true, data: null };
   }
 

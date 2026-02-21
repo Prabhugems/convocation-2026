@@ -6,6 +6,8 @@ import {
   RfidTag,
   RfidTagType,
   EPC_PREFIX_BOX,
+  isWd01Format,
+  convertWd01ToUhfEpc,
 } from '@/types/rfid';
 
 export async function POST(request: NextRequest) {
@@ -20,10 +22,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const normalizedEpc = (epc as string).toUpperCase().trim();
+    let normalizedEpc = (epc as string).toUpperCase().trim();
     const tagType = type as RfidTagType;
 
-    // Validate EPC — must be non-empty string (factory EPCs are hex strings like C4C2DCAFCE816E0002A5B01180E20030)
+    // Convert WD01 desktop reader format (32-char TID) to standard UHF EPC (24-char)
+    // WD01 reads TID bank; UHF scanner reads EPC bank — they must match for lookup
+    if (isWd01Format(normalizedEpc)) {
+      const uhfEpc = convertWd01ToUhfEpc(normalizedEpc);
+      console.log(`[RFID Encode] Converted WD01 TID ${normalizedEpc} → UHF EPC ${uhfEpc}`);
+      normalizedEpc = uhfEpc;
+    }
+
+    // Validate EPC — must be non-empty string
     if (normalizedEpc.length < 4) {
       return NextResponse.json(
         { success: false, error: 'EPC is too short. Place a tag on the reader to scan it.' },
