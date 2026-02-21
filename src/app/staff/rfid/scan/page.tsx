@@ -151,6 +151,12 @@ export default function RfidScanPage() {
     }
     return '10.0.1.13';
   });
+  const [printServerUrl, setPrintServerUrl] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('rfid_print_server') || '';
+    }
+    return '';
+  });
   const [showPrinterSettings, setShowPrinterSettings] = useState(false);
   const [printedEpcs, setPrintedEpcs] = useState<Set<string>>(new Set());
   const [printLog, setPrintLog] = useState<PrintLogEntry[]>([]);
@@ -264,7 +270,7 @@ export default function RfidScanPage() {
       // Mark as in-flight to prevent duplicate calls
       printingRef.current.add(epc);
 
-      fetch('/api/rfid/auto-print', {
+      fetch(`${printServerUrl}/api/rfid/auto-print`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ epc, printerIP, station, scannedBy }),
@@ -306,7 +312,7 @@ export default function RfidScanPage() {
           }, ...prev]);
         });
     }
-  }, [pendingEpcs, pendingTagDetails, autoPrintEnabled, printerIP, printedEpcs]);
+  }, [pendingEpcs, pendingTagDetails, autoPrintEnabled, printerIP, printedEpcs, printServerUrl]);
 
   // WD01 auto-print: watch epcInput for complete EPC and auto-trigger
   // Only active for desktop print stations (packing, address-label)
@@ -331,7 +337,7 @@ export default function RfidScanPage() {
       setEpcInput('');
       inputRef.current?.focus();
 
-      fetch('/api/rfid/auto-print', {
+      fetch(`${printServerUrl}/api/rfid/auto-print`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ epc: trimmed, printerIP, station, scannedBy }),
@@ -374,7 +380,7 @@ export default function RfidScanPage() {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [epcInput, autoPrintEnabled, printerIP, printedEpcs, station]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [epcInput, autoPrintEnabled, printerIP, printedEpcs, station, printServerUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cleanup polling on unmount
   useEffect(() => {
@@ -390,7 +396,7 @@ export default function RfidScanPage() {
   const handleTestPrint = async () => {
     setTestingPrinter(true);
     try {
-      const res = await fetch(`/api/print/zpl?ip=${encodeURIComponent(printerIP)}&port=9100`);
+      const res = await fetch(`${printServerUrl}/api/print/zpl?ip=${encodeURIComponent(printerIP)}&port=9100`);
       const data = await res.json();
       if (data.success) {
         setPrintLog(prev => [{ epc: 'TEST', status: 'printed', time: new Date().toLocaleTimeString(), name: 'Test Print OK' }, ...prev]);
@@ -623,7 +629,7 @@ export default function RfidScanPage() {
       if (autoPrintEnabled && result.success) {
         const normalizedEpc = epc.toUpperCase().trim();
         if (!printedEpcs.has(normalizedEpc)) {
-          fetch('/api/rfid/auto-print', {
+          fetch(`${printServerUrl}/api/rfid/auto-print`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ epc: normalizedEpc, printerIP, station, scannedBy }),
@@ -976,6 +982,39 @@ export default function RfidScanPage() {
                 <p className="text-xs text-slate-500">
                   Honeywell PC42t IP address (port 9100) &nbsp;|&nbsp; Labels print automatically when tags are detected
                 </p>
+                {/* Print Server URL */}
+                <div className="pt-2 border-t border-slate-700/50">
+                  <label className="block text-xs font-medium text-purple-300 mb-1.5">Print Server URL</label>
+                  <input
+                    type="text"
+                    value={printServerUrl}
+                    onChange={e => {
+                      const val = e.target.value.trim().replace(/\/$/, '');
+                      setPrintServerUrl(val);
+                      localStorage.setItem('rfid_print_server', val);
+                    }}
+                    placeholder="http://localhost:3001"
+                    className="w-full px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 font-mono"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    Leave empty when running on localhost. Set to <span className="font-mono text-slate-400">http://localhost:3001</span> when using the live site.
+                  </p>
+                  {typeof window !== 'undefined' && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1') && !printServerUrl && (
+                    <div className="mt-2 flex items-center gap-2 px-2.5 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span className="text-xs text-amber-300">
+                        You&apos;re on the live site. Set Print Server URL to <button
+                          onClick={() => {
+                            const val = 'http://localhost:3001';
+                            setPrintServerUrl(val);
+                            localStorage.setItem('rfid_print_server', val);
+                          }}
+                          className="font-mono underline hover:text-amber-200"
+                        >http://localhost:3001</button> to route prints to your local machine.
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -1023,7 +1062,7 @@ export default function RfidScanPage() {
                           setEpcInput('');
                           inputRef.current?.focus();
 
-                          fetch('/api/rfid/auto-print', {
+                          fetch(`${printServerUrl}/api/rfid/auto-print`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ epc: normalizedEpc, printerIP, station, scannedBy }),

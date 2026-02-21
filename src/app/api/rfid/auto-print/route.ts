@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTagByEpc, processRfidScan } from '@/lib/rfid';
-import { RfidStation } from '@/types/rfid';
+import { RfidStation, isWd01Format, convertWd01ToUhfEpc } from '@/types/rfid';
 import { generatePackingLabel, sendToPrinter, DEFAULT_PRINTER_SETTINGS } from '@/lib/zpl';
 
 /**
@@ -21,9 +21,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const normalizedEpc = (epc as string).toUpperCase().trim();
+    let normalizedEpc = (epc as string).toUpperCase().trim();
     const ip = printerIP || DEFAULT_PRINTER_SETTINGS.ip;
     const port = printerPort || DEFAULT_PRINTER_SETTINGS.port;
+
+    // Convert WD01 desktop reader format (32-char TID) to standard UHF EPC (24-char)
+    // WD01 reads TID bank; encoding stores the converted 24-char UHF EPC in Airtable
+    if (isWd01Format(normalizedEpc)) {
+      const uhfEpc = convertWd01ToUhfEpc(normalizedEpc);
+      console.log(`[Auto-Print] Converted WD01 TID ${normalizedEpc} → UHF EPC ${uhfEpc}`);
+      normalizedEpc = uhfEpc;
+    }
 
     // 1. Look up the tag (includes WD01 fallback)
     const tagResult = await getTagByEpc(normalizedEpc);
