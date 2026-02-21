@@ -1076,7 +1076,7 @@ export default function RfidScanPage() {
                       }
                     }
                   }}
-                  placeholder="Place folder on WD01 reader or type EPC"
+                  placeholder={isDesktopPrintStation ? "Place folder on WD01 reader" : "Scan or type EPC"}
                   className="flex-1 px-3 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-cyan-500 font-mono uppercase"
                   autoFocus
                 />
@@ -1098,8 +1098,10 @@ export default function RfidScanPage() {
                 </button>
               </div>
               <p className="text-xs text-slate-500">
-                Place folder on WD01 reader | Enter to add to batch | Shift+Enter for quick scan
-                {readerStatus === 'connected' && ' | Hardware scan auto-adds tags'}
+                {isDesktopPrintStation
+                  ? 'Place folder on WD01 reader to auto-print'
+                  : 'Enter to add to batch | Shift+Enter for quick scan'}
+                {readerStatus === 'connected' && !isDesktopPrintStation && ' | Hardware scan auto-adds tags'}
               </p>
             </div>
 
