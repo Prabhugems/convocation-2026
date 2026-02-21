@@ -121,6 +121,11 @@ export default function RfidScanPage() {
   const [testingPrinter, setTestingPrinter] = useState(false);
   const printingRef = useRef<Set<string>>(new Set()); // tracks in-flight print requests
 
+  // WD01 desktop reader detection
+  const keyTimestamps = useRef<number[]>([]);
+  const [wd01Detected, setWd01Detected] = useState(false);
+  const wd01FadeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Check RFID reader bridge connection
   const checkReaderStatus = useCallback(async () => {
     try {
@@ -477,6 +482,28 @@ export default function RfidScanPage() {
       ]);
       setEpcInput('');
       setShowResultsExpanded(true);
+
+      // Auto-print on quick scan if enabled
+      if (autoPrintEnabled && result.success) {
+        const normalizedEpc = epc.toUpperCase().trim();
+        if (!printedEpcs.has(normalizedEpc)) {
+          fetch('/api/rfid/auto-print', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ epc: normalizedEpc, printerIP }),
+          })
+            .then(res => res.json())
+            .then(printData => {
+              if (printData.printed) {
+                setPrintedEpcs(prev => new Set(prev).add(normalizedEpc));
+                setPrintLog(prev => [{ epc: normalizedEpc, name: printData.graduateName || result.tag?.graduateName, status: 'printed', time: new Date().toLocaleTimeString() }, ...prev]);
+              } else {
+                setPrintLog(prev => [{ epc: normalizedEpc, status: printData.reason === 'unregistered' ? 'skipped' : 'error', error: printData.error, time: new Date().toLocaleTimeString() }, ...prev]);
+              }
+            })
+            .catch(() => {});
+        }
+      }
     } catch (err) {
       setError(`Network error: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
@@ -652,17 +679,72 @@ export default function RfidScanPage() {
               </div>
             )}
             {readerStatus === 'disconnected' && (
-              <div className="flex items-center justify-between px-4 py-3 bg-amber-500/10 backdrop-blur-sm rounded-xl border border-amber-500/30">
-                <div className="flex items-center gap-3">
-                  <WifiOff className="w-5 h-5 text-amber-400" />
-                  <span className="text-sm text-amber-300">No RFID Reader — Manual Entry Mode</span>
+              <div className={`backdrop-blur-sm rounded-xl border ${wd01Detected ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-amber-500/10 border-amber-500/30'}`}>
+                <div className="flex items-center justify-between px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    {wd01Detected ? (
+                      <>
+                        <Radio className="w-5 h-5 text-emerald-400" />
+                        <span className="text-sm font-medium text-emerald-300">WD01 Connected</span>
+                      </>
+                    ) : (
+                      <>
+                        <WifiOff className="w-5 h-5 text-amber-400" />
+                        <span className="text-sm text-amber-300">Manual Entry Mode</span>
+                      </>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {/* Auto-Print Toggle */}
+                    <button
+                      onClick={() => {
+                        const next = !autoPrintEnabled;
+                        setAutoPrintEnabled(next);
+                        localStorage.setItem('rfid_auto_print', String(next));
+                      }}
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        autoPrintEnabled
+                          ? 'bg-purple-600/80 text-purple-100'
+                          : 'bg-slate-700/80 text-slate-400 hover:bg-slate-600/80'
+                      }`}
+                      title="Auto-print packing labels on tag detect"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      Auto-Print
+                    </button>
+                    <button
+                      onClick={() => setShowPrinterSettings(prev => !prev)}
+                      className="p-1.5 rounded-lg bg-slate-700/50 hover:bg-slate-600/50 text-slate-400 transition-colors"
+                      title="Printer settings"
+                    >
+                      <Settings className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => { setBridgeInput(bridgeUrl); setShowBridgeSettings(true); }}
+                      className="text-xs px-2.5 py-1.5 bg-amber-600/30 hover:bg-amber-600/50 rounded-lg text-amber-300 transition-colors"
+                    >
+                      Set Bridge IP
+                    </button>
+                  </div>
                 </div>
-                <button
-                  onClick={() => { setBridgeInput(bridgeUrl); setShowBridgeSettings(true); }}
-                  className="text-xs px-2.5 py-1 bg-amber-600/30 hover:bg-amber-600/50 rounded-lg text-amber-300 transition-colors"
-                >
-                  Set Bridge IP
-                </button>
+                {/* Auto-print stats bar */}
+                {autoPrintEnabled && printLog.length > 0 && (
+                  <div className="flex items-center gap-3 px-4 py-2 border-t border-amber-500/20 text-xs">
+                    <Printer className="w-3.5 h-3.5 text-purple-400" />
+                    <span className="text-purple-300 font-medium">
+                      {printLog.filter(l => l.status === 'printed').length} printed
+                    </span>
+                    <span className="text-slate-500">/</span>
+                    <span className="text-slate-400">
+                      {pendingEpcs.length} scanned
+                    </span>
+                    {printLog.some(l => l.status === 'error') && (
+                      <span className="text-red-400">
+                        {printLog.filter(l => l.status === 'error').length} errors
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -754,16 +836,95 @@ export default function RfidScanPage() {
                   value={epcInput}
                   onChange={e => setEpcInput(e.target.value)}
                   onKeyDown={e => {
+                    const now = Date.now();
+                    keyTimestamps.current.push(now);
+                    // Keep only last 10 timestamps
+                    if (keyTimestamps.current.length > 10) {
+                      keyTimestamps.current = keyTimestamps.current.slice(-10);
+                    }
+
                     if (e.key === 'Enter') {
-                      if (e.shiftKey) {
-                        // Quick single scan
+                      const timestamps = keyTimestamps.current;
+                      const isReaderInput = timestamps.length >= 5 &&
+                        (timestamps[timestamps.length - 1] - timestamps[0]) / (timestamps.length - 1) < 50;
+                      keyTimestamps.current = [];
+
+                      if (isReaderInput) {
+                        e.preventDefault();
+                        // Show WD01 connected badge (auto-fade after 5s)
+                        setWd01Detected(true);
+                        if (wd01FadeTimer.current) clearTimeout(wd01FadeTimer.current);
+                        wd01FadeTimer.current = setTimeout(() => setWd01Detected(false), 5000);
+
+                        const normalizedEpc = epcInput.toUpperCase().trim();
+                        if (!normalizedEpc) return;
+
+                        if (autoPrintEnabled) {
+                          // WD01 + Auto-Print: print label directly
+                          if (printedEpcs.has(normalizedEpc) || printingRef.current.has(normalizedEpc)) {
+                            // Duplicate — skip silently
+                            setEpcInput('');
+                            inputRef.current?.focus();
+                            return;
+                          }
+                          printingRef.current.add(normalizedEpc);
+                          setEpcInput('');
+                          inputRef.current?.focus();
+
+                          fetch('/api/rfid/auto-print', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ epc: normalizedEpc, printerIP }),
+                          })
+                            .then(res => res.json())
+                            .then(data => {
+                              printingRef.current.delete(normalizedEpc);
+                              if (data.printed) {
+                                setPrintedEpcs(prev => new Set(prev).add(normalizedEpc));
+                                setPrintLog(prev => [{
+                                  epc: normalizedEpc,
+                                  name: data.graduateName,
+                                  status: 'printed',
+                                  time: new Date().toLocaleTimeString(),
+                                }, ...prev]);
+                              } else if (data.reason === 'unregistered') {
+                                setPrintLog(prev => [{
+                                  epc: normalizedEpc,
+                                  status: 'skipped',
+                                  time: new Date().toLocaleTimeString(),
+                                }, ...prev]);
+                              } else {
+                                setPrintLog(prev => [{
+                                  epc: normalizedEpc,
+                                  status: 'error',
+                                  error: data.error || 'Print failed',
+                                  time: new Date().toLocaleTimeString(),
+                                }, ...prev]);
+                              }
+                            })
+                            .catch(err => {
+                              printingRef.current.delete(normalizedEpc);
+                              setPrintLog(prev => [{
+                                epc: normalizedEpc,
+                                status: 'error',
+                                error: err instanceof Error ? err.message : 'Network error',
+                                time: new Date().toLocaleTimeString(),
+                              }, ...prev]);
+                            });
+                        } else {
+                          // WD01 + no auto-print: add to batch like normal
+                          addEpc();
+                        }
+                      } else if (e.shiftKey) {
+                        // Manual typing + Shift+Enter: quick single scan
                         handleQuickScan(epcInput);
                       } else {
+                        // Manual typing + Enter: add to batch
                         addEpc();
                       }
                     }
                   }}
-                  placeholder="Scan or type EPC (e.g., 118AEC1001 or BOX-001)"
+                  placeholder="Place folder on WD01 reader or type EPC"
                   className="flex-1 px-3 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-cyan-500 font-mono uppercase"
                   autoFocus
                 />
@@ -785,7 +946,7 @@ export default function RfidScanPage() {
                 </button>
               </div>
               <p className="text-xs text-slate-500">
-                Enter to add to batch | Shift+Enter for quick single scan
+                Place folder on WD01 reader | Enter to add to batch | Shift+Enter for quick scan
                 {readerStatus === 'connected' && ' | Hardware scan auto-adds tags'}
               </p>
             </div>
