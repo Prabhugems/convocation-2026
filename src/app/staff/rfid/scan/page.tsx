@@ -26,6 +26,10 @@ import {
   Square,
   Printer,
   Settings,
+  Search,
+  Clock,
+  MapPin,
+  X,
 } from 'lucide-react';
 
 type RfidStation =
@@ -55,6 +59,35 @@ interface PrintLogEntry {
   status: 'printed' | 'skipped' | 'error';
   time: string;
   error?: string;
+}
+
+// Station journey order for timeline display
+const JOURNEY_STATIONS: { id: string; label: string; icon: string }[] = [
+  { id: 'encoding', label: 'Encoded', icon: '🏷️' },
+  { id: 'packing', label: 'Packing', icon: '📦' },
+  { id: 'dispatch-venue', label: 'Dispatch to Venue', icon: '🚚' },
+  { id: 'registration', label: 'Registration', icon: '📝' },
+  { id: 'gown-issue', label: 'Gown Issue', icon: '👗' },
+  { id: 'gown-return', label: 'Gown Return', icon: '🔄' },
+  { id: 'certificate-collection', label: 'Certificate Collection', icon: '📜' },
+  { id: 'return-ho', label: 'Return to HO', icon: '🏢' },
+  { id: 'address-label', label: 'Address Label', icon: '🏷️' },
+  { id: 'final-dispatch', label: 'Final Dispatch', icon: '✈️' },
+];
+
+interface LookupTag {
+  epc: string;
+  type: string;
+  convocationNumber?: string;
+  graduateName?: string;
+  status: string;
+  currentStation: string;
+  encodedAt?: string;
+  encodedBy?: string;
+  lastScanAt?: string;
+  lastScanBy?: string;
+  lastScanStation?: string;
+  scanHistory: { station: string; timestamp: string; scannedBy: string; action: string; notes?: string }[];
 }
 
 const STATION_OPTIONS: { id: RfidStation; label: string; icon: string }[] = [
@@ -125,6 +158,38 @@ export default function RfidScanPage() {
   const keyTimestamps = useRef<number[]>([]);
   const [wd01Detected, setWd01Detected] = useState(false);
   const wd01FadeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Convocation number lookup
+  const [showLookup, setShowLookup] = useState(false);
+  const [lookupQuery, setLookupQuery] = useState('');
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupTag, setLookupTag] = useState<LookupTag | null>(null);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const lookupInputRef = useRef<HTMLInputElement>(null);
+
+  // Lookup a tag by convocation number / EPC
+  const handleLookup = useCallback(async (query?: string) => {
+    const q = (query || lookupQuery).toUpperCase().trim();
+    if (!q) return;
+    setLookupLoading(true);
+    setLookupError(null);
+    setLookupTag(null);
+    try {
+      const res = await fetch(`/api/rfid/verify?epc=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      if (!data.success) {
+        setLookupError(data.error || 'Lookup failed');
+      } else if (!data.found) {
+        setLookupError(`"${q}" not found — tag is not registered`);
+      } else {
+        setLookupTag(data.data.tag as LookupTag);
+      }
+    } catch (err) {
+      setLookupError(err instanceof Error ? err.message : 'Network error');
+    } finally {
+      setLookupLoading(false);
+    }
+  }, [lookupQuery]);
 
   // Check RFID reader bridge connection
   const checkReaderStatus = useCallback(async () => {
@@ -538,6 +603,13 @@ export default function RfidScanPage() {
             </div>
           </div>
           <div className="flex gap-2">
+            <button
+              onClick={() => { setShowLookup(true); setTimeout(() => lookupInputRef.current?.focus(), 100); }}
+              className="flex items-center gap-2 px-3 py-2 bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/30 rounded-lg transition-colors text-sm text-cyan-300"
+            >
+              <Search className="w-4 h-4" />
+              Track
+            </button>
             <Link
               href="/staff/rfid/encode"
               className="flex items-center gap-2 px-3 py-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-lg transition-colors text-sm"
@@ -1163,6 +1235,164 @@ export default function RfidScanPage() {
           </div>
         </div>
       </div>
+
+      {/* Tag Lookup / Track Panel */}
+      {showLookup && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-50 p-4 pt-16 overflow-y-auto">
+          <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 max-w-lg w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Search className="w-5 h-5 text-cyan-400" />
+                Track Tag Journey
+              </h3>
+              <button
+                onClick={() => { setShowLookup(false); setLookupTag(null); setLookupError(null); setLookupQuery(''); }}
+                className="p-1.5 rounded-lg hover:bg-slate-700 transition-colors"
+              >
+                <X className="w-4 h-4 text-slate-400" />
+              </button>
+            </div>
+
+            {/* Search input */}
+            <div className="flex gap-2 mb-4">
+              <input
+                ref={lookupInputRef}
+                type="text"
+                value={lookupQuery}
+                onChange={e => setLookupQuery(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleLookup(); }}
+                placeholder="Convocation number (e.g. 118AEC1001)"
+                className="flex-1 px-3 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-cyan-500 font-mono uppercase"
+                autoFocus
+              />
+              <button
+                onClick={() => handleLookup()}
+                disabled={lookupLoading || !lookupQuery.trim()}
+                className="px-4 py-2.5 bg-cyan-600 hover:bg-cyan-700 disabled:bg-slate-700 disabled:text-slate-500 rounded-lg transition-colors flex items-center gap-1.5"
+              >
+                {lookupLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              </button>
+            </div>
+
+            {/* Error */}
+            {lookupError && (
+              <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg flex items-start gap-2 mb-4">
+                <XCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                <p className="text-sm text-red-300">{lookupError}</p>
+              </div>
+            )}
+
+            {/* Loading */}
+            {lookupLoading && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 text-cyan-400 animate-spin" />
+              </div>
+            )}
+
+            {/* Tag Result */}
+            {lookupTag && (
+              <div className="space-y-4">
+                {/* Graduate info */}
+                <div className="p-3 bg-slate-900/50 rounded-lg space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-semibold text-white">{lookupTag.graduateName || lookupTag.epc}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      lookupTag.status === 'encoded' ? 'bg-slate-600/50 text-slate-300' :
+                      lookupTag.status === 'scanned' ? 'bg-cyan-500/20 text-cyan-300' :
+                      lookupTag.status === 'dispatched' ? 'bg-blue-500/20 text-blue-300' :
+                      lookupTag.status === 'delivered' ? 'bg-emerald-500/20 text-emerald-300' :
+                      lookupTag.status === 'returned' ? 'bg-amber-500/20 text-amber-300' :
+                      'bg-red-500/20 text-red-300'
+                    }`}>
+                      {lookupTag.status.toUpperCase()}
+                    </span>
+                  </div>
+                  {lookupTag.convocationNumber && (
+                    <p className="text-sm text-slate-400 font-mono">{lookupTag.convocationNumber}</p>
+                  )}
+                  <div className="flex items-center gap-4 text-xs text-slate-500">
+                    {lookupTag.encodedBy && <span>Encoded by {lookupTag.encodedBy}</span>}
+                    {lookupTag.encodedAt && <span>{new Date(lookupTag.encodedAt).toLocaleDateString()}</span>}
+                  </div>
+                </div>
+
+                {/* Station Journey Timeline */}
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-cyan-400" />
+                    Station Journey
+                  </h4>
+                  <div className="relative space-y-0">
+                    {JOURNEY_STATIONS.map((station, i) => {
+                      // Find scan record for this station
+                      const scanRecord = lookupTag.scanHistory.find(s => s.station === station.id);
+                      // For encoding station, check encodedAt
+                      const isEncoded = station.id === 'encoding' && lookupTag.encodedAt;
+                      const isDone = !!scanRecord || !!isEncoded;
+                      const isLast = i === JOURNEY_STATIONS.length - 1;
+
+                      return (
+                        <div key={station.id} className="flex gap-3">
+                          {/* Timeline line + dot */}
+                          <div className="flex flex-col items-center">
+                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm shrink-0 ${
+                              isDone
+                                ? 'bg-emerald-500/20 border-2 border-emerald-500/60'
+                                : 'bg-slate-800 border-2 border-slate-600/40'
+                            }`}>
+                              {isDone ? (
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                              ) : (
+                                <span className="text-xs text-slate-600">{station.icon}</span>
+                              )}
+                            </div>
+                            {!isLast && (
+                              <div className={`w-0.5 h-8 ${isDone ? 'bg-emerald-500/30' : 'bg-slate-700/50'}`} />
+                            )}
+                          </div>
+                          {/* Station info */}
+                          <div className={`pb-4 ${isDone ? '' : 'opacity-40'}`}>
+                            <div className="flex items-center gap-2">
+                              <span className={`text-sm font-medium ${isDone ? 'text-white' : 'text-slate-500'}`}>
+                                {station.label}
+                              </span>
+                            </div>
+                            {isDone && (
+                              <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-400">
+                                <span className="flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  {station.id === 'encoding' && lookupTag.encodedAt
+                                    ? new Date(lookupTag.encodedAt).toLocaleString()
+                                    : scanRecord
+                                    ? new Date(scanRecord.timestamp).toLocaleString()
+                                    : ''}
+                                </span>
+                                <span>
+                                  {station.id === 'encoding'
+                                    ? lookupTag.encodedBy
+                                    : scanRecord?.scannedBy}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Quick action: look up another */}
+                <button
+                  onClick={() => { setLookupTag(null); setLookupQuery(''); setTimeout(() => lookupInputRef.current?.focus(), 50); }}
+                  className="w-full py-2 text-sm text-cyan-400 hover:text-cyan-300 hover:bg-slate-700/50 rounded-lg transition-colors"
+                >
+                  Look up another tag
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Dialog */}
       {showConfirmDialog && (
