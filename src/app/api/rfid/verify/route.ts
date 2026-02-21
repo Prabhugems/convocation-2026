@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getTagByEpc, getBoxContents } from '@/lib/rfid';
+import { getTagByEpc, getTagByConvocationNumber, getBoxContents } from '@/lib/rfid';
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,7 +25,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (!result.data) {
+    // If not found by EPC, try convocation number lookup
+    let tag = result.data;
+    if (!tag) {
+      const convResult = await getTagByConvocationNumber(normalizedEpc);
+      if (convResult.success && convResult.data) {
+        tag = convResult.data;
+      }
+    }
+
+    if (!tag) {
       return NextResponse.json({
         success: true,
         data: null,
@@ -33,8 +42,6 @@ export async function GET(request: NextRequest) {
         message: `Tag ${normalizedEpc} is not registered in the system`,
       });
     }
-
-    const tag = result.data;
 
     // If it's a box tag, also fetch contents
     let boxItems = undefined;

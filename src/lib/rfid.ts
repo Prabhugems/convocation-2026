@@ -246,6 +246,38 @@ export async function getTagByEpc(epc: string): Promise<ApiResponse<RfidTag | nu
   return { success: true, data: tag };
 }
 
+// Lookup a single tag by convocation number
+export async function getTagByConvocationNumber(convNo: string): Promise<ApiResponse<RfidTag | null>> {
+  const normalized = convNo.toUpperCase().trim();
+
+  // Search cache first
+  const mapResult = await getRfidTagMap();
+  if (mapResult.success && mapResult.data) {
+    for (const tag of mapResult.data.values()) {
+      if (tag.convocationNumber?.toUpperCase() === normalized) {
+        return { success: true, data: tag };
+      }
+    }
+  }
+
+  // Direct Airtable lookup
+  const filterFormula = encodeURIComponent(`{Convocation Number}="${normalized}"`);
+  const response = await rfidAirtableFetch<{ records: AirtableRfidRecord[] }>(
+    `?filterByFormula=${filterFormula}`
+  );
+
+  if (!response.success || !response.data) {
+    return { success: false, error: response.error || 'Lookup failed' };
+  }
+
+  if (response.data.records.length === 0) {
+    return { success: true, data: null };
+  }
+
+  const tag = parseRfidRecord(response.data.records[0]);
+  return { success: true, data: tag };
+}
+
 // Create a new RFID tag record
 export async function createRfidTag(tag: Omit<RfidTag, 'id'>): Promise<ApiResponse<RfidTag>> {
   // Check for duplicate EPC
