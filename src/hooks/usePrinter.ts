@@ -11,7 +11,7 @@ export interface PrinterSettings {
 }
 
 const DEFAULT_SETTINGS: PrinterSettings = {
-  ip: '10.0.1.12',
+  ip: '10.0.1.13',
   port: 9100,
   useDirectPrint: true,
 };

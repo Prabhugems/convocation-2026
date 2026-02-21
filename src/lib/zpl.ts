@@ -29,11 +29,12 @@ export interface ZPLLabelData {
 const ZPL_PACKING_INIT = `
 ^PW440
 ^LL520
+^MTT
 ^MNY
 ^POI
 ^LH10,10
-^MD10
-`.trim();  // 55mm×65mm, gap sensing, inverted, with offset and darkness
+^MD15
+`.trim();  // 55mm×65mm, thermal transfer, gap sensing, inverted
 
 const ZPL_BADGE_INIT = `
 ^PW803
@@ -47,40 +48,23 @@ const ZPL_BADGE_INIT = `
  * Generate ZPL code for 55mm × 65mm packing label
  *
  * Layout (440 × 520 dots at 203 DPI):
- * - Left side: CON. No- label, convocation number (bold), Dr. Name
- * - Right side: QR code with ticket URL
- *
- * FIXED: Includes label dimensions to prevent over-feeding
+ * - Top: Dr. Name (large, bold)
+ * - Bottom-left: QR code (large, scannable)
+ * - Bottom-right: Convocation number rotated 90°
  */
 export function generatePackingLabel(data: ZPLLabelData): string {
-  // Sanitize inputs to prevent ZPL injection
   const convNum = sanitizeZPL(data.convocationNumber || 'N/A');
-  // Truncate long names to fit on label (max 18 chars for 55mm packing label)
-  const name = truncateForLabel(sanitizeZPL(data.name || 'Unknown'), 18);
+  const name = truncateForLabel(sanitizeZPL(data.name || 'Unknown'), 20);
   const ticketUrl = sanitizeZPL(data.ticketUrl || '');
-
-  // ZPL commands:
-  // ^XA - Start label format
-  // ^PW440 - Print Width 440 dots (55mm at 203 DPI)
-  // ^LL520 - Label Length 520 dots (65mm at 203 DPI)
-  // ^MNY - Media type: Gap/notch sensing
-  // ^POI - Print Orientation Inverted (fixes upside down)
-  // ^CF0,size - Change font (font 0, height in dots)
-  // ^FO x,y - Field origin (position from top-left)
-  // ^FD text ^FS - Field data and separator
-  // ^BQN,2,magnification - QR code (Normal, model 2, size)
-  // ^XZ - End label format
 
   return `^XA
 ^CI28
 ${ZPL_PACKING_INIT}
-^CF0,22
-^FO25,25^FDCON. No-^FS
-^CF0,40
-^FO25,55^FD${convNum}^FS
-^CF0,26
-^FO25,110^FDDr. ${name}^FS
-^FO260,15^BQN,2,4^FDQA,${ticketUrl}^FS
+^CF0,36
+^FO0,25^FB420,1,0,C,0^FDDr. ${name}^FS
+^FO75,150^BQN,2,5^FDQA,${ticketUrl}^FS
+^A0R,50,50
+^FO340,150^FD${convNum}^FS
 ^XZ`;
 }
 
@@ -203,7 +187,7 @@ export async function sendToPrinter(
  * Default printer settings
  */
 export const DEFAULT_PRINTER_SETTINGS = {
-  ip: '10.0.1.12',
+  ip: '10.0.1.13',
   port: 9100,
   labelWidth: 3, // inches
   labelHeight: 2, // inches

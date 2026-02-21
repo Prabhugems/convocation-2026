@@ -111,9 +111,9 @@ export default function RfidScanPage() {
   });
   const [printerIP, setPrinterIP] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('rfid_printer_ip') || '10.0.1.12';
+      return localStorage.getItem('rfid_printer_ip') || '10.0.1.13';
     }
-    return '10.0.1.12';
+    return '10.0.1.13';
   });
   const [showPrinterSettings, setShowPrinterSettings] = useState(false);
   const [printedEpcs, setPrintedEpcs] = useState<Set<string>>(new Set());
@@ -727,7 +727,7 @@ export default function RfidScanPage() {
                       setPrinterIP(e.target.value);
                       localStorage.setItem('rfid_printer_ip', e.target.value);
                     }}
-                    placeholder="10.0.1.12"
+                    placeholder="10.0.1.13"
                     className="flex-1 px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 font-mono"
                   />
                   <button
