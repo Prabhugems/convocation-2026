@@ -78,6 +78,8 @@ class RfidHttpServer(
 
     private fun handleStartInventory(): Response {
         if (rfidManager == null) return errorResponse("No RFID reader available")
+        // Always stop first to reset callback and hardware state
+        rfidManager.stopInventory()
         recentTags.clear()
         totalTagCount.set(0)
         rfidManager.onTagScanned = { epc, rssi ->
