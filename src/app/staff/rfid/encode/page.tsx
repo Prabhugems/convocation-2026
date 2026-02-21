@@ -416,17 +416,14 @@ export default function RfidEncodePage() {
                     type="text"
                     value={convocationNumber}
                     onChange={e => {
-                      setConvocationNumber(e.target.value);
+                      const val = e.target.value;
+                      setConvocationNumber(val);
                       setLookupName(null);
-                    }}
-                    onPaste={e => {
-                      const pasted = e.clipboardData.getData('text');
-                      if (/ti[._]to\/|ti_[a-z0-9]{10,}/i.test(pasted)) {
-                        e.preventDefault();
-                        const slug = extractTicketFromUrl(pasted);
+                      // Detect complete Tito URL (works for paste, autofill, drag-drop)
+                      if (/https?:\/\/.*ti[._]to\/.*ti_[a-zA-Z0-9]{10,}/i.test(val)) {
+                        const slug = extractTicketFromUrl(val);
                         if (slug && slug.length >= 10) {
                           setConvocationNumber('Looking up...');
-                          setLookupName(null);
                           setError(null);
                           setScanLoading(true);
                           fetch(`/api/tito/ticket/${slug}`)
@@ -446,8 +443,6 @@ export default function RfidEncodePage() {
                               setConvocationNumber('');
                             })
                             .finally(() => setScanLoading(false));
-                        } else {
-                          setConvocationNumber(pasted);
                         }
                       }
                     }}
