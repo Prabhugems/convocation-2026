@@ -47,6 +47,7 @@ class RfidHttpServer(
                 uri == "/api/write" && method == Method.POST -> handleWrite(session)
                 uri == "/api/power" && method == Method.GET -> handleGetPower()
                 uri == "/api/power" && method == Method.POST -> handleSetPower(session)
+                uri == "/api/barcode/result" && method == Method.GET -> handleGetBarcodeResult()
                 else -> corsResponse(
                     newFixedLengthResponse(Response.Status.NOT_FOUND, "application/json", """{"error":"Not found"}""")
                 )
@@ -138,6 +139,17 @@ class RfidHttpServer(
         val power = body?.get("power")?.asInt ?: return errorResponse("Missing power field")
         val success = rfidManager.setPower(power)
         return jsonResponse(mapOf("success" to success, "power" to rfidManager.getPower()))
+    }
+
+    /** Returns and clears the last scanned barcode value. */
+    private fun handleGetBarcodeResult(): Response {
+        val result = RfidBridgeService.lastBarcodeResult
+        RfidBridgeService.lastBarcodeResult = null
+        return if (result != null) {
+            jsonResponse(mapOf("value" to result.value, "timestamp" to result.timestamp))
+        } else {
+            jsonResponse(mapOf("value" to null))
+        }
     }
 
     // ---- Helpers ----

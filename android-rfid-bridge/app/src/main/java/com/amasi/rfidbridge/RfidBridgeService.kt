@@ -26,6 +26,8 @@ class RfidBridgeService : Service() {
         val power: Int = 0,
     )
 
+    data class BarcodeResult(val value: String, val timestamp: Long)
+
     companion object {
         private const val TAG = "RfidBridgeService"
         private const val CHANNEL_ID = "rfid_bridge_channel"
@@ -34,6 +36,9 @@ class RfidBridgeService : Service() {
         @Volatile
         var currentState = State()
             private set
+
+        @Volatile
+        var lastBarcodeResult: BarcodeResult? = null
     }
 
     private var rfidManager: RfidManager? = null

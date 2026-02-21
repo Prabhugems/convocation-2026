@@ -88,4 +88,13 @@
         android:paddingStart="32dp"
         android:paddingEnd="32dp" />
 
+    <Button
+        android:id="@+id/scanBarcodeButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Scan QR / Barcode"
+        android:layout_marginTop="16dp"
+        android:paddingStart="32dp"
+        android:paddingEnd="32dp" />
+
 </LinearLayout>

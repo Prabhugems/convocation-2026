@@ -9,6 +9,9 @@ import android.os.Looper
 import android.content.Intent
 import android.widget.Button
 import android.widget.TextView
+import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -17,6 +20,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val NOTIFICATION_PERMISSION_CODE = 100
+        private const val CAMERA_PERMISSION_CODE = 101
     }
 
     private lateinit var statusText: TextView
@@ -24,6 +28,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var powerText: TextView
     private lateinit var scanCountText: TextView
     private lateinit var toggleButton: Button
+    private lateinit var scanBarcodeButton: Button
+    private lateinit var barcodeScannerLauncher: ActivityResultLauncher<Intent>
 
     private var serviceRunning = false
     private val handler = Handler(Looper.getMainLooper())
@@ -53,6 +59,20 @@ class MainActivity : AppCompatActivity() {
         powerText = findViewById(R.id.powerText)
         scanCountText = findViewById(R.id.scanCountText)
         toggleButton = findViewById(R.id.toggleButton)
+        scanBarcodeButton = findViewById(R.id.scanBarcodeButton)
+
+        barcodeScannerLauncher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+            if (result.resultCode == RESULT_OK) {
+                val value = result.data?.getStringExtra(BarcodeScannerActivity.EXTRA_BARCODE)
+                if (!value.isNullOrEmpty()) {
+                    RfidBridgeService.lastBarcodeResult =
+                        RfidBridgeService.BarcodeResult(value, System.currentTimeMillis())
+                    Toast.makeText(this, "Scanned: $value", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
 
         toggleButton.setOnClickListener {
             if (serviceRunning) {
@@ -60,6 +80,10 @@ class MainActivity : AppCompatActivity() {
             } else {
                 startBridgeService()
             }
+        }
+
+        scanBarcodeButton.setOnClickListener {
+            launchBarcodeScanner()
         }
 
         // Request notification permission on Android 13+
@@ -103,5 +127,33 @@ class MainActivity : AppCompatActivity() {
         toggleButton.text = "Start Bridge"
         statusText.text = "Stopped"
         serverUrlText.text = ""
+    }
+
+    private fun launchBarcodeScanner() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+            == PackageManager.PERMISSION_GRANTED
+        ) {
+            barcodeScannerLauncher.launch(Intent(this, BarcodeScannerActivity::class.java))
+        } else {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.CAMERA),
+                CAMERA_PERMISSION_CODE,
+            )
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == CAMERA_PERMISSION_CODE &&
+            grantResults.isNotEmpty() &&
+            grantResults[0] == PackageManager.PERMISSION_GRANTED
+        ) {
+            barcodeScannerLauncher.launch(Intent(this, BarcodeScannerActivity::class.java))
+        }
     }
 }

@@ -40,6 +40,15 @@ dependencies {
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("androidx.localbroadcastmanager:localbroadcastmanager:1.1.0")
 
+    // ML Kit Barcode Scanning (bundled model — works offline)
+    implementation("com.google.mlkit:barcode-scanning:17.3.0")
+
+    // CameraX
+    implementation("androidx.camera:camera-core:1.4.0")
+    implementation("androidx.camera:camera-camera2:1.4.0")
+    implementation("androidx.camera:camera-lifecycle:1.4.0")
+    implementation("androidx.camera:camera-view:1.4.0")
+
     // Mivanta UHF SDK — place HCUHF_v1.1.0_20250620.aar in app/src/main/libs/
     implementation(fileTree(mapOf("dir" to "src/main/libs", "include" to listOf("*.aar"))))
 }
