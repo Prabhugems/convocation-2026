@@ -59,6 +59,7 @@ interface PrintLogEntry {
   status: 'printed' | 'skipped' | 'error';
   time: string;
   error?: string;
+  titoCheckin?: { success: boolean; error?: string };
 }
 
 // Station journey order for timeline display
@@ -285,6 +286,7 @@ export default function RfidScanPage() {
               name: data.graduateName || detail.graduateName,
               status: 'printed',
               time: new Date().toLocaleTimeString(),
+              titoCheckin: data.stationScan?.titoCheckin,
             }, ...prev]);
           } else if (data.reason === 'unregistered') {
             setPrintLog(prev => [{
@@ -352,6 +354,7 @@ export default function RfidScanPage() {
               name: data.graduateName,
               status: 'printed',
               time: new Date().toLocaleTimeString(),
+              titoCheckin: data.stationScan?.titoCheckin,
             }, ...prev]);
           } else if (data.reason === 'unregistered') {
             setPrintLog(prev => [{
@@ -638,7 +641,7 @@ export default function RfidScanPage() {
             .then(printData => {
               if (printData.printed) {
                 setPrintedEpcs(prev => new Set(prev).add(normalizedEpc));
-                setPrintLog(prev => [{ epc: normalizedEpc, name: printData.graduateName || result.tag?.graduateName, status: 'printed', time: new Date().toLocaleTimeString() }, ...prev]);
+                setPrintLog(prev => [{ epc: normalizedEpc, name: printData.graduateName || result.tag?.graduateName, status: 'printed', time: new Date().toLocaleTimeString(), titoCheckin: printData.stationScan?.titoCheckin }, ...prev]);
               } else {
                 setPrintLog(prev => [{ epc: normalizedEpc, status: printData.reason === 'unregistered' ? 'skipped' : 'error', error: printData.error, time: new Date().toLocaleTimeString() }, ...prev]);
               }
@@ -1077,6 +1080,7 @@ export default function RfidScanPage() {
                                   name: data.graduateName,
                                   status: 'printed',
                                   time: new Date().toLocaleTimeString(),
+                                  titoCheckin: data.stationScan?.titoCheckin,
                                 }, ...prev]);
                               } else if (data.reason === 'unregistered') {
                                 setPrintLog(prev => [{
@@ -1261,6 +1265,12 @@ export default function RfidScanPage() {
                         </span>
                         {entry.status === 'printed' && (
                           <span className="text-xs text-purple-400 shrink-0">Printed</span>
+                        )}
+                        {entry.status === 'printed' && entry.titoCheckin?.success && (
+                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 shrink-0">Tito ✓</span>
+                        )}
+                        {entry.status === 'printed' && entry.titoCheckin && !entry.titoCheckin.success && (
+                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 shrink-0" title={entry.titoCheckin.error}>Tito ✗</span>
                         )}
                         {entry.status === 'skipped' && (
                           <span className="text-xs text-slate-500 shrink-0">Skipped</span>
