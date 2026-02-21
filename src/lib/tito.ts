@@ -116,6 +116,42 @@ export async function getTicketBySlug(ticketSlug: string): Promise<ApiResponse<T
   return { success: false, error: response.error || 'Failed to fetch ticket' };
 }
 
+// Cache for convocation number → ticket lookup
+let ticketByConvCache: Map<string, TitoTicket> | null = null;
+let ticketByConvCacheTime: number = 0;
+
+// Look up a Tito ticket by convocation number (stored as tag_names[0])
+// Uses a cached map of all tickets for fast, reliable lookup
+export async function getTicketByConvocationNumber(convocationNumber: string): Promise<ApiResponse<TitoTicket | null>> {
+  const normalized = convocationNumber.toUpperCase().trim();
+  const now = Date.now();
+
+  // Build/refresh the cache
+  if (!ticketByConvCache || (now - ticketByConvCacheTime) > CACHE_DURATION) {
+    const ticketsResult = await getAllTickets();
+    if (!ticketsResult.success || !ticketsResult.data) {
+      // Return from stale cache if available
+      if (ticketByConvCache) {
+        const cached = ticketByConvCache.get(normalized) || null;
+        return { success: true, data: cached };
+      }
+      return { success: false, error: ticketsResult.error || 'Failed to fetch tickets' };
+    }
+
+    ticketByConvCache = new Map();
+    for (const ticket of ticketsResult.data) {
+      for (const tag of (ticket.tag_names || [])) {
+        ticketByConvCache.set(tag.toUpperCase().trim(), ticket);
+      }
+    }
+    ticketByConvCacheTime = now;
+    console.log(`[Tito] Cached ${ticketByConvCache.size} convocation→ticket mappings`);
+  }
+
+  const ticket = ticketByConvCache.get(normalized) || null;
+  return { success: true, data: ticket };
+}
+
 // Search tickets by query
 export async function searchTickets(query: string): Promise<ApiResponse<TitoTicket[]>> {
   const response = await titoFetch<{ tickets: TitoTicket[] }>(

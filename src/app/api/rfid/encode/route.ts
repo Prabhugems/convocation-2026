@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createRfidTag, getTagByEpc } from '@/lib/rfid';
-import { searchTickets } from '@/lib/tito';
+import { getTicketByConvocationNumber } from '@/lib/tito';
 import { getAirtableDataByConvocationNumber } from '@/lib/airtable';
 import {
   RfidTag,
@@ -79,18 +79,13 @@ export async function POST(request: NextRequest) {
         graduateName = airtableResult.data.name;
       }
 
-      // Look up Tito ticket by convocation number (stored as tag)
-      const titoResult = await searchTickets(convNum);
-      if (titoResult.success && titoResult.data && titoResult.data.length > 0) {
-        const matchingTicket = titoResult.data.find(
-          t => t.tag_names?.some(tag => tag.toUpperCase() === convNum)
-        );
-        if (matchingTicket) {
-          titoTicketId = matchingTicket.id;
-          titoTicketSlug = matchingTicket.slug;
-          if (!graduateName) {
-            graduateName = matchingTicket.name;
-          }
+      // Look up Tito ticket by convocation number (tag_names match via cached ticket map)
+      const titoResult = await getTicketByConvocationNumber(convNum);
+      if (titoResult.success && titoResult.data) {
+        titoTicketId = titoResult.data.id;
+        titoTicketSlug = titoResult.data.slug;
+        if (!graduateName) {
+          graduateName = titoResult.data.name;
         }
       }
 
