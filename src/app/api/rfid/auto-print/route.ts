@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getTagByEpc } from '@/lib/rfid';
+import { getTagByEpc, processRfidScan } from '@/lib/rfid';
+import { RfidStation } from '@/types/rfid';
 import { generatePackingLabel, sendToPrinter, DEFAULT_PRINTER_SETTINGS } from '@/lib/zpl';
 
 /**
@@ -11,7 +12,7 @@ import { generatePackingLabel, sendToPrinter, DEFAULT_PRINTER_SETTINGS } from '@
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { epc, printerIP, printerPort } = body;
+    const { epc, printerIP, printerPort, station, scannedBy } = body;
 
     if (!epc) {
       return NextResponse.json(
@@ -76,11 +77,34 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Auto-Print] Label printed for ${tag.convocationNumber}`);
 
+    // 5. Auto-scan at station + Tito check-in (if station provided)
+    let stationScan: { success: boolean; titoCheckin?: { success: boolean; error?: string } } | undefined;
+    if (station) {
+      const scanBy = scannedBy || 'Auto-Print';
+      const scanResult = await processRfidScan(
+        tag.epc,
+        station as RfidStation,
+        scanBy,
+        `Auto-print + scan at ${station}`
+      );
+      if (scanResult.success && scanResult.data) {
+        stationScan = {
+          success: true,
+          titoCheckin: scanResult.data.titoCheckin,
+        };
+        console.log(`[Auto-Print] Station scan at ${station} OK${scanResult.data.titoCheckin?.success ? ' + Tito check-in' : ''}`);
+      } else {
+        stationScan = { success: false };
+        console.error(`[Auto-Print] Station scan failed: ${scanResult.error}`);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       printed: true,
       graduateName: tag.graduateName,
       convocationNumber: tag.convocationNumber,
+      stationScan,
     });
   } catch (error) {
     console.error('[Auto-Print] Error:', error);

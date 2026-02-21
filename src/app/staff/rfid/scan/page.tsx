@@ -264,7 +264,7 @@ export default function RfidScanPage() {
       fetch('/api/rfid/auto-print', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ epc, printerIP }),
+        body: JSON.stringify({ epc, printerIP, station, scannedBy }),
       })
         .then(res => res.json())
         .then(data => {
@@ -331,7 +331,7 @@ export default function RfidScanPage() {
       fetch('/api/rfid/auto-print', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ epc: trimmed, printerIP }),
+        body: JSON.stringify({ epc: trimmed, printerIP, station, scannedBy }),
       })
         .then(res => res.json())
         .then(data => {
@@ -623,7 +623,7 @@ export default function RfidScanPage() {
           fetch('/api/rfid/auto-print', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ epc: normalizedEpc, printerIP }),
+            body: JSON.stringify({ epc: normalizedEpc, printerIP, station, scannedBy }),
           })
             .then(res => res.json())
             .then(printData => {
@@ -1014,7 +1014,7 @@ export default function RfidScanPage() {
                           fetch('/api/rfid/auto-print', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ epc: normalizedEpc, printerIP }),
+                            body: JSON.stringify({ epc: normalizedEpc, printerIP, station, scannedBy }),
                           })
                             .then(res => res.json())
                             .then(data => {
