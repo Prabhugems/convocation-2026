@@ -1180,8 +1180,8 @@ export default function RfidScanPage() {
               </div>
             )}
 
-            {/* Print Log */}
-            {printLog.length > 0 && (
+            {/* Print Log — only for desktop print stations */}
+            {isDesktopPrintStation && printLog.length > 0 && (
               <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-purple-500/20 p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
