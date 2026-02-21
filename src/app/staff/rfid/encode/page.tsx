@@ -290,8 +290,13 @@ export default function RfidEncodePage() {
         ...prev,
       ]);
 
+      const titoWarning = tag.type === 'graduate' && !tag.titoTicketSlug
+        ? ' ⚠️ No Tito ticket linked — check-in & QR code will not work!'
+        : tag.titoTicketSlug
+        ? ' 🎟️ Tito linked'
+        : '';
       setSuccessMessage(
-        `✅ Linked ${tag.epc.slice(0, 12)}... → ${tag.convocationNumber || tag.boxId || tag.epc}${tag.graduateName ? ` (${tag.graduateName})` : ''}`
+        `✅ Linked ${tag.epc.slice(0, 12)}... → ${tag.convocationNumber || tag.boxId || tag.epc}${tag.graduateName ? ` (${tag.graduateName})` : ''}${titoWarning}`
       );
 
       // Reset for next scan (keep encodedBy and convocation number cleared)
