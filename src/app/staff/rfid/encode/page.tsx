@@ -104,6 +104,49 @@ export default function RfidEncodePage() {
     }
   }, [successMessage]);
 
+  // Debounced Tito URL detection — waits for input to stabilize (barcode scanners type char by char)
+  const titoLookupRef = useRef(false);
+  useEffect(() => {
+    if (!convocationNumber || titoLookupRef.current) return;
+    const clean = convocationNumber.replace(/[^\x20-\x7E]/g, '');
+    if (!/ti[._]to/i.test(clean)) return;
+    const parts = clean.split('/');
+    const slugPart = parts.find(p => /^ti_/i.test(p));
+    const slug = slugPart?.replace(/[^a-zA-Z0-9_-]/g, '');
+    if (!slug || slug.length < 13) return;
+
+    const timer = setTimeout(() => {
+      console.log('[Encode] Tito URL debounced, slug:', slug, 'length:', slug.length);
+      titoLookupRef.current = true;
+      setConvocationNumber('Looking up...');
+      setError(null);
+      setScanLoading(true);
+      fetch(`/api/tito/ticket/${encodeURIComponent(slug)}`)
+        .then(res => res.json())
+        .then(data => {
+          console.log('[Encode] Tito API response:', data);
+          if (data.success && data.data?.convocationNumber) {
+            setConvocationNumber(data.data.convocationNumber.toUpperCase());
+            setLookupName(data.data.name || null);
+            setSuccessMessage(`Found: ${data.data.name || data.data.convocationNumber}`);
+          } else {
+            setError(`Ticket not found for: ${slug}`);
+            setConvocationNumber('');
+          }
+        })
+        .catch(() => {
+          setError('Failed to look up ticket');
+          setConvocationNumber('');
+        })
+        .finally(() => {
+          setScanLoading(false);
+          titoLookupRef.current = false;
+        });
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [convocationNumber]);
+
   // Handle QR scan result — looks up ticket to get convocation number
   const handleScan = useCallback(async (query: string, type: SearchInputType) => {
     setError(null);
@@ -416,35 +459,8 @@ export default function RfidEncodePage() {
                     type="text"
                     value={convocationNumber}
                     onChange={e => {
-                      const val = e.target.value;
-                      setConvocationNumber(val);
+                      setConvocationNumber(e.target.value);
                       setLookupName(null);
-                      // Detect complete Tito URL (works for paste, autofill, drag-drop)
-                      if (/https?:\/\/.*ti[._]to\/.*ti_[a-zA-Z0-9]{10,}/i.test(val)) {
-                        const slug = extractTicketFromUrl(val);
-                        if (slug && slug.length >= 10) {
-                          setConvocationNumber('Looking up...');
-                          setError(null);
-                          setScanLoading(true);
-                          fetch(`/api/tito/ticket/${slug}`)
-                            .then(res => res.json())
-                            .then(data => {
-                              if (data.success && data.data?.convocationNumber) {
-                                setConvocationNumber(data.data.convocationNumber.toUpperCase());
-                                setLookupName(data.data.name || null);
-                                setSuccessMessage(`Found: ${data.data.name || data.data.convocationNumber}`);
-                              } else {
-                                setError(`Ticket not found for: ${slug}`);
-                                setConvocationNumber('');
-                              }
-                            })
-                            .catch(() => {
-                              setError('Failed to look up ticket');
-                              setConvocationNumber('');
-                            })
-                            .finally(() => setScanLoading(false));
-                        }
-                      }
                     }}
                     onBlur={() => lookupConvocationNumber(convocationNumber)}
                     placeholder="Convocation no. or scan QR / paste Tito URL"
