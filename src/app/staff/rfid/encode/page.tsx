@@ -416,11 +416,39 @@ export default function RfidEncodePage() {
                     type="text"
                     value={convocationNumber}
                     onChange={e => {
-                      setConvocationNumber(e.target.value);
+                      const val = e.target.value;
+                      // Auto-detect Tito URL pasted into field
+                      if (val.includes('ti.to/') || val.includes('ti_')) {
+                        const slug = extractTicketFromUrl(val);
+                        if (slug) {
+                          setConvocationNumber('');
+                          setLookupName(null);
+                          setScanLoading(true);
+                          fetch(`/api/tito/ticket/${slug}`)
+                            .then(res => res.json())
+                            .then(data => {
+                              if (data.success && data.data?.convocationNumber) {
+                                setConvocationNumber(data.data.convocationNumber.toUpperCase());
+                                setLookupName(data.data.name || null);
+                                setSuccessMessage(`Found: ${data.data.name || data.data.convocationNumber}`);
+                              } else {
+                                setError('Could not find convocation number for this ticket');
+                                setConvocationNumber(val);
+                              }
+                            })
+                            .catch(() => {
+                              setError('Failed to look up ticket');
+                              setConvocationNumber(val);
+                            })
+                            .finally(() => setScanLoading(false));
+                          return;
+                        }
+                      }
+                      setConvocationNumber(val);
                       setLookupName(null);
                     }}
                     onBlur={() => lookupConvocationNumber(convocationNumber)}
-                    placeholder="e.g., 119AEC1001"
+                    placeholder="Convocation no. or scan QR / paste Tito URL"
                     className="flex-1 px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 uppercase font-mono"
                   />
                   <button
