@@ -416,12 +416,15 @@ export default function RfidEncodePage() {
                     type="text"
                     value={convocationNumber}
                     onChange={e => {
-                      const val = e.target.value;
-                      // Auto-detect Tito URL pasted into field (case-insensitive)
-                      if (/ti[._]to\/|ti_[a-z0-9]/i.test(val)) {
-                        // Extract slug preserving original case from URL
-                        const slug = extractTicketFromUrl(val);
-                        if (slug) {
+                      setConvocationNumber(e.target.value);
+                      setLookupName(null);
+                    }}
+                    onPaste={e => {
+                      const pasted = e.clipboardData.getData('text');
+                      if (/ti[._]to\/|ti_[a-z0-9]{10,}/i.test(pasted)) {
+                        e.preventDefault();
+                        const slug = extractTicketFromUrl(pasted);
+                        if (slug && slug.length >= 10) {
                           setConvocationNumber('Looking up...');
                           setLookupName(null);
                           setError(null);
@@ -434,7 +437,7 @@ export default function RfidEncodePage() {
                                 setLookupName(data.data.name || null);
                                 setSuccessMessage(`Found: ${data.data.name || data.data.convocationNumber}`);
                               } else {
-                                setError(`Ticket not found. Slug: ${slug}`);
+                                setError(`Ticket not found for: ${slug}`);
                                 setConvocationNumber('');
                               }
                             })
@@ -443,11 +446,10 @@ export default function RfidEncodePage() {
                               setConvocationNumber('');
                             })
                             .finally(() => setScanLoading(false));
-                          return;
+                        } else {
+                          setConvocationNumber(pasted);
                         }
                       }
-                      setConvocationNumber(val);
-                      setLookupName(null);
                     }}
                     onBlur={() => lookupConvocationNumber(convocationNumber)}
                     placeholder="Convocation no. or scan QR / paste Tito URL"
