@@ -24,6 +24,8 @@ import {
   WifiOff,
   Play,
   Square,
+  Printer,
+  Settings,
 } from 'lucide-react';
 
 type RfidStation =
@@ -45,6 +47,14 @@ interface ScanResult {
   type?: string;
   error?: string;
   titoCheckin?: { success: boolean; error?: string };
+}
+
+interface PrintLogEntry {
+  epc: string;
+  name?: string;
+  status: 'printed' | 'skipped' | 'error';
+  time: string;
+  error?: string;
 }
 
 const STATION_OPTIONS: { id: RfidStation; label: string; icon: string }[] = [
@@ -91,6 +101,25 @@ export default function RfidScanPage() {
   const [isScanning, setIsScanning] = useState(false);
   const [scannedCount, setScannedCount] = useState(0);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Auto-print state
+  const [autoPrintEnabled, setAutoPrintEnabled] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('rfid_auto_print') === 'true';
+    }
+    return false;
+  });
+  const [printerIP, setPrinterIP] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('rfid_printer_ip') || '10.0.1.12';
+    }
+    return '10.0.1.12';
+  });
+  const [showPrinterSettings, setShowPrinterSettings] = useState(false);
+  const [printedEpcs, setPrintedEpcs] = useState<Set<string>>(new Set());
+  const [printLog, setPrintLog] = useState<PrintLogEntry[]>([]);
+  const [testingPrinter, setTestingPrinter] = useState(false);
+  const printingRef = useRef<Set<string>>(new Set()); // tracks in-flight print requests
 
   // Check RFID reader bridge connection
   const checkReaderStatus = useCallback(async () => {
@@ -149,6 +178,63 @@ export default function RfidScanPage() {
     return () => controller.abort();
   }, [pendingEpcs]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Auto-print: trigger print when tag details arrive for found tags
+  useEffect(() => {
+    if (!autoPrintEnabled) return;
+
+    for (const epc of pendingEpcs) {
+      const detail = pendingTagDetails[epc];
+      if (!detail || !detail.found) continue;
+      if (printedEpcs.has(epc)) continue;
+      if (printingRef.current.has(epc)) continue;
+
+      // Mark as in-flight to prevent duplicate calls
+      printingRef.current.add(epc);
+
+      fetch('/api/rfid/auto-print', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ epc, printerIP }),
+      })
+        .then(res => res.json())
+        .then(data => {
+          printingRef.current.delete(epc);
+          if (data.printed) {
+            setPrintedEpcs(prev => new Set(prev).add(epc));
+            setPrintLog(prev => [{
+              epc,
+              name: data.graduateName || detail.graduateName,
+              status: 'printed',
+              time: new Date().toLocaleTimeString(),
+            }, ...prev]);
+          } else if (data.reason === 'unregistered') {
+            setPrintLog(prev => [{
+              epc,
+              status: 'skipped',
+              time: new Date().toLocaleTimeString(),
+            }, ...prev]);
+          } else {
+            setPrintLog(prev => [{
+              epc,
+              name: data.graduateName || detail.graduateName,
+              status: 'error',
+              error: data.error || 'Print failed',
+              time: new Date().toLocaleTimeString(),
+            }, ...prev]);
+          }
+        })
+        .catch(err => {
+          printingRef.current.delete(epc);
+          setPrintLog(prev => [{
+            epc,
+            status: 'error',
+            error: err instanceof Error ? err.message : 'Network error',
+            time: new Date().toLocaleTimeString(),
+          }, ...prev]);
+        });
+    }
+  }, [pendingEpcs, pendingTagDetails, autoPrintEnabled, printerIP, printedEpcs]);
+
   // Cleanup polling on unmount
   useEffect(() => {
     return () => {
@@ -158,6 +244,24 @@ export default function RfidScanPage() {
       }
     };
   }, []);
+
+  // Test printer connection
+  const handleTestPrint = async () => {
+    setTestingPrinter(true);
+    try {
+      const res = await fetch(`/api/print/zpl?ip=${encodeURIComponent(printerIP)}&port=9100`);
+      const data = await res.json();
+      if (data.success) {
+        setPrintLog(prev => [{ epc: 'TEST', status: 'printed', time: new Date().toLocaleTimeString(), name: 'Test Print OK' }, ...prev]);
+      } else {
+        setPrintLog(prev => [{ epc: 'TEST', status: 'error', time: new Date().toLocaleTimeString(), error: data.error || 'Connection failed' }, ...prev]);
+      }
+    } catch (err) {
+      setPrintLog(prev => [{ epc: 'TEST', status: 'error', time: new Date().toLocaleTimeString(), error: err instanceof Error ? err.message : 'Network error' }, ...prev]);
+    } finally {
+      setTestingPrinter(false);
+    }
+  };
 
   // Start hardware scan
   const handleStartScan = async () => {
@@ -473,34 +577,78 @@ export default function RfidScanPage() {
               </div>
             )}
             {readerStatus === 'connected' && (
-              <div className="flex items-center justify-between px-4 py-3 bg-emerald-500/10 backdrop-blur-sm rounded-xl border border-emerald-500/30">
-                <div className="flex items-center gap-3">
-                  <Wifi className="w-5 h-5 text-emerald-400" />
-                  <span className="text-sm font-medium text-emerald-300">RFID Reader Connected</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  {isScanning && (
-                    <span className="text-xs text-emerald-400 font-mono">{scannedCount} reads</span>
-                  )}
-                  {isScanning ? (
+              <div className="bg-emerald-500/10 backdrop-blur-sm rounded-xl border border-emerald-500/30">
+                <div className="flex items-center justify-between px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <Wifi className="w-5 h-5 text-emerald-400" />
+                    <span className="text-sm font-medium text-emerald-300">RFID Reader Connected</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {isScanning && (
+                      <span className="text-xs text-emerald-400 font-mono">{scannedCount} reads</span>
+                    )}
+                    {/* Auto-Print Toggle */}
                     <button
-                      onClick={handleStopScan}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded-lg text-sm transition-colors"
+                      onClick={() => {
+                        const next = !autoPrintEnabled;
+                        setAutoPrintEnabled(next);
+                        localStorage.setItem('rfid_auto_print', String(next));
+                      }}
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        autoPrintEnabled
+                          ? 'bg-purple-600/80 text-purple-100'
+                          : 'bg-slate-700/80 text-slate-400 hover:bg-slate-600/80'
+                      }`}
+                      title="Auto-print packing labels on tag detect"
                     >
-                      <Square className="w-3.5 h-3.5" />
-                      Stop Scan
+                      <Printer className="w-3.5 h-3.5" />
+                      Auto-Print
                     </button>
-                  ) : (
                     <button
-                      onClick={handleStartScan}
-                      disabled={!scannedBy.trim()}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 disabled:text-slate-500 rounded-lg text-sm transition-colors"
+                      onClick={() => setShowPrinterSettings(prev => !prev)}
+                      className="p-1.5 rounded-lg bg-slate-700/50 hover:bg-slate-600/50 text-slate-400 transition-colors"
+                      title="Printer settings"
                     >
-                      <Play className="w-3.5 h-3.5" />
-                      Start Scan
+                      <Settings className="w-3.5 h-3.5" />
                     </button>
-                  )}
+                    {isScanning ? (
+                      <button
+                        onClick={handleStopScan}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded-lg text-sm transition-colors"
+                      >
+                        <Square className="w-3.5 h-3.5" />
+                        Stop Scan
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleStartScan}
+                        disabled={!scannedBy.trim()}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 disabled:text-slate-500 rounded-lg text-sm transition-colors"
+                      >
+                        <Play className="w-3.5 h-3.5" />
+                        Start Scan
+                      </button>
+                    )}
+                  </div>
                 </div>
+                {/* Auto-print stats bar */}
+                {autoPrintEnabled && printLog.length > 0 && (
+                  <div className="flex items-center gap-3 px-4 py-2 border-t border-emerald-500/20 text-xs">
+                    <Printer className="w-3.5 h-3.5 text-purple-400" />
+                    <span className="text-purple-300 font-medium">
+                      {printLog.filter(l => l.status === 'printed').length} printed
+                    </span>
+                    <span className="text-slate-500">/</span>
+                    <span className="text-slate-400">
+                      {pendingEpcs.length} scanned
+                    </span>
+                    {printLog.some(l => l.status === 'error') && (
+                      <span className="text-red-400">
+                        {printLog.filter(l => l.status === 'error').length} errors
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             )}
             {readerStatus === 'disconnected' && (
@@ -555,6 +703,44 @@ export default function RfidScanPage() {
                 </div>
                 <p className="text-xs text-slate-500">
                   USB: http://localhost:8080 &nbsp;|&nbsp; WiFi: http://&lt;phone-ip&gt;:8080
+                </p>
+              </div>
+            )}
+
+            {/* Printer Settings Panel */}
+            {showPrinterSettings && (
+              <div className="px-4 py-3 bg-slate-800/80 backdrop-blur-sm rounded-xl border border-purple-500/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-purple-300">Printer Settings</span>
+                  <button
+                    onClick={() => setShowPrinterSettings(false)}
+                    className="text-xs text-slate-400 hover:text-white"
+                  >
+                    Close
+                  </button>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={printerIP}
+                    onChange={e => {
+                      setPrinterIP(e.target.value);
+                      localStorage.setItem('rfid_printer_ip', e.target.value);
+                    }}
+                    placeholder="10.0.1.12"
+                    className="flex-1 px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 font-mono"
+                  />
+                  <button
+                    onClick={handleTestPrint}
+                    disabled={testingPrinter || !printerIP.trim()}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-700 disabled:text-slate-500 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+                  >
+                    {testingPrinter ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Printer className="w-3.5 h-3.5" />}
+                    Test Print
+                  </button>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Honeywell PC42t IP address (port 9100) &nbsp;|&nbsp; Labels print automatically when tags are detected
                 </p>
               </div>
             )}
@@ -678,6 +864,61 @@ export default function RfidScanPage() {
               <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg flex items-start gap-2">
                 <XCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
                 <p className="text-sm text-red-300">{error}</p>
+              </div>
+            )}
+
+            {/* Print Log */}
+            {printLog.length > 0 && (
+              <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-purple-500/20 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                    <Printer className="w-4 h-4 text-purple-400" />
+                    Print Log
+                  </h3>
+                  <button
+                    onClick={() => setPrintLog([])}
+                    className="text-xs text-slate-500 hover:text-slate-300"
+                  >
+                    Clear
+                  </button>
+                </div>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                  {printLog.map((entry, i) => (
+                    <div
+                      key={i}
+                      className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm ${
+                        entry.status === 'printed'
+                          ? 'bg-purple-500/10 border border-purple-500/20'
+                          : entry.status === 'error'
+                          ? 'bg-red-500/10 border border-red-500/20'
+                          : 'bg-slate-900/30 border border-slate-700/20'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        {entry.status === 'printed' ? (
+                          <CheckCircle className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                        ) : entry.status === 'error' ? (
+                          <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                        ) : (
+                          <AlertTriangle className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                        )}
+                        <span className="truncate">
+                          {entry.name || entry.epc}
+                        </span>
+                        {entry.status === 'printed' && (
+                          <span className="text-xs text-purple-400 shrink-0">Printed</span>
+                        )}
+                        {entry.status === 'skipped' && (
+                          <span className="text-xs text-slate-500 shrink-0">Skipped</span>
+                        )}
+                        {entry.status === 'error' && (
+                          <span className="text-xs text-red-400 shrink-0 truncate">{entry.error}</span>
+                        )}
+                      </div>
+                      <span className="text-xs text-slate-600 shrink-0 ml-2">{entry.time}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 

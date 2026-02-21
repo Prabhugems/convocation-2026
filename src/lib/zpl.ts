@@ -2,7 +2,7 @@
  * ZPL (Zebra Programming Language) Template Generator
  * For Zebra ZD230 Thermal Printer
  *
- * Packing Label: 75mm × 50mm (609 x 406 dots at 203 DPI)
+ * Packing Label: 55mm × 65mm (440 x 520 dots at 203 DPI)
  * Badge Label: 100mm × 153mm (803 x 1229 dots at 203 DPI)
  *
  * FIXED: Added label dimensions and media type to prevent over-feeding
@@ -27,13 +27,13 @@ export interface ZPLLabelData {
  * ^MD - Media Darkness (-30 to 30, higher = darker)
  */
 const ZPL_PACKING_INIT = `
-^PW609
-^LL406
+^PW440
+^LL520
 ^MNY
 ^POI
 ^LH10,10
 ^MD10
-`.trim();  // 75mm×50mm, gap sensing, inverted, with offset and darkness
+`.trim();  // 55mm×65mm, gap sensing, inverted, with offset and darkness
 
 const ZPL_BADGE_INIT = `
 ^PW803
@@ -44,9 +44,9 @@ const ZPL_BADGE_INIT = `
 `.trim();  // 100mm×153mm, gap sensing, with offset and darkness
 
 /**
- * Generate ZPL code for 75mm × 50mm packing label
+ * Generate ZPL code for 55mm × 65mm packing label
  *
- * Layout:
+ * Layout (440 × 520 dots at 203 DPI):
  * - Left side: CON. No- label, convocation number (bold), Dr. Name
  * - Right side: QR code with ticket URL
  *
@@ -55,14 +55,14 @@ const ZPL_BADGE_INIT = `
 export function generatePackingLabel(data: ZPLLabelData): string {
   // Sanitize inputs to prevent ZPL injection
   const convNum = sanitizeZPL(data.convocationNumber || 'N/A');
-  // Truncate long names to fit on label (max 22 chars for packing label)
-  const name = truncateForLabel(sanitizeZPL(data.name || 'Unknown'), 22);
+  // Truncate long names to fit on label (max 18 chars for 55mm packing label)
+  const name = truncateForLabel(sanitizeZPL(data.name || 'Unknown'), 18);
   const ticketUrl = sanitizeZPL(data.ticketUrl || '');
 
   // ZPL commands:
   // ^XA - Start label format
-  // ^PW609 - Print Width 609 dots (75mm at 203 DPI)
-  // ^LL406 - Label Length 406 dots (50mm at 203 DPI)
+  // ^PW440 - Print Width 440 dots (55mm at 203 DPI)
+  // ^LL520 - Label Length 520 dots (65mm at 203 DPI)
   // ^MNY - Media type: Gap/notch sensing
   // ^POI - Print Orientation Inverted (fixes upside down)
   // ^CF0,size - Change font (font 0, height in dots)
@@ -74,13 +74,13 @@ export function generatePackingLabel(data: ZPLLabelData): string {
   return `^XA
 ^CI28
 ${ZPL_PACKING_INIT}
-^CF0,25
-^FO30,25^FDCON. No-^FS
-^CF0,45
-^FO30,55^FD${convNum}^FS
-^CF0,30
-^FO30,115^FDDr. ${name}^FS
-^FO320,15^BQN,2,5^FDQA,${ticketUrl}^FS
+^CF0,22
+^FO25,25^FDCON. No-^FS
+^CF0,40
+^FO25,55^FD${convNum}^FS
+^CF0,26
+^FO25,110^FDDr. ${name}^FS
+^FO260,15^BQN,2,4^FDQA,${ticketUrl}^FS
 ^XZ`;
 }
 
