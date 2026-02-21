@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicLong
  * on the same device or local network.
  */
 class RfidHttpServer(
-    private val rfidManager: RfidManager,
+    private val rfidManager: RfidManager?,
     port: Int = 8080,
 ) : NanoHTTPD(port) {
 
@@ -68,15 +68,16 @@ class RfidHttpServer(
 
     private fun handleStatus(): Response {
         val body = mapOf(
-            "connected" to rfidManager.isConnected(),
-            "scanning" to rfidManager.isScanning(),
-            "power" to rfidManager.getPower(),
-            "model" to rfidManager.getModel(),
+            "connected" to (rfidManager?.isConnected() ?: false),
+            "scanning" to (rfidManager?.isScanning() ?: false),
+            "power" to (rfidManager?.getPower() ?: 0),
+            "model" to (rfidManager?.getModel() ?: "No reader"),
         )
         return jsonResponse(body)
     }
 
     private fun handleStartInventory(): Response {
+        if (rfidManager == null) return errorResponse("No RFID reader available")
         recentTags.clear()
         totalTagCount.set(0)
         rfidManager.onTagScanned = { epc, rssi ->
@@ -91,8 +92,8 @@ class RfidHttpServer(
     }
 
     private fun handleStopInventory(): Response {
-        rfidManager.onTagScanned = null
-        val success = rfidManager.stopInventory()
+        rfidManager?.onTagScanned = null
+        val success = rfidManager?.stopInventory() ?: true
         return jsonResponse(mapOf("success" to success))
     }
 
@@ -107,6 +108,7 @@ class RfidHttpServer(
     }
 
     private fun handleRead(session: IHTTPSession): Response {
+        if (rfidManager == null) return errorResponse("No RFID reader available")
         val body = parseBody(session)
         val epc = body?.get("epc")?.asString ?: return errorResponse("Missing epc field")
         val bank = body.get("bank")?.asInt ?: 1
@@ -122,6 +124,7 @@ class RfidHttpServer(
     }
 
     private fun handleWrite(session: IHTTPSession): Response {
+        if (rfidManager == null) return errorResponse("No RFID reader available")
         val body = parseBody(session)
         val epc = body?.get("epc")?.asString ?: return errorResponse("Missing epc field")
         val data = body.get("data")?.asString ?: return errorResponse("Missing data field")
@@ -131,10 +134,12 @@ class RfidHttpServer(
     }
 
     private fun handleGetPower(): Response {
+        if (rfidManager == null) return errorResponse("No RFID reader available")
         return jsonResponse(mapOf("power" to rfidManager.getPower()))
     }
 
     private fun handleSetPower(session: IHTTPSession): Response {
+        if (rfidManager == null) return errorResponse("No RFID reader available")
         val body = parseBody(session)
         val power = body?.get("power")?.asInt ?: return errorResponse("Missing power field")
         val success = rfidManager.setPower(power)

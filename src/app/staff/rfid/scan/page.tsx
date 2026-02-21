@@ -60,7 +60,17 @@ const STATION_OPTIONS: { id: RfidStation; label: string; icon: string }[] = [
   { id: 'handover', label: 'Handover', icon: '🤝' },
 ];
 
+function getBridgeUrl(): string {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('rfid_bridge_url') || 'http://localhost:8080';
+  }
+  return 'http://localhost:8080';
+}
+
 export default function RfidScanPage() {
+  const [bridgeUrl, setBridgeUrl] = useState(getBridgeUrl);
+  const [showBridgeSettings, setShowBridgeSettings] = useState(false);
+  const [bridgeInput, setBridgeInput] = useState('');
   const [station, setStation] = useState<RfidStation>('registration');
   const [scannedBy, setScannedBy] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -86,7 +96,7 @@ export default function RfidScanPage() {
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 3000);
-      const res = await fetch('http://localhost:8080/api/status', { signal: controller.signal });
+      const res = await fetch(`${bridgeUrl}/api/status`, { signal: controller.signal });
       clearTimeout(timeout);
       if (res.ok) {
         const data = await res.json();
@@ -97,7 +107,7 @@ export default function RfidScanPage() {
     } catch {
       setReaderStatus('disconnected');
     }
-  }, []);
+  }, [bridgeUrl]);
 
   // Poll reader status every 10s
   useEffect(() => {
@@ -123,7 +133,7 @@ export default function RfidScanPage() {
       return;
     }
     try {
-      const res = await fetch('http://localhost:8080/api/inventory/start', { method: 'POST' });
+      const res = await fetch(`${bridgeUrl}/api/inventory/start`, { method: 'POST' });
       if (!res.ok) throw new Error('Failed to start scan');
       setIsScanning(true);
       setScannedCount(0);
@@ -132,7 +142,7 @@ export default function RfidScanPage() {
       // Poll for new tags every 500ms
       pollIntervalRef.current = setInterval(async () => {
         try {
-          const tagRes = await fetch('http://localhost:8080/api/inventory/tags');
+          const tagRes = await fetch(`${bridgeUrl}/api/inventory/tags`);
           if (!tagRes.ok) return;
           const { tags } = await tagRes.json() as { tags: { epc: string; rssi: number }[] };
           if (tags && tags.length > 0) {
@@ -164,7 +174,7 @@ export default function RfidScanPage() {
     }
     setIsScanning(false);
     try {
-      await fetch('http://localhost:8080/api/inventory/stop', { method: 'POST' });
+      await fetch(`${bridgeUrl}/api/inventory/stop`, { method: 'POST' });
     } catch {
       // reader may already be stopped
     }
@@ -430,9 +440,58 @@ export default function RfidScanPage() {
               </div>
             )}
             {readerStatus === 'disconnected' && (
-              <div className="flex items-center gap-3 px-4 py-3 bg-amber-500/10 backdrop-blur-sm rounded-xl border border-amber-500/30">
-                <WifiOff className="w-5 h-5 text-amber-400" />
-                <span className="text-sm text-amber-300">No RFID Reader — Manual Entry Mode</span>
+              <div className="flex items-center justify-between px-4 py-3 bg-amber-500/10 backdrop-blur-sm rounded-xl border border-amber-500/30">
+                <div className="flex items-center gap-3">
+                  <WifiOff className="w-5 h-5 text-amber-400" />
+                  <span className="text-sm text-amber-300">No RFID Reader — Manual Entry Mode</span>
+                </div>
+                <button
+                  onClick={() => { setBridgeInput(bridgeUrl); setShowBridgeSettings(true); }}
+                  className="text-xs px-2.5 py-1 bg-amber-600/30 hover:bg-amber-600/50 rounded-lg text-amber-300 transition-colors"
+                >
+                  Set Bridge IP
+                </button>
+              </div>
+            )}
+
+            {/* Bridge URL Settings Modal */}
+            {showBridgeSettings && (
+              <div className="px-4 py-3 bg-slate-800/80 backdrop-blur-sm rounded-xl border border-cyan-500/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-cyan-300">RFID Bridge URL</span>
+                  <button
+                    onClick={() => setShowBridgeSettings(false)}
+                    className="text-xs text-slate-400 hover:text-white"
+                  >
+                    Close
+                  </button>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={bridgeInput}
+                    onChange={e => setBridgeInput(e.target.value)}
+                    placeholder="http://192.168.1.100:8080"
+                    className="flex-1 px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                  />
+                  <button
+                    onClick={() => {
+                      const url = bridgeInput.trim().replace(/\/$/, '');
+                      if (url) {
+                        setBridgeUrl(url);
+                        localStorage.setItem('rfid_bridge_url', url);
+                        setShowBridgeSettings(false);
+                        setReaderStatus('checking');
+                      }
+                    }}
+                    className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Connect
+                  </button>
+                </div>
+                <p className="text-xs text-slate-500">
+                  USB: http://localhost:8080 &nbsp;|&nbsp; WiFi: http://&lt;phone-ip&gt;:8080
+                </p>
               </div>
             )}
 

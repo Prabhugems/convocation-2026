@@ -104,14 +104,20 @@ class RfidBridgeService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForeground(NOTIFICATION_ID, buildNotification("Starting..."))
 
-        // Initialize RFID manager
-        val manager = RfidManager()
+        // Initialize RFID manager — don't crash if hardware is unavailable
+        var connected = false
+        val manager = try {
+            val m = RfidManager()
+            connected = m.connect()
+            Log.i(TAG, "RFID reader connected: $connected")
+            m
+        } catch (e: Exception) {
+            Log.e(TAG, "RFID hardware init failed — running without reader", e)
+            null
+        }
         rfidManager = manager
 
-        val connected = manager.connect()
-        Log.i(TAG, "RFID reader connected: $connected")
-
-        // Start HTTP server
+        // Start HTTP server (works even without RFID hardware)
         val server = RfidHttpServer(manager)
         httpServer = server
 
@@ -126,17 +132,32 @@ class RfidBridgeService : Service() {
             }
         }
 
+        var serverStarted = false
         try {
             server.start()
+            serverStarted = true
             Log.i(TAG, "HTTP server started on port 8080")
+        } catch (e: java.net.BindException) {
+            // Port 8080 is stuck from a previous session — retry after a brief wait
+            Log.w(TAG, "Port 8080 in use, retrying in 2s...", e)
+            try {
+                Thread.sleep(2000)
+                server.start()
+                serverStarted = true
+                Log.i(TAG, "HTTP server started on port 8080 (retry)")
+            } catch (e2: Exception) {
+                Log.e(TAG, "Failed to start HTTP server on retry", e2)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start HTTP server", e)
         }
 
         // Update notification and state
-        val statusText = if (connected) "Reader connected — :8080 ready" else "Reader not connected — :8080 ready"
+        val statusText = if (!serverStarted) "Server failed — restart app"
+            else if (connected) "Reader connected — :8080 ready"
+            else "Reader not connected — :8080 ready"
         updateNotification(statusText)
-        currentState = State(connected = connected, scanning = false, tagCount = 0, power = manager.getPower())
+        currentState = State(connected = connected, scanning = false, tagCount = 0, power = manager?.getPower() ?: 0)
 
         return START_STICKY
     }

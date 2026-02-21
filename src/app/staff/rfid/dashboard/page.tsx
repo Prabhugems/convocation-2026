@@ -258,7 +258,8 @@ export default function RfidDashboardPage() {
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 3000);
-        await fetch('http://localhost:8080/api/status', { signal: controller.signal });
+        const dashBridgeUrl = (typeof window !== 'undefined' && localStorage.getItem('rfid_bridge_url')) || 'http://localhost:8080';
+        await fetch(`${dashBridgeUrl}/api/status`, { signal: controller.signal });
         clearTimeout(timeout);
         setBridgeConnected(true);
       } catch {
