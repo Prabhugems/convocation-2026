@@ -114,7 +114,7 @@ class MainActivity : AppCompatActivity() {
         }
         for (barcode in barcodes) {
             val row = layoutInflater.inflate(R.layout.item_barcode_history, scanHistoryContainer, false)
-            row.findViewById<TextView>(R.id.historyBarcodeText).text = barcode.value
+            row.findViewById<TextView>(R.id.historyBarcodeText).text = barcode.displayValue
             row.findViewById<TextView>(R.id.historyTimeText).text = formatRelativeTime(barcode.timestamp)
             scanHistoryContainer.addView(row)
         }
@@ -152,7 +152,7 @@ class MainActivity : AppCompatActivity() {
             val barcode = RfidBridgeService.lastBarcodeResult
             if (barcode != null) {
                 lastBarcodeContainer.visibility = View.VISIBLE
-                lastBarcodeText.text = barcode.value
+                lastBarcodeText.text = barcode.displayValue
             }
 
             // Update scan history timestamps
@@ -192,8 +192,8 @@ class MainActivity : AppCompatActivity() {
                     RfidBridgeService.lastBarcodeResult = barcodeResult
                     RfidBridgeService.addRecentBarcode(barcodeResult)
                     lastBarcodeContainer.visibility = View.VISIBLE
-                    lastBarcodeText.text = value
-                    Toast.makeText(this, "Scanned: $value", Toast.LENGTH_LONG).show()
+                    lastBarcodeText.text = barcodeResult.displayValue
+                    Toast.makeText(this, "Scanned: ${barcodeResult.displayValue}", Toast.LENGTH_LONG).show()
                 }
             }
         }

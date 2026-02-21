@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -26,7 +27,22 @@ class RfidBridgeService : Service() {
         val power: Int = 0,
     )
 
-    data class BarcodeResult(val value: String, val timestamp: Long)
+    data class BarcodeResult(val value: String, val timestamp: Long) {
+        /** Extract convocation number from QR URL (?q=118AEC1001) or raw EPC value */
+        val displayValue: String
+            get() {
+                // Try to extract ?q= param from URL (e.g. https://domain.com/track?q=118AEC1001)
+                try {
+                    if (value.startsWith("http://") || value.startsWith("https://")) {
+                        val uri = Uri.parse(value)
+                        val q = uri.getQueryParameter("q")
+                        if (!q.isNullOrEmpty()) return q.uppercase()
+                    }
+                } catch (_: Exception) {}
+                // Already a convocation number or raw EPC
+                return value
+            }
+    }
 
     companion object {
         private const val TAG = "RfidBridgeService"
