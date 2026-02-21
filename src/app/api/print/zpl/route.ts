@@ -1,6 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generatePackingLabel, generateBadgeLabel, generateCalibrationCommand, generateClearQueueCommand, sendToPrinter, DEFAULT_PRINTER_SETTINGS } from '@/lib/zpl';
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
+function jsonResponse(data: unknown, status = 200) {
+  return NextResponse.json(data, { status, headers: corsHeaders });
+}
+
+// CORS preflight — needed when live site calls localhost:3001
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
 interface PrintRequest {
   type: 'packing' | 'badge';
   convocationNumber: string;
@@ -32,9 +47,9 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!convocationNumber || !name) {
-      return NextResponse.json(
+      return jsonResponse(
         { success: false, error: 'Missing required fields: convocationNumber, name' },
-        { status: 400 }
+        400
       );
     }
 
@@ -64,22 +79,22 @@ export async function POST(request: NextRequest) {
 
     if (result.success) {
       console.log(`[Print API] Label printed successfully for ${convocationNumber}`);
-      return NextResponse.json({
+      return jsonResponse({
         success: true,
         message: `Label printed for ${convocationNumber}`,
       });
     } else {
       console.error(`[Print API] Print failed: ${result.error}`);
-      return NextResponse.json(
+      return jsonResponse(
         { success: false, error: result.error },
-        { status: 500 }
+        500
       );
     }
   } catch (error) {
     console.error('[Print API] Error:', error);
-    return NextResponse.json(
+    return jsonResponse(
       { success: false, error: 'Failed to print label' },
-      { status: 500 }
+      500
     );
   }
 }
@@ -108,19 +123,19 @@ export async function GET(request: NextRequest) {
     const result = await sendToPrinter(calibrationZpl, printerIP, printerPort);
 
     if (result.success) {
-      return NextResponse.json({
+      return jsonResponse({
         success: true,
         message: 'Printer calibration command sent successfully. The printer will now calibrate its sensors.',
         printer: { ip: printerIP, port: printerPort },
       });
     } else {
-      return NextResponse.json(
+      return jsonResponse(
         {
           success: false,
           error: result.error,
           printer: { ip: printerIP, port: printerPort },
         },
-        { status: 500 }
+        500
       );
     }
   }
@@ -133,19 +148,19 @@ export async function GET(request: NextRequest) {
     const result = await sendToPrinter(clearZpl, printerIP, printerPort);
 
     if (result.success) {
-      return NextResponse.json({
+      return jsonResponse({
         success: true,
         message: 'Print queue cleared successfully.',
         printer: { ip: printerIP, port: printerPort },
       });
     } else {
-      return NextResponse.json(
+      return jsonResponse(
         {
           success: false,
           error: result.error,
           printer: { ip: printerIP, port: printerPort },
         },
-        { status: 500 }
+        500
       );
     }
   }
@@ -173,19 +188,19 @@ export async function GET(request: NextRequest) {
   const result = await sendToPrinter(testZpl, printerIP, printerPort);
 
   if (result.success) {
-    return NextResponse.json({
+    return jsonResponse({
       success: true,
       message: 'Test label printed successfully',
       printer: { ip: printerIP, port: printerPort },
     });
   } else {
-    return NextResponse.json(
+    return jsonResponse(
       {
         success: false,
         error: result.error,
         printer: { ip: printerIP, port: printerPort },
       },
-      { status: 500 }
+      500
     );
   }
 }

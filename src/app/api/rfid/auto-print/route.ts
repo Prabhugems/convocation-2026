@@ -3,6 +3,21 @@ import { getTagByEpc, processRfidScan } from '@/lib/rfid';
 import { RfidStation, isWd01Format, convertWd01ToUhfEpc } from '@/types/rfid';
 import { generatePackingLabel, sendToPrinter, DEFAULT_PRINTER_SETTINGS } from '@/lib/zpl';
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
+function jsonResponse(data: unknown, status = 200) {
+  return NextResponse.json(data, { status, headers: corsHeaders });
+}
+
+// CORS preflight — needed when live site calls localhost:3001
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
 /**
  * POST /api/rfid/auto-print
  *
@@ -15,9 +30,9 @@ export async function POST(request: NextRequest) {
     const { epc, printerIP, printerPort, station, scannedBy } = body;
 
     if (!epc) {
-      return NextResponse.json(
+      return jsonResponse(
         { success: false, error: 'EPC is required' },
-        { status: 400 }
+        400
       );
     }
 
@@ -37,15 +52,15 @@ export async function POST(request: NextRequest) {
     const tagResult = await getTagByEpc(normalizedEpc);
 
     if (!tagResult.success) {
-      return NextResponse.json(
+      return jsonResponse(
         { success: false, printed: false, reason: 'lookup_error', error: tagResult.error },
-        { status: 500 }
+        500
       );
     }
 
     if (!tagResult.data) {
       // Unregistered tag — not an error, just skip
-      return NextResponse.json({
+      return jsonResponse({
         success: true,
         printed: false,
         reason: 'unregistered',
@@ -73,7 +88,7 @@ export async function POST(request: NextRequest) {
 
     if (!printResult.success) {
       console.error(`[Auto-Print] Print failed: ${printResult.error}`);
-      return NextResponse.json({
+      return jsonResponse({
         success: false,
         printed: false,
         reason: 'print_error',
@@ -107,7 +122,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
+    return jsonResponse({
       success: true,
       printed: true,
       graduateName: tag.graduateName,
@@ -116,9 +131,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('[Auto-Print] Error:', error);
-    return NextResponse.json(
+    return jsonResponse(
       { success: false, printed: false, error: 'Internal server error' },
-      { status: 500 }
+      500
     );
   }
 }
