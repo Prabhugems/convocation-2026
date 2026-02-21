@@ -305,6 +305,74 @@ export default function RfidScanPage() {
     }
   }, [pendingEpcs, pendingTagDetails, autoPrintEnabled, printerIP, printedEpcs]);
 
+  // WD01 auto-print: watch epcInput for complete EPC and auto-trigger
+  // WD01 types 32 hex chars rapidly — once input looks complete, print after 500ms debounce
+  useEffect(() => {
+    if (!autoPrintEnabled) return;
+    const trimmed = epcInput.trim().toUpperCase();
+    // Must be 32 hex chars (WD01 TID format) or match convocation pattern
+    const isWd01 = /^[0-9A-F]{32}$/.test(trimmed);
+    const isConvocation = /^\d+(?:AEC|WEC)\d+$/i.test(trimmed);
+    if (!isWd01 && !isConvocation) return;
+    if (trimmed.length < 10) return;
+    // Skip duplicates
+    if (printedEpcs.has(trimmed) || printingRef.current.has(trimmed)) return;
+
+    const timer = setTimeout(() => {
+      // Show WD01 badge
+      setWd01Detected(true);
+      if (wd01FadeTimer.current) clearTimeout(wd01FadeTimer.current);
+      wd01FadeTimer.current = setTimeout(() => setWd01Detected(false), 5000);
+
+      printingRef.current.add(trimmed);
+      setEpcInput('');
+      inputRef.current?.focus();
+
+      fetch('/api/rfid/auto-print', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ epc: trimmed, printerIP }),
+      })
+        .then(res => res.json())
+        .then(data => {
+          printingRef.current.delete(trimmed);
+          if (data.printed) {
+            setPrintedEpcs(prev => new Set(prev).add(trimmed));
+            setPrintLog(prev => [{
+              epc: trimmed,
+              name: data.graduateName,
+              status: 'printed',
+              time: new Date().toLocaleTimeString(),
+            }, ...prev]);
+          } else if (data.reason === 'unregistered') {
+            setPrintLog(prev => [{
+              epc: trimmed,
+              status: 'skipped',
+              time: new Date().toLocaleTimeString(),
+            }, ...prev]);
+          } else {
+            setPrintLog(prev => [{
+              epc: trimmed,
+              status: 'error',
+              error: data.error || 'Print failed',
+              time: new Date().toLocaleTimeString(),
+            }, ...prev]);
+          }
+        })
+        .catch(err => {
+          printingRef.current.delete(trimmed);
+          setPrintLog(prev => [{
+            epc: trimmed,
+            status: 'error',
+            error: err instanceof Error ? err.message : 'Network error',
+            time: new Date().toLocaleTimeString(),
+          }, ...prev]);
+        });
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [epcInput, autoPrintEnabled, printerIP, printedEpcs]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Cleanup polling on unmount
   useEffect(() => {
     return () => {
