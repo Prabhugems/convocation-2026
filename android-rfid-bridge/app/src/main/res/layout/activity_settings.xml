@@ -105,7 +105,8 @@
                     <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/soundSwitch"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
+                        android:layout_height="wrap_content"
+                        android:text="" />
 
                 </LinearLayout>
 
@@ -150,7 +151,8 @@
                     <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/vibrationSwitch"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
+                        android:layout_height="wrap_content"
+                        android:text="" />
 
                 </LinearLayout>
 

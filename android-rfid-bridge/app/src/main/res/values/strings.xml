@@ -5,7 +5,12 @@
 
     <!-- Main screen -->
     <string name="header_bridge_status">BRIDGE STATUS</string>
+    <string name="header_rfid_scanner">RFID SCANNER</string>
     <string name="header_barcode_scanner">BARCODE SCANNER</string>
+    <string name="btn_start_rfid_scan">Start RFID Scan</string>
+    <string name="btn_stop_rfid_scan">Stop RFID Scan</string>
+    <string name="rfid_scan_idle">Tap to start scanning RFID tags</string>
+    <string name="rfid_scan_active">Scanning\u2026</string>
     <string name="label_server_url">Server URL</string>
     <string name="label_power_level">Power Level</string>
     <string name="label_tags_scanned">Tags Scanned</string>

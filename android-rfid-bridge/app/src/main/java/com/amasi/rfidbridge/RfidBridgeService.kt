@@ -28,9 +28,27 @@ class RfidBridgeService : Service() {
     )
 
     data class BarcodeResult(val value: String, val timestamp: Long) {
+        /** Resolved graduate name or convocation number (set async after lookup) */
+        @Volatile
+        var resolvedDisplay: String? = null
+
         /** Extract convocation number or ticket ID from QR URL */
+        val ticketSlug: String?
+            get() {
+                try {
+                    if (value.startsWith("http://") || value.startsWith("https://")) {
+                        val path = Uri.parse(value).path ?: ""
+                        val match = Regex("(?:tickets?/)([^/]+)$").find(path)
+                        if (match != null) return match.groupValues[1]
+                    }
+                } catch (_: Exception) {}
+                return null
+            }
+
         val displayValue: String
             get() {
+                // Show resolved name if available
+                resolvedDisplay?.let { return it }
                 try {
                     if (value.startsWith("http://") || value.startsWith("https://")) {
                         val uri = Uri.parse(value)
@@ -39,14 +57,11 @@ class RfidBridgeService : Service() {
                         val q = uri.getQueryParameter("q")
                         if (!q.isNullOrEmpty()) return q.uppercase()
 
-                        // Tito ticket URL: https://ti.to/tickets/ti_abc123
-                        // or https://ti.to/amasi/convocation-2026-kolkata/tickets/REG_NUMBER
-                        val path = uri.path ?: ""
-                        val ticketMatch = Regex("(?:tickets?/)([^/]+)$").find(path)
-                        if (ticketMatch != null) return ticketMatch.groupValues[1]
+                        // Tito ticket URL — show "Resolving..." while looking up
+                        val slug = ticketSlug
+                        if (slug != null) return "Resolving…"
                     }
                 } catch (_: Exception) {}
-                // Already a convocation number or raw value
                 return value
             }
     }

@@ -41,6 +41,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var powerText: TextView
     private lateinit var scanCountText: TextView
     private lateinit var toggleButton: MaterialButton
+    private lateinit var rfidScanButton: MaterialButton
+    private lateinit var rfidScanStatusText: TextView
     private lateinit var scanBarcodeButton: MaterialButton
     private lateinit var lastBarcodeContainer: LinearLayout
     private lateinit var lastBarcodeText: TextView
@@ -48,6 +50,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var barcodeScannerLauncher: ActivityResultLauncher<Intent>
 
     private var serviceRunning = false
+    private var rfidScanning = false
     private var wasScanning = false // track scan-session start for one-shot feedback
     private val handler = Handler(Looper.getMainLooper())
 
@@ -140,6 +143,27 @@ class MainActivity : AppCompatActivity() {
             }
             wasScanning = state.scanning
 
+            // Sync RFID scan button state with actual scanning state
+            if (state.scanning && !rfidScanning) {
+                rfidScanning = true
+                rfidScanButton.text = getString(R.string.btn_stop_rfid_scan)
+                rfidScanButton.backgroundTintList = android.content.res.ColorStateList.valueOf(
+                    ContextCompat.getColor(this@MainActivity, R.color.status_red)
+                )
+                rfidScanStatusText.text = "Scanning — ${state.tagCount} tags"
+                rfidScanStatusText.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.status_amber))
+            } else if (!state.scanning && rfidScanning) {
+                rfidScanning = false
+                rfidScanButton.text = getString(R.string.btn_start_rfid_scan)
+                rfidScanButton.backgroundTintList = android.content.res.ColorStateList.valueOf(
+                    ContextCompat.getColor(this@MainActivity, R.color.cyan_dark)
+                )
+                rfidScanStatusText.text = getString(R.string.rfid_scan_idle)
+                rfidScanStatusText.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.text_secondary))
+            } else if (state.scanning) {
+                rfidScanStatusText.text = "Scanning — ${state.tagCount} tags"
+            }
+
             // Drive status dot color
             val dotColor = when {
                 state.scanning -> ContextCompat.getColor(this@MainActivity, R.color.status_amber)
@@ -172,6 +196,8 @@ class MainActivity : AppCompatActivity() {
         powerText = findViewById(R.id.powerText)
         scanCountText = findViewById(R.id.scanCountText)
         toggleButton = findViewById(R.id.toggleButton)
+        rfidScanButton = findViewById(R.id.rfidScanButton)
+        rfidScanStatusText = findViewById(R.id.rfidScanStatusText)
         scanBarcodeButton = findViewById(R.id.scanBarcodeButton)
         lastBarcodeContainer = findViewById(R.id.lastBarcodeContainer)
         lastBarcodeText = findViewById(R.id.lastBarcodeText)
@@ -194,6 +220,12 @@ class MainActivity : AppCompatActivity() {
                     lastBarcodeContainer.visibility = View.VISIBLE
                     lastBarcodeText.text = barcodeResult.displayValue
                     Toast.makeText(this, "Scanned: ${barcodeResult.displayValue}", Toast.LENGTH_LONG).show()
+
+                    // Resolve Tito ticket slug to graduate name async
+                    val slug = barcodeResult.ticketSlug
+                    if (slug != null) {
+                        resolveTicketSlug(barcodeResult, slug)
+                    }
                 }
             }
         }
@@ -203,6 +235,14 @@ class MainActivity : AppCompatActivity() {
                 stopBridgeService()
             } else {
                 startBridgeService()
+            }
+        }
+
+        rfidScanButton.setOnClickListener {
+            if (rfidScanning) {
+                stopRfidScan()
+            } else {
+                startRfidScan()
             }
         }
 
@@ -262,6 +302,108 @@ class MainActivity : AppCompatActivity() {
         (statusDot.background as? GradientDrawable)?.setColor(
             ContextCompat.getColor(this, R.color.status_red)
         )
+    }
+
+    private fun startRfidScan() {
+        rfidScanning = true
+        rfidScanButton.text = getString(R.string.btn_stop_rfid_scan)
+        rfidScanButton.backgroundTintList = android.content.res.ColorStateList.valueOf(
+            ContextCompat.getColor(this, R.color.status_red)
+        )
+        rfidScanStatusText.text = getString(R.string.rfid_scan_active)
+        rfidScanStatusText.setTextColor(ContextCompat.getColor(this, R.color.status_amber))
+        Thread {
+            try {
+                val url = java.net.URL("http://localhost:8080/api/inventory/start")
+                val conn = url.openConnection() as java.net.HttpURLConnection
+                conn.requestMethod = "POST"
+                conn.setRequestProperty("Content-Type", "application/json")
+                conn.connectTimeout = 3000
+                conn.readTimeout = 3000
+                val code = conn.responseCode
+                Log.i(TAG, "Start RFID scan — HTTP $code")
+                conn.disconnect()
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to start RFID scan", e)
+                handler.post {
+                    Toast.makeText(this, "Failed to start scan", Toast.LENGTH_SHORT).show()
+                    rfidScanning = false
+                    rfidScanButton.text = getString(R.string.btn_start_rfid_scan)
+                    rfidScanButton.backgroundTintList = android.content.res.ColorStateList.valueOf(
+                        ContextCompat.getColor(this, R.color.cyan_dark)
+                    )
+                    rfidScanStatusText.text = getString(R.string.rfid_scan_idle)
+                    rfidScanStatusText.setTextColor(ContextCompat.getColor(this, R.color.text_secondary))
+                }
+            }
+        }.start()
+    }
+
+    private fun stopRfidScan() {
+        rfidScanning = false
+        rfidScanButton.text = getString(R.string.btn_start_rfid_scan)
+        rfidScanStatusText.text = getString(R.string.rfid_scan_idle)
+        rfidScanStatusText.setTextColor(ContextCompat.getColor(this, R.color.text_secondary))
+        Thread {
+            try {
+                val url = java.net.URL("http://localhost:8080/api/inventory/stop")
+                val conn = url.openConnection() as java.net.HttpURLConnection
+                conn.requestMethod = "POST"
+                conn.setRequestProperty("Content-Type", "application/json")
+                conn.connectTimeout = 3000
+                conn.readTimeout = 3000
+                val code = conn.responseCode
+                Log.i(TAG, "Stop RFID scan — HTTP $code")
+                conn.disconnect()
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to stop RFID scan", e)
+            }
+        }.start()
+    }
+
+    private fun resolveTicketSlug(barcodeResult: RfidBridgeService.BarcodeResult, slug: String) {
+        Thread {
+            try {
+                val url = java.net.URL(
+                    "https://api.tito.io/v3/amasi/convocation-2026-kolkata/tickets/$slug"
+                )
+                val conn = url.openConnection() as java.net.HttpURLConnection
+                conn.requestMethod = "GET"
+                conn.setRequestProperty("Authorization", "Token token=secret_sUEj6AsYSssYRQjuStGe")
+                conn.setRequestProperty("Accept", "application/json")
+                conn.connectTimeout = 5000
+                conn.readTimeout = 5000
+
+                if (conn.responseCode == 200) {
+                    val json = conn.inputStream.bufferedReader().readText()
+                    // Extract name and tags (convocation number) from JSON
+                    val nameMatch = Regex("\"first_name\"\\s*:\\s*\"([^\"]+)\"").find(json)
+                    val lastMatch = Regex("\"last_name\"\\s*:\\s*\"([^\"]+)\"").find(json)
+                    val tagsMatch = Regex("\"tags\"\\s*:\\s*\"([^\"]+)\"").find(json)
+                    val firstName = nameMatch?.groupValues?.get(1) ?: ""
+                    val lastName = lastMatch?.groupValues?.get(1) ?: ""
+                    val convocationNum = tagsMatch?.groupValues?.get(1)?.uppercase() ?: ""
+                    val fullName = "$firstName $lastName".trim()
+
+                    if (convocationNum.isNotEmpty() || fullName.isNotEmpty()) {
+                        // Show convocation number first, then name
+                        val display = when {
+                            convocationNum.isNotEmpty() && fullName.isNotEmpty() -> "$convocationNum — $fullName"
+                            convocationNum.isNotEmpty() -> convocationNum
+                            else -> fullName
+                        }
+                        barcodeResult.resolvedDisplay = display
+                        handler.post {
+                            lastBarcodeText.text = barcodeResult.displayValue
+                        }
+                        Log.i(TAG, "Resolved $slug -> $display")
+                    }
+                }
+                conn.disconnect()
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to resolve ticket slug: $slug", e)
+            }
+        }.start()
     }
 
     private fun launchBarcodeScanner() {
