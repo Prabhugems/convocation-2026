@@ -84,6 +84,7 @@ export default function RfidScanPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [pendingTagDetails, setPendingTagDetails] = useState<Record<string, { found: boolean; graduateName?: string; convocationNumber?: string; type?: string }>>({});
   const [showResultsExpanded, setShowResultsExpanded] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
   const [readerStatus, setReaderStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
@@ -115,6 +116,38 @@ export default function RfidScanPage() {
     const interval = setInterval(checkReaderStatus, 10000);
     return () => clearInterval(interval);
   }, [checkReaderStatus]);
+
+  // Auto-lookup tag details when new EPCs are added to pending list
+  useEffect(() => {
+    const unknownEpcs = pendingEpcs.filter(epc => !(epc in pendingTagDetails));
+    if (unknownEpcs.length === 0) return;
+    const controller = new AbortController();
+    fetch('/api/rfid/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ epcs: unknownEpcs }),
+      signal: controller.signal,
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setPendingTagDetails(prev => {
+            const updated = { ...prev };
+            for (const r of data.data.results) {
+              updated[r.epc] = {
+                found: r.found,
+                graduateName: r.tag?.graduateName,
+                convocationNumber: r.tag?.convocationNumber,
+                type: r.tag?.type,
+              };
+            }
+            return updated;
+          });
+        }
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [pendingEpcs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cleanup polling on unmount
   useEffect(() => {
@@ -204,8 +237,8 @@ export default function RfidScanPage() {
     setError(null);
   };
 
-  // Prepare bulk scan (show confirmation)
-  const handlePrepareScan = () => {
+  // Prepare bulk scan (show confirmation with tag lookups)
+  const handlePrepareScan = async () => {
     if (pendingEpcs.length === 0) {
       setError('Add at least one EPC to scan');
       return;
@@ -214,7 +247,31 @@ export default function RfidScanPage() {
       setError('Please enter your name (Scanned By)');
       return;
     }
+    // Look up tag details for all pending EPCs
+    setPendingTagDetails({});
     setShowConfirmDialog(true);
+    try {
+      const res = await fetch('/api/rfid/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ epcs: pendingEpcs }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const details: Record<string, { found: boolean; graduateName?: string; convocationNumber?: string; type?: string }> = {};
+        for (const r of data.data.results) {
+          details[r.epc] = {
+            found: r.found,
+            graduateName: r.tag?.graduateName,
+            convocationNumber: r.tag?.convocationNumber,
+            type: r.tag?.type,
+          };
+        }
+        setPendingTagDetails(details);
+      }
+    } catch {
+      // Show dialog anyway without details
+    }
   };
 
   // Execute bulk scan
@@ -555,27 +612,38 @@ export default function RfidScanPage() {
                   </button>
                 </div>
                 <div className="space-y-1.5 max-h-48 overflow-y-auto mb-4">
-                  {pendingEpcs.map((epc, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center justify-between px-3 py-2 bg-slate-900/30 rounded-lg"
-                    >
-                      <div className="flex items-center gap-2">
-                        {epc.startsWith('BOX-') ? (
-                          <Box className="w-4 h-4 text-amber-400" />
-                        ) : (
-                          <Tag className="w-4 h-4 text-blue-400" />
-                        )}
-                        <span className="font-mono text-sm">{epc}</span>
-                      </div>
-                      <button
-                        onClick={() => removeEpc(i)}
-                        className="text-red-400 hover:text-red-300"
+                  {pendingEpcs.map((epc, i) => {
+                    const detail = pendingTagDetails[epc];
+                    return (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between px-3 py-2 bg-slate-900/30 rounded-lg"
                       >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
+                        <div className="flex items-center gap-2 min-w-0">
+                          {epc.startsWith('BOX-') ? (
+                            <Box className="w-4 h-4 text-amber-400 shrink-0" />
+                          ) : (
+                            <Tag className="w-4 h-4 text-blue-400 shrink-0" />
+                          )}
+                          <span className="font-mono text-sm truncate">{epc}</span>
+                          {detail?.found && (
+                            <span className="text-xs text-green-400 shrink-0">
+                              — {detail.graduateName || detail.convocationNumber || 'Registered'}
+                            </span>
+                          )}
+                          {detail && !detail.found && (
+                            <span className="text-xs text-slate-500 shrink-0">— N/A</span>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => removeEpc(i)}
+                          className="text-red-400 hover:text-red-300 shrink-0 ml-2"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
                 <button
                   onClick={handlePrepareScan}
@@ -715,20 +783,38 @@ export default function RfidScanPage() {
                 </div>
               </div>
 
-              <div className="max-h-32 overflow-y-auto space-y-1">
-                {pendingEpcs.map((epc, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-2 px-2 py-1 text-sm"
-                  >
-                    {epc.startsWith('BOX-') ? (
-                      <Box className="w-3.5 h-3.5 text-amber-400" />
-                    ) : (
-                      <Tag className="w-3.5 h-3.5 text-blue-400" />
-                    )}
-                    <span className="font-mono text-xs">{epc}</span>
-                  </div>
-                ))}
+              <div className="max-h-48 overflow-y-auto space-y-1.5">
+                {pendingEpcs.map((epc, i) => {
+                  const detail = pendingTagDetails[epc];
+                  return (
+                    <div
+                      key={i}
+                      className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm ${
+                        detail?.found ? 'bg-green-500/10 border border-green-500/20' : 'bg-slate-900/50 border border-slate-700/30'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        {epc.startsWith('BOX-') ? (
+                          <Box className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        ) : (
+                          <Tag className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                        )}
+                        <span className="font-mono text-xs truncate">{epc}</span>
+                      </div>
+                      <span className={`text-xs shrink-0 ml-2 ${
+                        detail?.found ? 'text-green-400 font-medium' : 'text-slate-500'
+                      }`}>
+                        {!detail ? (
+                          <Loader2 className="w-3 h-3 animate-spin text-slate-500" />
+                        ) : detail.found ? (
+                          detail.graduateName || detail.convocationNumber || detail.type || 'Registered'
+                        ) : (
+                          'N/A'
+                        )}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
