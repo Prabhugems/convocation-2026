@@ -90,6 +90,9 @@ interface LookupTag {
   scanHistory: { station: string; timestamp: string; scannedBy: string; action: string; notes?: string }[];
 }
 
+// Stations that support WD01 desktop reader + auto-print
+const DESKTOP_PRINT_STATIONS: RfidStation[] = ['packing', 'address-label'];
+
 const STATION_OPTIONS: { id: RfidStation; label: string; icon: string }[] = [
   { id: 'packing', label: 'Packing', icon: '📦' },
   { id: 'dispatch-venue', label: 'Dispatch to Venue', icon: '🚚' },
@@ -306,9 +309,9 @@ export default function RfidScanPage() {
   }, [pendingEpcs, pendingTagDetails, autoPrintEnabled, printerIP, printedEpcs]);
 
   // WD01 auto-print: watch epcInput for complete EPC and auto-trigger
-  // WD01 types 32 hex chars rapidly — once input looks complete, print after 500ms debounce
+  // Only active for desktop print stations (packing, address-label)
   useEffect(() => {
-    if (!autoPrintEnabled) return;
+    if (!autoPrintEnabled || !DESKTOP_PRINT_STATIONS.includes(station)) return;
     const trimmed = epcInput.trim().toUpperCase();
     // Must be 32 hex chars (WD01 TID format) or match convocation pattern
     const isWd01 = /^[0-9A-F]{32}$/.test(trimmed);
@@ -371,7 +374,7 @@ export default function RfidScanPage() {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [epcInput, autoPrintEnabled, printerIP, printedEpcs]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [epcInput, autoPrintEnabled, printerIP, printedEpcs, station]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cleanup polling on unmount
   useEffect(() => {
@@ -644,6 +647,7 @@ export default function RfidScanPage() {
     }
   };
 
+  const isDesktopPrintStation = DESKTOP_PRINT_STATIONS.includes(station);
   const successCount = scanResults.filter(r => r.success).length;
   const failCount = scanResults.filter(r => !r.success).length;
   const titoCount = scanResults.filter(r => r.titoCheckin?.success).length;
@@ -754,30 +758,34 @@ export default function RfidScanPage() {
                     {isScanning && (
                       <span className="text-xs text-emerald-400 font-mono">{scannedCount} reads</span>
                     )}
-                    {/* Auto-Print Toggle */}
-                    <button
-                      onClick={() => {
-                        const next = !autoPrintEnabled;
-                        setAutoPrintEnabled(next);
-                        localStorage.setItem('rfid_auto_print', String(next));
-                      }}
-                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                        autoPrintEnabled
-                          ? 'bg-purple-600/80 text-purple-100'
-                          : 'bg-slate-700/80 text-slate-400 hover:bg-slate-600/80'
-                      }`}
-                      title="Auto-print packing labels on tag detect"
-                    >
-                      <Printer className="w-3.5 h-3.5" />
-                      Auto-Print
-                    </button>
-                    <button
-                      onClick={() => setShowPrinterSettings(prev => !prev)}
-                      className="p-1.5 rounded-lg bg-slate-700/50 hover:bg-slate-600/50 text-slate-400 transition-colors"
-                      title="Printer settings"
-                    >
-                      <Settings className="w-3.5 h-3.5" />
-                    </button>
+                    {/* Auto-Print Toggle — only for desktop print stations */}
+                    {isDesktopPrintStation && (
+                      <>
+                        <button
+                          onClick={() => {
+                            const next = !autoPrintEnabled;
+                            setAutoPrintEnabled(next);
+                            localStorage.setItem('rfid_auto_print', String(next));
+                          }}
+                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                            autoPrintEnabled
+                              ? 'bg-purple-600/80 text-purple-100'
+                              : 'bg-slate-700/80 text-slate-400 hover:bg-slate-600/80'
+                          }`}
+                          title="Auto-print packing labels on tag detect"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                          Auto-Print
+                        </button>
+                        <button
+                          onClick={() => setShowPrinterSettings(prev => !prev)}
+                          className="p-1.5 rounded-lg bg-slate-700/50 hover:bg-slate-600/50 text-slate-400 transition-colors"
+                          title="Printer settings"
+                        >
+                          <Settings className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
                     {isScanning ? (
                       <button
                         onClick={handleStopScan}
@@ -799,7 +807,7 @@ export default function RfidScanPage() {
                   </div>
                 </div>
                 {/* Auto-print stats bar */}
-                {autoPrintEnabled && printLog.length > 0 && (
+                {isDesktopPrintStation && autoPrintEnabled && printLog.length > 0 && (
                   <div className="flex items-center gap-3 px-4 py-2 border-t border-emerald-500/20 text-xs">
                     <Printer className="w-3.5 h-3.5 text-purple-400" />
                     <span className="text-purple-300 font-medium">
@@ -835,30 +843,34 @@ export default function RfidScanPage() {
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    {/* Auto-Print Toggle */}
-                    <button
-                      onClick={() => {
-                        const next = !autoPrintEnabled;
-                        setAutoPrintEnabled(next);
-                        localStorage.setItem('rfid_auto_print', String(next));
-                      }}
-                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                        autoPrintEnabled
-                          ? 'bg-purple-600/80 text-purple-100'
-                          : 'bg-slate-700/80 text-slate-400 hover:bg-slate-600/80'
-                      }`}
-                      title="Auto-print packing labels on tag detect"
-                    >
-                      <Printer className="w-3.5 h-3.5" />
-                      Auto-Print
-                    </button>
-                    <button
-                      onClick={() => setShowPrinterSettings(prev => !prev)}
-                      className="p-1.5 rounded-lg bg-slate-700/50 hover:bg-slate-600/50 text-slate-400 transition-colors"
-                      title="Printer settings"
-                    >
-                      <Settings className="w-3.5 h-3.5" />
-                    </button>
+                    {/* Auto-Print Toggle — only for desktop print stations */}
+                    {isDesktopPrintStation && (
+                      <>
+                        <button
+                          onClick={() => {
+                            const next = !autoPrintEnabled;
+                            setAutoPrintEnabled(next);
+                            localStorage.setItem('rfid_auto_print', String(next));
+                          }}
+                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                            autoPrintEnabled
+                              ? 'bg-purple-600/80 text-purple-100'
+                              : 'bg-slate-700/80 text-slate-400 hover:bg-slate-600/80'
+                          }`}
+                          title="Auto-print packing labels on tag detect"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                          Auto-Print
+                        </button>
+                        <button
+                          onClick={() => setShowPrinterSettings(prev => !prev)}
+                          className="p-1.5 rounded-lg bg-slate-700/50 hover:bg-slate-600/50 text-slate-400 transition-colors"
+                          title="Printer settings"
+                        >
+                          <Settings className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
                     <button
                       onClick={() => { setBridgeInput(bridgeUrl); setShowBridgeSettings(true); }}
                       className="text-xs px-2.5 py-1.5 bg-amber-600/30 hover:bg-amber-600/50 rounded-lg text-amber-300 transition-colors"
@@ -868,7 +880,7 @@ export default function RfidScanPage() {
                   </div>
                 </div>
                 {/* Auto-print stats bar */}
-                {autoPrintEnabled && printLog.length > 0 && (
+                {isDesktopPrintStation && autoPrintEnabled && printLog.length > 0 && (
                   <div className="flex items-center gap-3 px-4 py-2 border-t border-amber-500/20 text-xs">
                     <Printer className="w-3.5 h-3.5 text-purple-400" />
                     <span className="text-purple-300 font-medium">
@@ -999,8 +1011,8 @@ export default function RfidScanPage() {
                         const normalizedEpc = epcInput.toUpperCase().trim();
                         if (!normalizedEpc) return;
 
-                        if (autoPrintEnabled) {
-                          // WD01 + Auto-Print: print label directly
+                        if (autoPrintEnabled && isDesktopPrintStation) {
+                          // WD01 + Auto-Print: print label directly (packing/address-label only)
                           if (printedEpcs.has(normalizedEpc) || printingRef.current.has(normalizedEpc)) {
                             // Duplicate — skip silently
                             setEpcInput('');
