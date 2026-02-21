@@ -23,7 +23,10 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".BarcodeScannerActivity" android:exported="false" />
+        <activity
+            android:name=".BarcodeScannerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.RfidBridge.Scanner" />
 
         <service
             android:name=".RfidBridgeService"

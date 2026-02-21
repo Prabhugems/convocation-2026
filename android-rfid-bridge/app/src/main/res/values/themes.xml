@@ -1,11 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.RfidBridge" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+    <style name="Theme.RfidBridge" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="colorPrimary">#0891B2</item>
         <item name="colorPrimaryVariant">#0E7490</item>
         <item name="colorOnPrimary">#FFFFFF</item>
         <item name="colorSecondary">#06B6D4</item>
         <item name="colorSecondaryVariant">#22D3EE</item>
         <item name="colorOnSecondary">#000000</item>
+        <item name="android:windowBackground">@color/bg_dark</item>
+        <item name="android:statusBarColor">@color/bg_dark</item>
+        <item name="android:navigationBarColor">@color/bg_dark</item>
+    </style>
+
+    <style name="Theme.RfidBridge.Scanner" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/black</item>
+        <item name="android:windowTranslucentStatus">true</item>
     </style>
 </resources>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Card -->
+    <dimen name="card_radius">16dp</dimen>
+    <dimen name="card_padding">20dp</dimen>
+    <dimen name="card_stroke_width">1dp</dimen>
+
+    <!-- Button -->
+    <dimen name="button_height">64dp</dimen>
+    <dimen name="button_height_small">52dp</dimen>
+
+    <!-- Status dot -->
+    <dimen name="status_dot_size">12dp</dimen>
+
+    <!-- Scanner reticle -->
+    <dimen name="reticle_size">260dp</dimen>
+    <dimen name="reticle_radius">24dp</dimen>
+    <dimen name="reticle_stroke">3dp</dimen>
+
+    <!-- Spacing -->
+    <dimen name="screen_padding">20dp</dimen>
+    <dimen name="section_gap">16dp</dimen>
+</resources>

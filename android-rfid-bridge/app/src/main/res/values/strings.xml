@@ -1,4 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">RFID Bridge</string>
+    <string name="subtitle">Convocation 2026</string>
+
+    <!-- Main screen -->
+    <string name="header_bridge_status">BRIDGE STATUS</string>
+    <string name="header_barcode_scanner">BARCODE SCANNER</string>
+    <string name="label_server_url">Server URL</string>
+    <string name="label_power_level">Power Level</string>
+    <string name="label_tags_scanned">Tags Scanned</string>
+    <string name="label_last_barcode">Last Barcode</string>
+    <string name="btn_scan_barcode">Scan QR / Barcode</string>
+    <string name="btn_stop_bridge">Stop Bridge</string>
+    <string name="btn_start_bridge">Start Bridge</string>
+
+    <!-- Status text -->
+    <string name="status_starting">Starting\u2026</string>
+    <string name="status_connected">Reader Connected</string>
+    <string name="status_disconnected">Reader Not Connected</string>
+    <string name="status_stopped">Stopped</string>
+
+    <!-- Scanner screen -->
+    <string name="scanner_title">Barcode Scanner</string>
+    <string name="scanner_instruction">Point camera at QR code or barcode</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="btn_flash">Flash</string>
 </resources>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand -->
+    <color name="cyan_primary">#06B6D4</color>
+    <color name="cyan_dark">#0891B2</color>
+    <color name="cyan_bg">#1A06B6D4</color>
+
+    <!-- Status indicators -->
+    <color name="status_green">#22C55E</color>
+    <color name="status_red">#EF4444</color>
+    <color name="status_amber">#F59E0B</color>
+
+    <!-- Surfaces -->
+    <color name="card_bg">#1E293B</color>
+    <color name="card_stroke">#334155</color>
+    <color name="bg_dark">#0F172A</color>
+    <color name="divider">#334155</color>
+
+    <!-- Text -->
+    <color name="text_primary">#F8FAFC</color>
+    <color name="text_secondary">#94A3B8</color>
+
+    <!-- Scanner overlay -->
+    <color name="scanner_overlay">#88000000</color>
+    <color name="reticle_white">#FFFFFF</color>
+    <color name="reticle_cyan">#06B6D4</color>
+</resources>
