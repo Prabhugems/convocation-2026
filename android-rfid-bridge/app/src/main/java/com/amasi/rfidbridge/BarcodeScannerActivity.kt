@@ -2,10 +2,17 @@ package com.amasi.rfidbridge
 
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
+import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
+import android.media.ToneGenerator
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.util.Log
 import android.view.View
 import android.widget.ImageButton
@@ -112,11 +119,48 @@ class BarcodeScannerActivity : AppCompatActivity() {
         }, ContextCompat.getMainExecutor(this))
     }
 
+    private fun fireScanFeedback() {
+        val prefs = getSharedPreferences("rfid_bridge_prefs", Context.MODE_PRIVATE)
+
+        if (prefs.getBoolean("sound_enabled", true)) {
+            try {
+                val toneGen = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100)
+                toneGen.startTone(ToneGenerator.TONE_PROP_ACK, 150)
+                Handler(Looper.getMainLooper()).postDelayed({ toneGen.release() }, 200)
+            } catch (e: Exception) {
+                Log.w(TAG, "Tone playback failed", e)
+            }
+        }
+
+        if (prefs.getBoolean("vibration_enabled", true)) {
+            try {
+                val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    val mgr = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+                    mgr.defaultVibrator
+                } else {
+                    @Suppress("DEPRECATION")
+                    getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    vibrator.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
+                } else {
+                    @Suppress("DEPRECATION")
+                    vibrator.vibrate(100)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Vibration failed", e)
+            }
+        }
+    }
+
     private fun onBarcodeDetected(value: String) {
         if (scanComplete) return
         scanComplete = true
 
         runOnUiThread {
+            // Haptic + sound feedback
+            fireScanFeedback()
+
             // Visual confirmation: reticle turns cyan, pulse stops
             stopReticlePulse()
             reticleView.setBackgroundResource(R.drawable.bg_reticle_active)

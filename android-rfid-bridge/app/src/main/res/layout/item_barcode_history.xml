@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingVertical="10dp"
+    android:paddingHorizontal="4dp">
+
+    <View
+        android:layout_width="6dp"
+        android:layout_height="6dp"
+        android:background="@drawable/bg_status_dot"
+        android:backgroundTint="@color/cyan_primary"
+        android:layout_marginEnd="10dp" />
+
+    <TextView
+        android:id="@+id/historyBarcodeText"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textColor="@color/text_primary"
+        android:textSize="14sp"
+        android:fontFamily="monospace"
+        android:singleLine="true"
+        android:ellipsize="end" />
+
+    <TextView
+        android:id="@+id/historyTimeText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/text_secondary"
+        android:textSize="12sp"
+        android:layout_marginStart="8dp" />
+
+</LinearLayout>

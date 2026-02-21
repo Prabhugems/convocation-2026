@@ -1,14 +1,22 @@
 package com.amasi.rfidbridge
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.drawable.GradientDrawable
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.content.Intent
+import android.util.Log
 import android.view.View
+import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -22,6 +30,7 @@ import com.google.android.material.button.MaterialButton
 class MainActivity : AppCompatActivity() {
 
     companion object {
+        private const val TAG = "MainActivity"
         private const val NOTIFICATION_PERMISSION_CODE = 100
         private const val CAMERA_PERMISSION_CODE = 101
     }
@@ -35,10 +44,82 @@ class MainActivity : AppCompatActivity() {
     private lateinit var scanBarcodeButton: MaterialButton
     private lateinit var lastBarcodeContainer: LinearLayout
     private lateinit var lastBarcodeText: TextView
+    private lateinit var scanHistoryContainer: LinearLayout
     private lateinit var barcodeScannerLauncher: ActivityResultLauncher<Intent>
 
     private var serviceRunning = false
+    private var wasScanning = false // track scan-session start for one-shot feedback
     private val handler = Handler(Looper.getMainLooper())
+
+    private fun fireRfidScanFeedback() {
+        val prefs = getSharedPreferences("rfid_bridge_prefs", Context.MODE_PRIVATE)
+
+        if (prefs.getBoolean("sound_enabled", true)) {
+            try {
+                val toneGen = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100)
+                toneGen.startTone(ToneGenerator.TONE_PROP_ACK, 150)
+                handler.postDelayed({ toneGen.release() }, 200)
+            } catch (e: Exception) {
+                Log.w(TAG, "Tone playback failed", e)
+            }
+        }
+
+        if (prefs.getBoolean("vibration_enabled", true)) {
+            try {
+                val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    val mgr = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+                    mgr.defaultVibrator
+                } else {
+                    @Suppress("DEPRECATION")
+                    getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    vibrator.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
+                } else {
+                    @Suppress("DEPRECATION")
+                    vibrator.vibrate(100)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Vibration failed", e)
+            }
+        }
+    }
+
+    private fun formatRelativeTime(timestamp: Long): String {
+        val diff = System.currentTimeMillis() - timestamp
+        val seconds = diff / 1000
+        val minutes = seconds / 60
+        val hours = minutes / 60
+        return when {
+            seconds < 10 -> getString(R.string.scan_history_just_now)
+            seconds < 60 -> "${seconds}s ago"
+            minutes < 60 -> "${minutes}m ago"
+            hours < 24 -> "${hours}h ago"
+            else -> "${hours / 24}d ago"
+        }
+    }
+
+    private fun updateScanHistory() {
+        scanHistoryContainer.removeAllViews()
+        val barcodes = RfidBridgeService.recentBarcodes
+        if (barcodes.isEmpty()) {
+            val empty = TextView(this).apply {
+                text = getString(R.string.scan_history_empty)
+                setTextColor(ContextCompat.getColor(this@MainActivity, R.color.text_secondary))
+                textSize = 14f
+                setPadding(0, 16, 0, 16)
+            }
+            scanHistoryContainer.addView(empty)
+            return
+        }
+        for (barcode in barcodes) {
+            val row = layoutInflater.inflate(R.layout.item_barcode_history, scanHistoryContainer, false)
+            row.findViewById<TextView>(R.id.historyBarcodeText).text = barcode.value
+            row.findViewById<TextView>(R.id.historyTimeText).text = formatRelativeTime(barcode.timestamp)
+            scanHistoryContainer.addView(row)
+        }
+    }
+
     private val uiUpdater = object : Runnable {
         override fun run() {
             val state = RfidBridgeService.currentState
@@ -52,6 +133,12 @@ class MainActivity : AppCompatActivity() {
             if (state.power > 0) {
                 powerText.text = "${state.power} dBm"
             }
+
+            // One-shot haptic/sound on scan session start
+            if (state.scanning && !wasScanning) {
+                fireRfidScanFeedback()
+            }
+            wasScanning = state.scanning
 
             // Drive status dot color
             val dotColor = when {
@@ -67,6 +154,9 @@ class MainActivity : AppCompatActivity() {
                 lastBarcodeContainer.visibility = View.VISIBLE
                 lastBarcodeText.text = barcode.value
             }
+
+            // Update scan history timestamps
+            updateScanHistory()
 
             handler.postDelayed(this, 500)
         }
@@ -85,6 +175,12 @@ class MainActivity : AppCompatActivity() {
         scanBarcodeButton = findViewById(R.id.scanBarcodeButton)
         lastBarcodeContainer = findViewById(R.id.lastBarcodeContainer)
         lastBarcodeText = findViewById(R.id.lastBarcodeText)
+        scanHistoryContainer = findViewById(R.id.scanHistoryContainer)
+
+        // Settings gear button
+        findViewById<ImageButton>(R.id.settingsButton).setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
 
         barcodeScannerLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
@@ -92,8 +188,9 @@ class MainActivity : AppCompatActivity() {
             if (result.resultCode == RESULT_OK) {
                 val value = result.data?.getStringExtra(BarcodeScannerActivity.EXTRA_BARCODE)
                 if (!value.isNullOrEmpty()) {
-                    RfidBridgeService.lastBarcodeResult =
-                        RfidBridgeService.BarcodeResult(value, System.currentTimeMillis())
+                    val barcodeResult = RfidBridgeService.BarcodeResult(value, System.currentTimeMillis())
+                    RfidBridgeService.lastBarcodeResult = barcodeResult
+                    RfidBridgeService.addRecentBarcode(barcodeResult)
                     lastBarcodeContainer.visibility = View.VISIBLE
                     lastBarcodeText.text = value
                     Toast.makeText(this, "Scanned: $value", Toast.LENGTH_LONG).show()

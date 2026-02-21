@@ -53,6 +53,16 @@
 
             </LinearLayout>
 
+            <ImageButton
+                android:id="@+id/settingsButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@android:drawable/ic_menu_preferences"
+                android:contentDescription="@string/settings_title"
+                android:scaleType="centerInside"
+                app:tint="@color/text_secondary" />
+
         </LinearLayout>
 
         <!-- Card: Bridge Status -->
@@ -267,6 +277,44 @@
                         android:fontFamily="monospace" />
 
                 </LinearLayout>
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Card: Scan History -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/section_gap"
+            app:cardBackgroundColor="@color/card_bg"
+            app:cardCornerRadius="@dimen/card_radius"
+            app:strokeColor="@color/card_stroke"
+            app:strokeWidth="@dimen/card_stroke_width"
+            app:cardElevation="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="@dimen/card_padding">
+
+                <!-- Section header -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/header_scan_history"
+                    android:textColor="@color/cyan_primary"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.1"
+                    android:layout_marginBottom="8dp" />
+
+                <LinearLayout
+                    android:id="@+id/scanHistoryContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
 
             </LinearLayout>
 

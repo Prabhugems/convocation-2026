@@ -27,6 +27,8 @@ import {
   Ban,
   ToggleLeft,
   ToggleRight,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -172,6 +174,17 @@ export default function RfidDashboardPage() {
   const [voidLoading, setVoidLoading] = useState(false);
   const [voidSuccess, setVoidSuccess] = useState<string | null>(null);
 
+  // Dashboard auto-refresh
+  const [dashAutoRefresh, setDashAutoRefresh] = useState(false);
+  const dashAutoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Bridge connection status
+  const [bridgeConnected, setBridgeConnected] = useState<boolean | null>(null);
+
+  // Track previous scan EPCs for highlight
+  const [newScanEpcs, setNewScanEpcs] = useState<Set<string>>(new Set());
+  const prevScansRef = useRef<string[]>([]);
+
   // Reconciliation
   const [reconStation, setReconStation] = useState<string>('packing');
   const [reconLoading, setReconLoading] = useState(false);
@@ -238,6 +251,43 @@ export default function RfidDashboardPage() {
   useEffect(() => {
     setAutoRefresh(false);
   }, [reconStation]);
+
+  // Bridge connection status polling (10s)
+  useEffect(() => {
+    const checkBridge = async () => {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3000);
+        await fetch('http://localhost:8080/api/status', { signal: controller.signal });
+        clearTimeout(timeout);
+        setBridgeConnected(true);
+      } catch {
+        setBridgeConnected(false);
+      }
+    };
+
+    checkBridge();
+    const interval = setInterval(checkBridge, 10_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Detect new scans and highlight them
+  useEffect(() => {
+    if (!stats) return;
+    const currentEpcs = stats.recentScans
+      .slice(0, 20)
+      .map((s) => `${s.epc}-${s.timestamp}`)
+      .filter(Boolean);
+    const prevSet = new Set(prevScansRef.current);
+    const newOnes = new Set(currentEpcs.filter((e) => !prevSet.has(e)));
+
+    if (newOnes.size > 0 && prevScansRef.current.length > 0) {
+      setNewScanEpcs(newOnes);
+      // Clear highlight after animation
+      setTimeout(() => setNewScanEpcs(new Set()), 2000);
+    }
+    prevScansRef.current = currentEpcs;
+  }, [stats]);
 
   // CSV download for missing tags
   const handleDownloadCsv = () => {
@@ -335,6 +385,21 @@ export default function RfidDashboardPage() {
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
+
+  // Dashboard auto-refresh (30s)
+  useEffect(() => {
+    if (dashAutoRefresh) {
+      dashAutoRefreshRef.current = setInterval(() => {
+        fetchStats(true);
+      }, 30_000);
+    }
+    return () => {
+      if (dashAutoRefreshRef.current) {
+        clearInterval(dashAutoRefreshRef.current);
+        dashAutoRefreshRef.current = null;
+      }
+    };
+  }, [dashAutoRefresh, fetchStats]);
 
   // Verify tag
   const handleVerify = async () => {
@@ -476,7 +541,31 @@ export default function RfidDashboardPage() {
               </p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            {/* Bridge connection indicator */}
+            <div
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border ${
+                bridgeConnected === null
+                  ? 'bg-slate-800/50 border-slate-600 text-slate-400'
+                  : bridgeConnected
+                    ? 'bg-green-500/10 border-green-500/30 text-green-400'
+                    : 'bg-red-500/10 border-red-500/30 text-red-400'
+              }`}
+            >
+              {bridgeConnected ? (
+                <Wifi className="w-3.5 h-3.5" />
+              ) : (
+                <WifiOff className="w-3.5 h-3.5" />
+              )}
+              <span className="hidden sm:inline">
+                {bridgeConnected === null
+                  ? 'Checking...'
+                  : bridgeConnected
+                    ? 'Bridge Connected'
+                    : 'Bridge Offline'}
+              </span>
+            </div>
+
             <Link
               href="/staff/rfid/guide"
               className="flex items-center gap-2 px-3 py-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-lg transition-colors text-sm"
@@ -498,6 +587,22 @@ export default function RfidDashboardPage() {
               <ScanLine className="w-4 h-4" />
               Scanner
             </Link>
+            <button
+              onClick={() => setDashAutoRefresh(!dashAutoRefresh)}
+              title={dashAutoRefresh ? 'Stop auto-refresh (30s)' : 'Auto-refresh every 30s'}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors text-sm border ${
+                dashAutoRefresh
+                  ? 'bg-cyan-500/20 border-cyan-500/30 text-cyan-300'
+                  : 'bg-slate-800/50 border-slate-600 text-slate-400 hover:text-slate-300'
+              }`}
+            >
+              {dashAutoRefresh ? (
+                <ToggleRight className="w-4 h-4" />
+              ) : (
+                <ToggleLeft className="w-4 h-4" />
+              )}
+              Auto
+            </button>
             <button
               onClick={() => fetchStats(true)}
               disabled={refreshing}
@@ -934,8 +1039,16 @@ export default function RfidDashboardPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {stats.recentScans.slice(0, 20).map((scan, i) => (
-                        <tr key={i} className="border-b border-slate-700/30 hover:bg-slate-700/20">
+                      {stats.recentScans.slice(0, 20).map((scan, i) => {
+                        const scanKey = `${scan.epc}-${scan.timestamp}`;
+                        const isNew = newScanEpcs.has(scanKey);
+                        return (
+                        <tr
+                          key={i}
+                          className={`border-b border-slate-700/30 hover:bg-slate-700/20 transition-all duration-700 ${
+                            isNew ? 'ring-1 ring-cyan-400/60 bg-cyan-500/10' : ''
+                          }`}
+                        >
                           <td className="py-2 px-3 font-mono text-xs">
                             {scan.epc || '-'}
                           </td>
@@ -954,7 +1067,8 @@ export default function RfidDashboardPage() {
                             {new Date(scan.timestamp).toLocaleString()}
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

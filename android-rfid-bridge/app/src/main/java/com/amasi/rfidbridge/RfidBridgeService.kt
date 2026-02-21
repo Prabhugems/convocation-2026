@@ -39,6 +39,18 @@ class RfidBridgeService : Service() {
 
         @Volatile
         var lastBarcodeResult: BarcodeResult? = null
+
+        private const val MAX_RECENT_BARCODES = 10
+        val recentBarcodes: MutableList<BarcodeResult> = mutableListOf()
+
+        fun addRecentBarcode(result: BarcodeResult) {
+            synchronized(recentBarcodes) {
+                recentBarcodes.add(0, result)
+                if (recentBarcodes.size > MAX_RECENT_BARCODES) {
+                    recentBarcodes.removeAt(recentBarcodes.size - 1)
+                }
+            }
+        }
     }
 
     private var rfidManager: RfidManager? = null
@@ -108,6 +120,7 @@ class RfidBridgeService : Service() {
         rfidManager = null
         httpServer = null
         currentState = State()
+        recentBarcodes.clear()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

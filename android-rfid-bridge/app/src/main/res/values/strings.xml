@@ -20,6 +20,21 @@
     <string name="status_disconnected">Reader Not Connected</string>
     <string name="status_stopped">Stopped</string>
 
+    <!-- Scan history -->
+    <string name="header_scan_history">SCAN HISTORY</string>
+    <string name="scan_history_empty">No scans yet</string>
+    <string name="scan_history_just_now">just now</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="header_feedback">FEEDBACK</string>
+    <string name="header_reader">READER</string>
+    <string name="setting_sound">Sound on scan</string>
+    <string name="setting_sound_desc">Play a beep when a barcode or RFID tag is detected</string>
+    <string name="setting_vibration">Vibration on scan</string>
+    <string name="setting_vibration_desc">Vibrate on successful scan detection</string>
+    <string name="setting_power_level">Reader Power Level</string>
+
     <!-- Scanner screen -->
     <string name="scanner_title">Barcode Scanner</string>
     <string name="scanner_instruction">Point camera at QR code or barcode</string>
