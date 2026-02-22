@@ -709,65 +709,88 @@ export default function RfidEncodePage() {
             )}
 
             {/* Step 2: EPC from Reader */}
-            <div className={`mb-4 p-4 rounded-xl border-2 border-dashed transition-colors ${
-              epc
-                ? 'border-green-500/50 bg-green-500/5'
-                : 'border-blue-500/40 bg-blue-500/5'
-            }`}>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                {tagType === 'graduate' ? 'Step 2: ' : ''}Scan Tag (place on WD01 reader)
-              </label>
-              <div className="flex gap-2">
-                <input
-                  ref={epcInputRef}
-                  type="text"
-                  value={epc}
-                  onChange={e => {
-                    const val = e.target.value;
-                    setEpc(val);
-                    // Auto-link when full EPC length detected (32 = WD01 TID, 24 = UHF EPC)
-                    const trimmed = val.trim();
-                    if (autoLinkEnabled && (trimmed.length === 32 || trimmed.length === 24)) {
-                      const now = Date.now();
-                      // Duplicate prevention
-                      if (trimmed.toUpperCase() === lastScannedEpc.current && now - lastScannedTime.current < 3000) {
-                        console.log('[Encode] Duplicate read ignored:', trimmed.slice(0, 12));
-                        setEpc('');
-                        return;
-                      }
-                      lastScannedEpc.current = trimmed.toUpperCase();
-                      lastScannedTime.current = now;
-                      // Small delay to let state settle
-                      setTimeout(() => {
-                        autoLinkRef.current?.(trimmed);
-                      }, 200);
-                    }
-                  }}
-                  onKeyDown={handleEpcKeyDown}
-                  placeholder="Click here, then place tag on reader..."
-                  className={`flex-1 px-3 py-3 bg-slate-900/50 border rounded-lg text-slate-200 placeholder:text-slate-500 focus:outline-none font-mono text-sm ${
-                    epc
-                      ? 'border-green-500/50 bg-green-500/5'
-                      : 'border-slate-600 focus:border-blue-400 animate-pulse focus:animate-none'
-                  }`}
-                />
+            <div
+              className={`mb-4 p-4 rounded-xl border-2 border-dashed transition-colors cursor-text ${
+                epc
+                  ? 'border-green-500/50 bg-green-500/5'
+                  : 'border-blue-500/40 bg-blue-500/5'
+              }`}
+              onClick={() => epcInputRef.current?.focus()}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-slate-300">
+                  {tagType === 'graduate' ? 'Step 2: ' : ''}Scan Tag (place on WD01 reader)
+                </label>
                 {epc && (
                   <button
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setEpc('');
                       epcInputRef.current?.focus();
                     }}
-                    className="px-3 py-2 text-sm bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+                    className="px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded-md transition-colors flex items-center gap-1"
                     title="Clear and re-scan"
                   >
-                    <XCircle className="w-4 h-4" />
+                    <XCircle className="w-3 h-3" />
+                    Clear
                   </button>
                 )}
               </div>
-              <p className="text-xs text-slate-500 mt-1.5">
+              {/* Hidden input to capture reader keystrokes */}
+              <input
+                ref={epcInputRef}
+                type="text"
+                value={epc}
+                onChange={e => {
+                  const val = e.target.value;
+                  setEpc(val);
+                  const trimmed = val.trim();
+                  if (autoLinkEnabled && (trimmed.length === 32 || trimmed.length === 24)) {
+                    const now = Date.now();
+                    if (trimmed.toUpperCase() === lastScannedEpc.current && now - lastScannedTime.current < 3000) {
+                      console.log('[Encode] Duplicate read ignored:', trimmed.slice(0, 12));
+                      setEpc('');
+                      return;
+                    }
+                    lastScannedEpc.current = trimmed.toUpperCase();
+                    lastScannedTime.current = now;
+                    setTimeout(() => {
+                      autoLinkRef.current?.(trimmed);
+                    }, 200);
+                  }
+                }}
+                onKeyDown={handleEpcKeyDown}
+                className="sr-only"
+                aria-label="EPC tag input"
+              />
+              {/* Character boxes display */}
+              {epc ? (
+                <div className="flex flex-wrap gap-1">
+                  {epc.toUpperCase().split('').map((char, i) => (
+                    <div
+                      key={i}
+                      className="w-7 h-9 flex items-center justify-center bg-slate-900/70 border border-green-500/40 rounded text-green-400 font-mono text-sm font-bold"
+                    >
+                      {char}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className={`flex flex-wrap gap-1 ${!epc ? 'animate-pulse' : ''}`}>
+                  {Array.from({ length: 24 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="w-7 h-9 flex items-center justify-center bg-slate-900/30 border border-slate-600/40 rounded text-slate-600 font-mono text-sm"
+                    >
+                      -
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-slate-500 mt-2">
                 {epc
                   ? `Tag scanned: ${epc.length} characters`
-                  : 'The reader will type the tag EPC automatically when you place a label on it'}
+                  : 'Click here, then place tag on reader'}
               </p>
             </div>
 
