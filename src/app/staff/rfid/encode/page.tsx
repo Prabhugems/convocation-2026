@@ -66,12 +66,19 @@ export default function RfidEncodePage() {
   // Reader status
   const [readerDetected, setReaderDetected] = useState(false);
   const [lastScanTime, setLastScanTime] = useState<number>(0);
+  const [autoLinkEnabled, setAutoLinkEnabled] = useState(true);
   const epcInputRef = useRef<HTMLInputElement>(null);
+  const convocationInputRef = useRef<HTMLInputElement>(null);
 
   // Track keyboard input speed to detect reader vs manual typing
   const keyTimestamps = useRef<number[]>([]);
 
+  // Duplicate read prevention
+  const lastScannedEpc = useRef<string>('');
+  const lastScannedTime = useRef<number>(0);
+
   // Detect rapid keyboard input (reader types very fast, <50ms between keys)
+  // Auto-link when reader scan is detected
   const handleEpcKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     const now = Date.now();
     keyTimestamps.current.push(now);
@@ -83,26 +90,151 @@ export default function RfidEncodePage() {
 
     // If Enter is pressed and we have rapid input, it's from the reader
     if (e.key === 'Enter') {
+      e.preventDefault(); // Don't submit form on Enter from reader
+
       const timestamps = keyTimestamps.current;
+      let isReaderScan = false;
       if (timestamps.length >= 5) {
         const avgGap =
           (timestamps[timestamps.length - 1] - timestamps[0]) / (timestamps.length - 1);
         if (avgGap < 50) {
+          isReaderScan = true;
           setReaderDetected(true);
           setLastScanTime(now);
         }
       }
       keyTimestamps.current = [];
-      e.preventDefault(); // Don't submit form on Enter from reader
-    }
-  }, []);
 
-  // Auto-focus EPC field after successful encode for quick next scan
+      // Get the current EPC value from the input
+      const currentEpc = (e.target as HTMLInputElement).value.toUpperCase().trim();
+
+      // Duplicate read prevention: ignore same EPC within 3 seconds
+      if (currentEpc && currentEpc === lastScannedEpc.current && now - lastScannedTime.current < 3000) {
+        console.log('[Encode] Duplicate read ignored:', currentEpc.slice(0, 12));
+        setEpc('');
+        return;
+      }
+
+      if (currentEpc) {
+        lastScannedEpc.current = currentEpc;
+        lastScannedTime.current = now;
+      }
+
+      // Auto-link: trigger linking on Enter (both reader scan and manual typing)
+      if (autoLinkEnabled && currentEpc) {
+        // Pass EPC directly — don't rely on React state
+        setTimeout(() => {
+          autoLinkRef.current?.(currentEpc);
+        }, 100);
+      }
+    }
+  }, [autoLinkEnabled]);
+
+  // Ref for auto-link function (avoids stale closures)
+  const autoLinkRef = useRef<((epcValue: string) => void) | null>(null);
+
+  // Auto-link function — accepts EPC directly to avoid stale state issues
   useEffect(() => {
-    if (successMessage && epcInputRef.current) {
-      setTimeout(() => epcInputRef.current?.focus(), 300);
+    autoLinkRef.current = (epcValue: string) => {
+      if (loading) return;
+      if (!epcValue) return;
+      if (!encodedBy.trim()) {
+        setError('Please enter your name (Encoded By) before auto-linking');
+        return;
+      }
+      if (tagType === 'graduate' && !convocationNumber.trim()) {
+        setError('Enter convocation number first, then scan the tag');
+        convocationInputRef.current?.focus();
+        setEpc('');
+        return;
+      }
+
+      // Skip confirmation dialog — directly encode
+      const normalizedEpc = epcValue.toUpperCase().trim();
+      const encodeData = {
+        epc: normalizedEpc,
+        type: tagType,
+        convocationNumber:
+          tagType === 'graduate' ? convocationNumber.toUpperCase().trim() : undefined,
+        boxId: tagType === 'box' ? boxId.trim() || undefined : undefined,
+        boxLabel: tagType === 'box' ? boxLabel.trim() || undefined : undefined,
+      };
+
+      setLoading(true);
+      setError(null);
+      setSuccessMessage(null);
+      localStorage.setItem('rfid_encoded_by', encodedBy);
+
+      fetch('/api/rfid/encode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...encodeData,
+          encodedBy: encodedBy.trim(),
+        }),
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (!data.success) {
+            setError(data.error || 'Failed to encode tag');
+            return;
+          }
+
+          const tag = data.data;
+          setEncodedTags(prev => [
+            {
+              epc: tag.epc,
+              type: tag.type,
+              graduateName: tag.graduateName,
+              convocationNumber: tag.convocationNumber,
+              boxId: tag.boxId,
+              status: 'encoded',
+            },
+            ...prev,
+          ]);
+
+          const emoji = tag.type === 'graduate' ? ' 🎓' : ' 📦';
+          const titoWarning = tag.type === 'graduate' && !tag.titoTicketSlug
+            ? ' ⚠️ No Tito ticket'
+            : '';
+          setSuccessMessage(
+            `✅ Linked ${tag.epc.slice(0, 12)}... → ${tag.convocationNumber || tag.boxId || tag.epc}${tag.graduateName ? ` (${tag.graduateName})` : ''}${emoji} Tag linked${titoWarning}`
+          );
+
+          // Reset for next — focus goes to convocation number input
+          setEpc('');
+          setConvocationNumber('');
+          setBoxId('');
+          setBoxLabel('');
+          setBoxItemEpcs([]);
+          setPendingEncode(null);
+          setLookupName(null);
+
+          // Auto-focus convocation number for next tag
+          setTimeout(() => convocationInputRef.current?.focus(), 300);
+        })
+        .catch(err => {
+          setError(`Network error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    };
+  }, [convocationNumber, tagType, boxId, boxLabel, encodedBy, loading]);
+
+  // After successful encode, focus convocation number field (not EPC)
+  useEffect(() => {
+    if (successMessage && convocationInputRef.current) {
+      setTimeout(() => convocationInputRef.current?.focus(), 300);
     }
   }, [successMessage]);
+
+  // Auto-focus EPC/scan field when graduate name is found (convocation verified)
+  useEffect(() => {
+    if (lookupName && epcInputRef.current && !epc.trim()) {
+      setTimeout(() => epcInputRef.current?.focus(), 300);
+    }
+  }, [lookupName]);
 
   // Debounced Tito URL detection — waits for input to stabilize (barcode scanners type char by char)
   const titoLookupRef = useRef(false);
@@ -358,7 +490,7 @@ export default function RfidEncodePage() {
           <Zap
             className={`w-5 h-5 ${readerDetected ? 'text-green-400' : 'text-slate-500'}`}
           />
-          <div>
+          <div className="flex-1">
             <p className={`text-sm font-medium ${readerDetected ? 'text-green-300' : 'text-slate-400'}`}>
               {readerDetected
                 ? 'WD01 Reader Detected — scanning via keyboard emulation'
@@ -370,6 +502,19 @@ export default function RfidEncodePage() {
               </p>
             )}
           </div>
+          {/* Auto-link toggle */}
+          <button
+            onClick={() => setAutoLinkEnabled(!autoLinkEnabled)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              autoLinkEnabled
+                ? 'bg-green-500/20 text-green-300 border border-green-500/30'
+                : 'bg-slate-700/50 text-slate-400 border border-slate-600/50'
+            }`}
+            title={autoLinkEnabled ? 'Auto-link is ON: reader scan will link automatically' : 'Auto-link is OFF: manual button click required'}
+          >
+            <Zap className="w-3.5 h-3.5" />
+            Auto-Link {autoLinkEnabled ? 'ON' : 'OFF'}
+          </button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -461,6 +606,7 @@ export default function RfidEncodePage() {
                 </label>
                 <div className="flex gap-2">
                   <input
+                    ref={convocationInputRef}
                     type="text"
                     value={convocationNumber}
                     onChange={e => {
@@ -468,6 +614,14 @@ export default function RfidEncodePage() {
                       setLookupName(null);
                     }}
                     onBlur={() => lookupConvocationNumber(convocationNumber)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && convocationNumber.trim()) {
+                        e.preventDefault();
+                        lookupConvocationNumber(convocationNumber);
+                        // Auto-focus EPC/scan field
+                        setTimeout(() => epcInputRef.current?.focus(), 100);
+                      }
+                    }}
                     placeholder="Convocation no. or scan QR / paste Tito URL"
                     className="flex-1 px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 font-mono"
                   />
@@ -564,7 +718,27 @@ export default function RfidEncodePage() {
                   ref={epcInputRef}
                   type="text"
                   value={epc}
-                  onChange={e => setEpc(e.target.value)}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setEpc(val);
+                    // Auto-link when full EPC length detected (32 = WD01 TID, 24 = UHF EPC)
+                    const trimmed = val.trim();
+                    if (autoLinkEnabled && (trimmed.length === 32 || trimmed.length === 24)) {
+                      const now = Date.now();
+                      // Duplicate prevention
+                      if (trimmed.toUpperCase() === lastScannedEpc.current && now - lastScannedTime.current < 3000) {
+                        console.log('[Encode] Duplicate read ignored:', trimmed.slice(0, 12));
+                        setEpc('');
+                        return;
+                      }
+                      lastScannedEpc.current = trimmed.toUpperCase();
+                      lastScannedTime.current = now;
+                      // Small delay to let state settle
+                      setTimeout(() => {
+                        autoLinkRef.current?.(trimmed);
+                      }, 200);
+                    }
+                  }}
                   onKeyDown={handleEpcKeyDown}
                   placeholder="Click here, then place tag on reader..."
                   className={`flex-1 px-3 py-3 bg-slate-900/50 border rounded-lg text-slate-200 placeholder:text-slate-500 focus:outline-none font-mono text-sm ${
@@ -617,15 +791,22 @@ export default function RfidEncodePage() {
               {loading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Encoding...
+                  Linking...
                 </>
               ) : (
                 <>
                   <Radio className="w-5 h-5" />
-                  Link Tag to Certificate
+                  {autoLinkEnabled
+                    ? `#${encodedTags.length + 1} Link Tag to Certificate`
+                    : 'Link Tag to Certificate'}
                 </>
               )}
             </button>
+            {autoLinkEnabled && (
+              <p className="text-xs text-center text-slate-500 mt-2">
+                Auto-link is ON — reader scan will link automatically without clicking this button
+              </p>
+            )}
           </div>
 
           {/* Encoded Tags History */}

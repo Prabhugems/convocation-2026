@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTagByEpc, getTagByConvocationNumber, getBoxContents } from '@/lib/rfid';
+import { isWd01Format, convertWd01ToUhfEpc } from '@/types/rfid';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,9 +15,34 @@ export async function GET(request: NextRequest) {
     }
 
     const normalizedEpc = epc.toUpperCase().trim();
-    console.log(`[RFID Verify] Looking up: ${normalizedEpc}`);
+    console.log(`[RFID Verify] Looking up: ${normalizedEpc} (length: ${normalizedEpc.length})`);
 
-    const result = await getTagByEpc(normalizedEpc);
+    // Try exact match first
+    let result = await getTagByEpc(normalizedEpc);
+    let lookupEpc = normalizedEpc;
+
+    // If not found and input is longer than 24 chars (e.g. EPC + TID suffix like 80E20030),
+    // try truncating to 24-char UHF EPC
+    if (result.success && !result.data && normalizedEpc.length > 24 && /^[0-9A-F]+$/.test(normalizedEpc)) {
+      const truncatedEpc = normalizedEpc.slice(0, 24);
+      console.log(`[RFID Verify] Exact match failed, trying truncated EPC: ${truncatedEpc}`);
+      const truncResult = await getTagByEpc(truncatedEpc);
+      if (truncResult.success && truncResult.data) {
+        result = truncResult;
+        lookupEpc = truncatedEpc;
+      }
+    }
+
+    // If still not found and looks like WD01 format, try byte-reversal conversion
+    if (result.success && !result.data && isWd01Format(normalizedEpc)) {
+      const uhfEpc = convertWd01ToUhfEpc(normalizedEpc);
+      console.log(`[RFID Verify] Trying WD01 conversion: ${normalizedEpc} → ${uhfEpc}`);
+      const wd01Result = await getTagByEpc(uhfEpc);
+      if (wd01Result.success && wd01Result.data) {
+        result = wd01Result;
+        lookupEpc = uhfEpc;
+      }
+    }
 
     if (!result.success) {
       return NextResponse.json(
@@ -91,7 +117,23 @@ export async function POST(request: NextRequest) {
 
     for (const epc of epcs) {
       const normalizedEpc = (epc as string).toUpperCase().trim();
-      const result = await getTagByEpc(normalizedEpc);
+      let lookupEpc = normalizedEpc;
+
+      // Try exact match first
+      let result = await getTagByEpc(normalizedEpc);
+
+      // If not found, try truncated 24-char EPC (strip TID suffix)
+      if (result.success && !result.data && normalizedEpc.length > 24 && /^[0-9A-F]+$/.test(normalizedEpc)) {
+        const truncated = normalizedEpc.slice(0, 24);
+        const truncResult = await getTagByEpc(truncated);
+        if (truncResult.success && truncResult.data) { result = truncResult; lookupEpc = truncated; }
+      }
+
+      // If still not found, try WD01 byte-reversal
+      if (result.success && !result.data && isWd01Format(normalizedEpc)) {
+        const wd01Result = await getTagByEpc(convertWd01ToUhfEpc(normalizedEpc));
+        if (wd01Result.success && wd01Result.data) { result = wd01Result; lookupEpc = convertWd01ToUhfEpc(normalizedEpc); }
+      }
 
       if (result.success) {
         results.push({
