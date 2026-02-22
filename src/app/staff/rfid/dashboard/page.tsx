@@ -402,16 +402,17 @@ export default function RfidDashboardPage() {
     };
   }, [dashAutoRefresh, fetchStats]);
 
-  // Verify tag
-  const handleVerify = async () => {
-    if (!verifyEpc.trim()) return;
+  // Verify tag — accepts optional EPC directly (for auto-verify from onChange)
+  const handleVerify = async (directEpc?: string) => {
+    const epcToVerify = (directEpc || verifyEpc).trim();
+    if (!epcToVerify) return;
     setVerifying(true);
     setVerifyError(null);
     setVerifyResult(null);
 
     try {
       const response = await fetch(
-        `/api/rfid/verify?epc=${encodeURIComponent(verifyEpc.toUpperCase().trim())}`
+        `/api/rfid/verify?epc=${encodeURIComponent(epcToVerify.toUpperCase())}`
       );
       const data = await response.json();
 
@@ -710,7 +711,15 @@ export default function RfidDashboardPage() {
                   <input
                     type="text"
                     value={verifyEpc}
-                    onChange={e => setVerifyEpc(e.target.value)}
+                    maxLength={32}
+                    onChange={e => {
+                      const val = e.target.value.slice(0, 32);
+                      setVerifyEpc(val);
+                      // Auto-verify when 32 hex chars received (reader scan)
+                      if (val.trim().length === 32 && /^[0-9A-Fa-f]{32}$/.test(val.trim())) {
+                        handleVerify(val.trim());
+                      }
+                    }}
                     onKeyDown={e => e.key === 'Enter' && handleVerify()}
                     placeholder="Enter EPC"
                     className="flex-1 px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-green-500 font-mono uppercase text-sm"
