@@ -741,8 +741,10 @@ export default function RfidEncodePage() {
                 ref={epcInputRef}
                 type="text"
                 value={epc}
+                maxLength={32}
                 onChange={e => {
-                  const val = e.target.value;
+                  // Cap at 32 chars — WD01 reader sometimes sends EPC twice (64 chars)
+                  const val = e.target.value.slice(0, 32);
                   setEpc(val);
                   const trimmed = val.trim();
                   if (autoLinkEnabled && (trimmed.length === 32 || trimmed.length === 24)) {
