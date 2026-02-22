@@ -709,8 +709,12 @@ export default function RfidEncodePage() {
             )}
 
             {/* Step 2: EPC from Reader */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-slate-300 mb-1">
+            <div className={`mb-4 p-4 rounded-xl border-2 border-dashed transition-colors ${
+              epc
+                ? 'border-green-500/50 bg-green-500/5'
+                : 'border-blue-500/40 bg-blue-500/5'
+            }`}>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
                 {tagType === 'graduate' ? 'Step 2: ' : ''}Scan Tag (place on WD01 reader)
               </label>
               <div className="flex gap-2">
@@ -744,7 +748,7 @@ export default function RfidEncodePage() {
                   className={`flex-1 px-3 py-3 bg-slate-900/50 border rounded-lg text-slate-200 placeholder:text-slate-500 focus:outline-none font-mono text-sm ${
                     epc
                       ? 'border-green-500/50 bg-green-500/5'
-                      : 'border-blue-500/50 focus:border-blue-400 animate-pulse focus:animate-none'
+                      : 'border-slate-600 focus:border-blue-400 animate-pulse focus:animate-none'
                   }`}
                 />
                 {epc && (
@@ -760,7 +764,7 @@ export default function RfidEncodePage() {
                   </button>
                 )}
               </div>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-slate-500 mt-1.5">
                 {epc
                   ? `Tag scanned: ${epc.length} characters`
                   : 'The reader will type the tag EPC automatically when you place a label on it'}
