@@ -25,6 +25,19 @@
     <string name="status_disconnected">Reader Not Connected</string>
     <string name="status_stopped">Stopped</string>
 
+    <!-- Tag list -->
+    <string name="btn_view_tags">View Scanned Tags</string>
+    <string name="header_scanned_tags">Scanned Tags</string>
+    <string name="tag_list_empty">No tags scanned yet\nStart an RFID scan to see tags here</string>
+    <string name="btn_export_csv">Export CSV</string>
+
+    <!-- Tag detail -->
+    <string name="header_tag_info">TAG INFO</string>
+    <string name="header_signal_stats">SIGNAL &amp; STATS</string>
+    <string name="header_scan_timeline">SCAN TIMELINE</string>
+    <string name="label_graduate_name">Graduate Name</string>
+    <string name="label_conv_number">Conv. Number</string>
+
     <!-- Scan history -->
     <string name="header_scan_history">SCAN HISTORY</string>
     <string name="scan_history_empty">No scans yet</string>
@@ -39,6 +52,9 @@
     <string name="setting_vibration">Vibration on scan</string>
     <string name="setting_vibration_desc">Vibrate on successful scan detection</string>
     <string name="setting_power_level">Reader Power Level</string>
+    <string name="header_server">SERVER</string>
+    <string name="setting_web_server_url">Web Server URL</string>
+    <string name="setting_web_server_url_desc">URL of the convocation web dashboard for tag resolution</string>
 
     <!-- Scanner screen -->
     <string name="scanner_title">Barcode Scanner</string>

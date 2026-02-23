@@ -204,11 +204,35 @@ export async function getTagByEpc(epc: string): Promise<ApiResponse<RfidTag | nu
     const tag = mapResult.data.get(normalizedEpc);
     if (tag) return { success: true, data: tag };
 
-    // Fallback: search cache for WD01-format EPCs containing reversed UHF bytes
+    // Fallback: match scanned UHF EPCs against WD01-encoded tags.
+    //
+    // Problem: Many tags were encoded via WD01 desktop reader which reads the TID bank
+    // (32 hex chars). The encode UI truncated the TID to 24 chars before sending to the API,
+    // so isWd01Format (which requires 32 chars ending in "0030") never triggered.
+    // These truncated TIDs got stored as-is in Airtable — they're NOT valid UHF EPCs.
+    //
+    // WD01 TID structure (16 bytes):
+    //   [2 unique bytes] + [UHF EPC 12 bytes, byte-reversed] + [0x80E2] + [0x0030]
+    // Truncated to 12 bytes (24 hex):
+    //   [2 unique bytes] + [first 10 bytes of reversed UHF EPC]
+    //
+    // So: stored_truncated_tid[4:] == reverse_bytes(real_uhf_epc)[0:20]
+    //
+    // Given a scanned UHF EPC, compute the expected suffix and match.
     if (/^[0-9A-F]{24}$/.test(normalizedEpc)) {
       const reversedHex = uhfEpcToReversedHex(normalizedEpc);
+
+      // For 32-char stored WD01 TIDs (rare — isWd01Format check was bypassed)
       for (const [cachedEpc, cachedTag] of mapResult.data) {
         if (cachedEpc.length === 32 && cachedEpc.includes(reversedHex)) {
+          return { success: true, data: cachedTag };
+        }
+      }
+
+      // For 24-char truncated WD01 TIDs: last 20 chars should match first 20 chars of reversed UHF EPC
+      const expectedSuffix = reversedHex.slice(0, 20);
+      for (const [cachedEpc, cachedTag] of mapResult.data) {
+        if (cachedEpc.length === 24 && cachedEpc !== normalizedEpc && cachedEpc.endsWith(expectedSuffix)) {
           return { success: true, data: cachedTag };
         }
       }

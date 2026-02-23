@@ -20,6 +20,12 @@
     <color name="text_primary">#F8FAFC</color>
     <color name="text_secondary">#94A3B8</color>
 
+    <!-- RSSI signal strength -->
+    <color name="rssi_green">#22C55E</color>
+    <color name="rssi_lime">#84CC16</color>
+    <color name="rssi_amber">#F59E0B</color>
+    <color name="rssi_red">#EF4444</color>
+
     <!-- Scanner overlay -->
     <color name="scanner_overlay">#88000000</color>
     <color name="reticle_white">#FFFFFF</color>

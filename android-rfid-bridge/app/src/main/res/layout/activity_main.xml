@@ -259,6 +259,25 @@
                     android:gravity="center"
                     android:layout_marginTop="8dp" />
 
+                <!-- View Scanned Tags button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/viewTagsButton"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/button_height_small"
+                    android:text="@string/btn_view_tags"
+                    android:textSize="14sp"
+                    android:textAllCaps="false"
+                    app:icon="@android:drawable/ic_menu_sort_by_size"
+                    app:iconGravity="textStart"
+                    app:iconPadding="8dp"
+                    app:cornerRadius="12dp"
+                    app:strokeColor="@color/cyan_primary"
+                    app:strokeWidth="1dp"
+                    android:textColor="@color/cyan_primary"
+                    app:iconTint="@color/cyan_primary"
+                    android:layout_marginTop="8dp" />
+
             </LinearLayout>
 
         </com.google.android.material.card.MaterialCardView>

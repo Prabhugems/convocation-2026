@@ -86,6 +86,7 @@ class RfidHttpServer(
             // Keep only last 500 entries to prevent unbounded growth
             if (recentTags.size > 500) recentTags.poll()
             recentTags.add(mapOf("epc" to epc, "rssi" to rssi, "ts" to System.currentTimeMillis()))
+            TagRepository.addOrUpdate(epc, rssi)
             val count = totalTagCount.incrementAndGet()
             onScanCountUpdated?.invoke(count)
         }

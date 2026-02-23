@@ -7,6 +7,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
@@ -31,6 +32,16 @@
 
         <activity
             android:name=".SettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.RfidBridge" />
+
+        <activity
+            android:name=".TagListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.RfidBridge" />
+
+        <activity
+            android:name=".TagDetailActivity"
             android:exported="false"
             android:theme="@style/Theme.RfidBridge" />
 

@@ -93,6 +93,7 @@ class RfidBridgeService : Service() {
 
     private var rfidManager: RfidManager? = null
     private var httpServer: RfidHttpServer? = null
+    private var tagResolver: TagResolver? = null
     private val mainHandler = Handler(Looper.getMainLooper())
     private var lastBroadcastCount = 0L
 
@@ -152,6 +153,11 @@ class RfidBridgeService : Service() {
             Log.e(TAG, "Failed to start HTTP server", e)
         }
 
+        // Start tag resolver for background name resolution
+        val resolver = TagResolver(this)
+        tagResolver = resolver
+        resolver.start()
+
         // Update notification and state
         val statusText = if (!serverStarted) "Server failed — restart app"
             else if (connected) "Reader connected — :8080 ready"
@@ -164,6 +170,12 @@ class RfidBridgeService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        try {
+            tagResolver?.stop()
+            tagResolver = null
+        } catch (e: Exception) {
+            Log.e(TAG, "Error stopping tag resolver", e)
+        }
         try {
             httpServer?.stop()
             Log.i(TAG, "HTTP server stopped")
@@ -180,6 +192,7 @@ class RfidBridgeService : Service() {
         httpServer = null
         currentState = State()
         recentBarcodes.clear()
+        TagRepository.clear()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

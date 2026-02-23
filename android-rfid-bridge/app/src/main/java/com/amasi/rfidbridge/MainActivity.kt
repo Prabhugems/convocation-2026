@@ -14,6 +14,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.content.Intent
+import android.net.wifi.WifiManager
 import android.util.Log
 import android.view.View
 import android.widget.ImageButton
@@ -131,7 +132,7 @@ class MainActivity : AppCompatActivity() {
                 state.connected -> getString(R.string.status_connected)
                 else -> getString(R.string.status_disconnected)
             }
-            serverUrlText.text = if (state.connected) "http://localhost:8080" else "—"
+            serverUrlText.text = if (state.connected) getWifiIpAddress() else "—"
             scanCountText.text = state.tagCount.toString()
             if (state.power > 0) {
                 powerText.text = "${state.power} dBm"
@@ -248,6 +249,11 @@ class MainActivity : AppCompatActivity() {
 
         scanBarcodeButton.setOnClickListener {
             launchBarcodeScanner()
+        }
+
+        // View Scanned Tags button
+        findViewById<MaterialButton>(R.id.viewTagsButton).setOnClickListener {
+            startActivity(Intent(this, TagListActivity::class.java))
         }
 
         // Request notification permission on Android 13+
@@ -404,6 +410,21 @@ class MainActivity : AppCompatActivity() {
                 Log.w(TAG, "Failed to resolve ticket slug: $slug", e)
             }
         }.start()
+    }
+
+    @Suppress("DEPRECATION")
+    private fun getWifiIpAddress(): String {
+        try {
+            val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            val ip = wifiManager.connectionInfo.ipAddress
+            if (ip == 0) return "http://localhost:8080"
+            return String.format(
+                "http://%d.%d.%d.%d:8080",
+                ip and 0xff, ip shr 8 and 0xff, ip shr 16 and 0xff, ip shr 24 and 0xff,
+            )
+        } catch (e: Exception) {
+            return "http://localhost:8080"
+        }
     }
 
     private fun launchBarcodeScanner() {

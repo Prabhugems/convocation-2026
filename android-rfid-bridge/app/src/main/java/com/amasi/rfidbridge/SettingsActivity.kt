@@ -3,11 +3,12 @@ package com.amasi.rfidbridge
 import android.content.Context
 import android.os.Bundle
 import android.util.Log
+import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.SeekBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.materialswitch.MaterialSwitch
+import androidx.appcompat.widget.SwitchCompat
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -30,17 +31,29 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         // Sound toggle
-        val soundSwitch = findViewById<MaterialSwitch>(R.id.soundSwitch)
+        val soundSwitch = findViewById<SwitchCompat>(R.id.soundSwitch)
         soundSwitch.isChecked = prefs.getBoolean("sound_enabled", true)
         soundSwitch.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean("sound_enabled", isChecked).apply()
         }
 
         // Vibration toggle
-        val vibrationSwitch = findViewById<MaterialSwitch>(R.id.vibrationSwitch)
+        val vibrationSwitch = findViewById<SwitchCompat>(R.id.vibrationSwitch)
         vibrationSwitch.isChecked = prefs.getBoolean("vibration_enabled", true)
         vibrationSwitch.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean("vibration_enabled", isChecked).apply()
+        }
+
+        // Web Server URL
+        val webUrlInput = findViewById<EditText>(R.id.webServerUrlInput)
+        webUrlInput.setText(prefs.getString("web_server_url", "https://convocation-2026.vercel.app"))
+        webUrlInput.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus) {
+                val url = webUrlInput.text.toString().trim()
+                if (url.isNotEmpty()) {
+                    prefs.edit().putString("web_server_url", url).apply()
+                }
+            }
         }
 
         // Power level SeekBar
