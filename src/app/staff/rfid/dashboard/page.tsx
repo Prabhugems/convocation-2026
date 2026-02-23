@@ -715,9 +715,10 @@ export default function RfidDashboardPage() {
                     onChange={e => {
                       const val = e.target.value.slice(0, 32);
                       setVerifyEpc(val);
-                      // Auto-verify when 32 hex chars received (reader scan)
-                      if (val.trim().length === 32 && /^[0-9A-Fa-f]{32}$/.test(val.trim())) {
-                        handleVerify(val.trim());
+                      // Auto-verify when 24 or 32 hex chars received (reader scan)
+                      const trimmed = val.trim();
+                      if ((trimmed.length === 24 || trimmed.length === 32) && /^[0-9A-Fa-f]+$/.test(trimmed)) {
+                        handleVerify(trimmed);
                       }
                     }}
                     onKeyDown={e => e.key === 'Enter' && handleVerify()}
