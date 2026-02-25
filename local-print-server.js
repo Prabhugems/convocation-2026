@@ -15,7 +15,7 @@ const http = require('http');
 const net = require('net');
 const url = require('url');
 
-const PORT = 3001;
+const PORT = 3004;
 const DEFAULT_PRINTER_IP = '10.0.1.12';
 const DEFAULT_PRINTER_PORT = 9100;
 

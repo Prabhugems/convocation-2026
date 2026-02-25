@@ -64,6 +64,7 @@ export async function POST(request: NextRequest) {
         success: true,
         printed: false,
         reason: 'unregistered',
+        epc: normalizedEpc,
       });
     }
 
@@ -125,6 +126,7 @@ export async function POST(request: NextRequest) {
     return jsonResponse({
       success: true,
       printed: true,
+      epc: normalizedEpc,
       graduateName: tag.graduateName,
       convocationNumber: tag.convocationNumber,
       stationScan,

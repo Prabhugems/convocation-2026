@@ -32,6 +32,21 @@ import {
   X,
 } from 'lucide-react';
 
+import { isWd01Format, convertWd01ToUhfEpc } from '@/types/rfid';
+
+// Display EPC in clean 24-char format (convert 32-char WD01 if needed)
+function displayEpc(epc: string): string {
+  const upper = epc.toUpperCase().trim();
+  if (isWd01Format(upper)) {
+    return convertWd01ToUhfEpc(upper);
+  }
+  // If 32+ hex chars with TID suffix, truncate to 24
+  if (/^[0-9A-F]{32,}$/.test(upper)) {
+    return upper.slice(0, 24);
+  }
+  return upper;
+}
+
 type RfidStation =
   | 'packing'
   | 'dispatch-venue'
@@ -282,7 +297,7 @@ export default function RfidScanPage() {
           if (data.printed) {
             setPrintedEpcs(prev => new Set(prev).add(epc));
             setPrintLog(prev => [{
-              epc,
+              epc: data.epc || displayEpc(epc),
               name: data.graduateName || detail.graduateName,
               status: 'printed',
               time: new Date().toLocaleTimeString(),
@@ -290,13 +305,13 @@ export default function RfidScanPage() {
             }, ...prev]);
           } else if (data.reason === 'unregistered') {
             setPrintLog(prev => [{
-              epc,
+              epc: data.epc || displayEpc(epc),
               status: 'skipped',
               time: new Date().toLocaleTimeString(),
             }, ...prev]);
           } else {
             setPrintLog(prev => [{
-              epc,
+              epc: data.epc || displayEpc(epc),
               name: data.graduateName || detail.graduateName,
               status: 'error',
               error: data.error || 'Print failed',
@@ -350,7 +365,7 @@ export default function RfidScanPage() {
           if (data.printed) {
             setPrintedEpcs(prev => new Set(prev).add(trimmed));
             setPrintLog(prev => [{
-              epc: trimmed,
+              epc: data.epc || displayEpc(trimmed),
               name: data.graduateName,
               status: 'printed',
               time: new Date().toLocaleTimeString(),
@@ -358,13 +373,13 @@ export default function RfidScanPage() {
             }, ...prev]);
           } else if (data.reason === 'unregistered') {
             setPrintLog(prev => [{
-              epc: trimmed,
+              epc: data.epc || displayEpc(trimmed),
               status: 'skipped',
               time: new Date().toLocaleTimeString(),
             }, ...prev]);
           } else {
             setPrintLog(prev => [{
-              epc: trimmed,
+              epc: data.epc || displayEpc(trimmed),
               status: 'error',
               error: data.error || 'Print failed',
               time: new Date().toLocaleTimeString(),
@@ -374,7 +389,7 @@ export default function RfidScanPage() {
         .catch(err => {
           printingRef.current.delete(trimmed);
           setPrintLog(prev => [{
-            epc: trimmed,
+            epc: displayEpc(trimmed),
             status: 'error',
             error: err instanceof Error ? err.message : 'Network error',
             time: new Date().toLocaleTimeString(),
@@ -641,9 +656,9 @@ export default function RfidScanPage() {
             .then(printData => {
               if (printData.printed) {
                 setPrintedEpcs(prev => new Set(prev).add(normalizedEpc));
-                setPrintLog(prev => [{ epc: normalizedEpc, name: printData.graduateName || result.tag?.graduateName, status: 'printed', time: new Date().toLocaleTimeString(), titoCheckin: printData.stationScan?.titoCheckin }, ...prev]);
+                setPrintLog(prev => [{ epc: printData.epc || displayEpc(normalizedEpc), name: printData.graduateName || result.tag?.graduateName, status: 'printed', time: new Date().toLocaleTimeString(), titoCheckin: printData.stationScan?.titoCheckin }, ...prev]);
               } else {
-                setPrintLog(prev => [{ epc: normalizedEpc, status: printData.reason === 'unregistered' ? 'skipped' : 'error', error: printData.error, time: new Date().toLocaleTimeString() }, ...prev]);
+                setPrintLog(prev => [{ epc: printData.epc || displayEpc(normalizedEpc), status: printData.reason === 'unregistered' ? 'skipped' : 'error', error: printData.error, time: new Date().toLocaleTimeString() }, ...prev]);
               }
             })
             .catch(() => {});
@@ -1076,7 +1091,7 @@ export default function RfidScanPage() {
                               if (data.printed) {
                                 setPrintedEpcs(prev => new Set(prev).add(normalizedEpc));
                                 setPrintLog(prev => [{
-                                  epc: normalizedEpc,
+                                  epc: data.epc || displayEpc(normalizedEpc),
                                   name: data.graduateName,
                                   status: 'printed',
                                   time: new Date().toLocaleTimeString(),
@@ -1084,13 +1099,13 @@ export default function RfidScanPage() {
                                 }, ...prev]);
                               } else if (data.reason === 'unregistered') {
                                 setPrintLog(prev => [{
-                                  epc: normalizedEpc,
+                                  epc: data.epc || displayEpc(normalizedEpc),
                                   status: 'skipped',
                                   time: new Date().toLocaleTimeString(),
                                 }, ...prev]);
                               } else {
                                 setPrintLog(prev => [{
-                                  epc: normalizedEpc,
+                                  epc: data.epc || displayEpc(normalizedEpc),
                                   status: 'error',
                                   error: data.error || 'Print failed',
                                   time: new Date().toLocaleTimeString(),
@@ -1100,7 +1115,7 @@ export default function RfidScanPage() {
                             .catch(err => {
                               printingRef.current.delete(normalizedEpc);
                               setPrintLog(prev => [{
-                                epc: normalizedEpc,
+                                epc: displayEpc(normalizedEpc),
                                 status: 'error',
                                 error: err instanceof Error ? err.message : 'Network error',
                                 time: new Date().toLocaleTimeString(),
@@ -1332,7 +1347,7 @@ export default function RfidScanPage() {
                           ) : (
                             <XCircle className="w-4 h-4 text-red-400" />
                           )}
-                          <span className="font-mono text-sm font-medium">{result.epc}</span>
+                          <span className="font-mono text-sm font-medium">{displayEpc(result.epc)}</span>
                           {result.type === 'box' ? (
                             <Box className="w-3.5 h-3.5 text-amber-400" />
                           ) : (

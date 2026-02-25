@@ -19,6 +19,19 @@ import {
   Search,
 } from 'lucide-react';
 import UniversalScanner, { SearchInputType, extractTicketFromUrl } from '@/components/UniversalScanner';
+import { isWd01Format, convertWd01ToUhfEpc } from '@/types/rfid';
+
+// Display EPC in clean 24-char format (convert 32-char WD01 if needed)
+function displayEpc(epc: string): string {
+  const upper = epc.toUpperCase().trim();
+  if (isWd01Format(upper)) {
+    return convertWd01ToUhfEpc(upper);
+  }
+  if (/^[0-9A-F]{32,}$/.test(upper)) {
+    return upper.slice(0, 24);
+  }
+  return upper;
+}
 
 interface EncodedTag {
   epc: string;
@@ -870,7 +883,7 @@ export default function RfidEncodePage() {
                         <Tag className="w-4 h-4 text-blue-400" />
                       )}
                       <span className="font-mono text-xs text-slate-400 truncate max-w-[180px]">
-                        {tag.epc}
+                        {displayEpc(tag.epc)}
                       </span>
                       <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">
                         Linked
@@ -908,7 +921,7 @@ export default function RfidEncodePage() {
               <div className="flex justify-between text-sm">
                 <span className="text-slate-400">Tag EPC:</span>
                 <span className="font-mono text-xs max-w-[200px] truncate">
-                  {pendingEncode.epc}
+                  {displayEpc(pendingEncode.epc)}
                 </span>
               </div>
               <div className="flex justify-between text-sm">

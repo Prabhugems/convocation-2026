@@ -30,6 +30,19 @@ import {
   Wifi,
   WifiOff,
 } from 'lucide-react';
+import { isWd01Format, convertWd01ToUhfEpc } from '@/types/rfid';
+
+// Display EPC in clean 24-char format (convert 32-char WD01 if needed)
+function displayEpc(epc: string): string {
+  const upper = epc.toUpperCase().trim();
+  if (isWd01Format(upper)) {
+    return convertWd01ToUhfEpc(upper);
+  }
+  if (/^[0-9A-F]{32,}$/.test(upper)) {
+    return upper.slice(0, 24);
+  }
+  return upper;
+}
 
 interface DashboardStats {
   totalTags: number;
@@ -757,7 +770,7 @@ export default function RfidDashboardPage() {
                   <div className="space-y-2">
                     <div className="p-3 bg-slate-900/30 rounded-lg space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="font-mono text-sm font-medium">{verifyResult.tag.epc}</span>
+                        <span className="font-mono text-sm font-medium">{displayEpc(verifyResult.tag.epc)}</span>
                         <span
                           className={`text-xs px-2 py-0.5 rounded-full border ${
                             STATUS_COLORS[verifyResult.tag.status] || STATUS_COLORS.encoded
@@ -797,7 +810,7 @@ export default function RfidDashboardPage() {
                         <div className="space-y-1 max-h-24 overflow-y-auto">
                           {verifyResult.boxItems.map((item, i) => (
                             <div key={i} className="flex items-center justify-between text-xs">
-                              <span className="font-mono text-slate-400">{item.epc}</span>
+                              <span className="font-mono text-slate-400">{displayEpc(item.epc)}</span>
                               <span className="text-slate-500">{item.graduateName || item.status}</span>
                             </div>
                           ))}
@@ -998,7 +1011,7 @@ export default function RfidDashboardPage() {
                               key={tag.epc}
                               className="border-b border-slate-700/30 hover:bg-slate-700/20"
                             >
-                              <td className="py-2 px-3 font-mono text-xs">{tag.epc}</td>
+                              <td className="py-2 px-3 font-mono text-xs">{displayEpc(tag.epc)}</td>
                               <td className="py-2 px-3 text-slate-300">
                                 {tag.graduateName || '-'}
                               </td>
@@ -1061,7 +1074,7 @@ export default function RfidDashboardPage() {
                           }`}
                         >
                           <td className="py-2 px-3 font-mono text-xs">
-                            {scan.epc || '-'}
+                            {scan.epc ? displayEpc(scan.epc) : '-'}
                           </td>
                           <td className="py-2 px-3 font-mono text-xs text-slate-400">
                             {scan.convocationNumber || '-'}
@@ -1268,7 +1281,7 @@ export default function RfidDashboardPage() {
             </div>
 
             <div className="p-3 bg-slate-900/50 rounded-lg mb-4 space-y-1 text-sm">
-              <p className="font-mono text-xs">{verifyResult.tag.epc}</p>
+              <p className="font-mono text-xs">{displayEpc(verifyResult.tag.epc)}</p>
               {verifyResult.tag.graduateName && (
                 <p className="text-slate-300">{verifyResult.tag.graduateName}</p>
               )}
