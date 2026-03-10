@@ -18,7 +18,7 @@ export async function GET() {
   }));
 
   return NextResponse.json({
-    totalTags: tags.size,
+    totalTags: tags.length,
     sample,
     epcLengths: [...new Set(tags.map(t => t.epc.length))],
   });
