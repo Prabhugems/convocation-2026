@@ -333,6 +333,7 @@ export default function RfidScanPage() {
 
   // WD01 auto-print: watch epcInput for complete EPC and auto-trigger
   // Only active for desktop print stations (packing, address-label)
+  // Fires immediately at 32 hex chars (WD01 format) or after 300ms for convocation numbers
   useEffect(() => {
     if (!autoPrintEnabled || !DESKTOP_PRINT_STATIONS.includes(station)) return;
     const trimmed = epcInput.trim().toUpperCase();
@@ -344,7 +345,7 @@ export default function RfidScanPage() {
     // Skip duplicates
     if (printedEpcs.has(trimmed) || printingRef.current.has(trimmed)) return;
 
-    const timer = setTimeout(() => {
+    const triggerPrint = () => {
       // Show WD01 badge
       setWd01Detected(true);
       if (wd01FadeTimer.current) clearTimeout(wd01FadeTimer.current);
@@ -395,8 +396,16 @@ export default function RfidScanPage() {
             time: new Date().toLocaleTimeString(),
           }, ...prev]);
         });
-    }, 500);
+    };
 
+    // 32 hex chars = WD01 complete → fire immediately (no delay)
+    if (isWd01) {
+      triggerPrint();
+      return;
+    }
+
+    // Convocation number pattern → short delay to ensure input is complete
+    const timer = setTimeout(triggerPrint, 300);
     return () => clearTimeout(timer);
   }, [epcInput, autoPrintEnabled, printerIP, printedEpcs, station, printServerUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1057,7 +1066,11 @@ export default function RfidScanPage() {
                       ref={inputRef}
                       type="text"
                       value={epcInput}
-                      onChange={e => setEpcInput(e.target.value)}
+                      maxLength={32}
+                      onChange={e => {
+                        // Cap at 32 chars — WD01 reader sometimes sends EPC twice (64 chars)
+                        setEpcInput(e.target.value.slice(0, 32));
+                      }}
                       onKeyDown={e => {
                         const now = Date.now();
                         keyTimestamps.current.push(now);
