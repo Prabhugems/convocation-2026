@@ -238,6 +238,8 @@ export default function AdminPage() {
             return g.status.finalDispatched;
           case 'uncollected':
             return !g.status.certificateCollected && !g.status.finalDispatched;
+          case 'not-packed':
+            return !g.status.packed;
           // Pipeline statuses
           case 'packed':
             return g.status.packed;
@@ -1114,6 +1116,8 @@ export default function AdminPage() {
                   className="px-3 sm:px-4 py-1.5 sm:py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg sm:rounded-xl text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300 cursor-pointer"
                 >
                   <option value="all">All Status</option>
+                  <option value="packed">Packed</option>
+                  <option value="not-packed">Not Packed</option>
                   <option value="collected">Collected</option>
                   <option value="dispatched">Dispatched</option>
                   <option value="uncollected">Uncollected</option>
@@ -1226,10 +1230,15 @@ export default function AdminPage() {
                               <Clock className="w-3 h-3" />
                               Pending Gown
                             </span>
+                          ) : graduate.status.packed ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-500/20 text-gray-300 border border-gray-500/30">
+                              <Package className="w-3 h-3" />
+                              Packed
+                            </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-500/20 text-slate-400 border border-slate-500/30">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30">
                               <Circle className="w-3 h-3" />
-                              Pending
+                              Not Packed
                             </span>
                           )}
                         </td>
@@ -1335,10 +1344,15 @@ export default function AdminPage() {
                                         <Send className="w-3 h-3" />
                                         Dispatched
                                       </span>
+                                    ) : graduate.status.packed ? (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-gray-500/20 text-gray-300">
+                                        <Package className="w-3 h-3" />
+                                        Packed
+                                      </span>
                                     ) : (
-                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-slate-500/20 text-slate-400">
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-red-500/20 text-red-400">
                                         <Circle className="w-3 h-3" />
-                                        Pending
+                                        Not Packed
                                       </span>
                                     )}
                                   </td>
