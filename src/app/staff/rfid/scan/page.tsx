@@ -1038,129 +1038,208 @@ export default function RfidScanPage() {
 
             {/* EPC Input */}
             <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700/50 p-4">
-              <div className="flex gap-2 mb-3">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={epcInput}
-                  onChange={e => setEpcInput(e.target.value)}
-                  onKeyDown={e => {
-                    const now = Date.now();
-                    keyTimestamps.current.push(now);
-                    // Keep only last 10 timestamps
-                    if (keyTimestamps.current.length > 10) {
-                      keyTimestamps.current = keyTimestamps.current.slice(-10);
-                    }
-
-                    if (e.key === 'Enter') {
-                      const timestamps = keyTimestamps.current;
-                      const isReaderInput = timestamps.length >= 5 &&
-                        (timestamps[timestamps.length - 1] - timestamps[0]) / (timestamps.length - 1) < 50;
-                      keyTimestamps.current = [];
-
-                      if (isReaderInput) {
-                        e.preventDefault();
-                        // Show WD01 connected badge (auto-fade after 5s)
-                        setWd01Detected(true);
-                        if (wd01FadeTimer.current) clearTimeout(wd01FadeTimer.current);
-                        wd01FadeTimer.current = setTimeout(() => setWd01Detected(false), 5000);
-
-                        const normalizedEpc = epcInput.toUpperCase().trim();
-                        if (!normalizedEpc) return;
-
-                        if (autoPrintEnabled && isDesktopPrintStation) {
-                          // WD01 + Auto-Print: print label directly (packing/address-label only)
-                          if (printedEpcs.has(normalizedEpc) || printingRef.current.has(normalizedEpc)) {
-                            // Duplicate — skip silently
-                            setEpcInput('');
-                            inputRef.current?.focus();
-                            return;
-                          }
-                          printingRef.current.add(normalizedEpc);
-                          setEpcInput('');
-                          inputRef.current?.focus();
-
-                          fetch(`${printServerUrl}/api/rfid/auto-print`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ epc: normalizedEpc, printerIP, station, scannedBy }),
-                          })
-                            .then(res => res.json())
-                            .then(data => {
-                              printingRef.current.delete(normalizedEpc);
-                              if (data.printed) {
-                                setPrintedEpcs(prev => new Set(prev).add(normalizedEpc));
-                                setPrintLog(prev => [{
-                                  epc: data.epc || displayEpc(normalizedEpc),
-                                  name: data.graduateName,
-                                  status: 'printed',
-                                  time: new Date().toLocaleTimeString(),
-                                  titoCheckin: data.stationScan?.titoCheckin,
-                                }, ...prev]);
-                              } else if (data.reason === 'unregistered') {
-                                setPrintLog(prev => [{
-                                  epc: data.epc || displayEpc(normalizedEpc),
-                                  status: 'skipped',
-                                  time: new Date().toLocaleTimeString(),
-                                }, ...prev]);
-                              } else {
-                                setPrintLog(prev => [{
-                                  epc: data.epc || displayEpc(normalizedEpc),
-                                  status: 'error',
-                                  error: data.error || 'Print failed',
-                                  time: new Date().toLocaleTimeString(),
-                                }, ...prev]);
-                              }
-                            })
-                            .catch(err => {
-                              printingRef.current.delete(normalizedEpc);
-                              setPrintLog(prev => [{
-                                epc: displayEpc(normalizedEpc),
-                                status: 'error',
-                                error: err instanceof Error ? err.message : 'Network error',
-                                time: new Date().toLocaleTimeString(),
-                              }, ...prev]);
-                            });
-                        } else {
-                          // WD01 + no auto-print: add to batch like normal
-                          addEpc();
+              {isDesktopPrintStation ? (
+                <>
+                  {/* WD01 reader visual — dashed border with character boxes */}
+                  <div
+                    className={`p-4 rounded-xl border-2 border-dashed transition-colors cursor-text ${
+                      epcInput
+                        ? 'border-green-500/50 bg-green-500/5'
+                        : 'border-cyan-500/40 bg-cyan-500/5'
+                    }`}
+                    onClick={() => inputRef.current?.focus()}
+                  >
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Scan Tag (place on WD01 reader)
+                    </label>
+                    {/* Hidden input to capture reader keystrokes */}
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={epcInput}
+                      onChange={e => setEpcInput(e.target.value)}
+                      onKeyDown={e => {
+                        const now = Date.now();
+                        keyTimestamps.current.push(now);
+                        if (keyTimestamps.current.length > 10) {
+                          keyTimestamps.current = keyTimestamps.current.slice(-10);
                         }
-                      } else if (e.shiftKey) {
-                        // Manual typing + Shift+Enter: quick single scan
-                        handleQuickScan(epcInput);
-                      } else {
-                        // Manual typing + Enter: add to batch
-                        addEpc();
-                      }
-                    }
-                  }}
-                  placeholder={isDesktopPrintStation ? "Place folder on WD01 reader" : "Scan or type EPC"}
-                  className="flex-1 px-3 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-cyan-500 font-mono uppercase"
-                  autoFocus
-                />
-                <button
-                  onClick={addEpc}
-                  disabled={!epcInput.trim()}
-                  className="px-4 py-2.5 bg-cyan-600 hover:bg-cyan-700 disabled:bg-slate-700 disabled:text-slate-500 rounded-lg transition-colors"
-                  title="Add to batch"
-                >
-                  <Plus className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => handleQuickScan(epcInput)}
-                  disabled={!epcInput.trim() || loading}
-                  className="px-4 py-2.5 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 rounded-lg transition-colors"
-                  title="Quick single scan (Shift+Enter)"
-                >
-                  <Send className="w-5 h-5" />
-                </button>
-              </div>
-              <p className="text-xs text-slate-500">
-                {isDesktopPrintStation
-                  ? 'Place folder on WD01 reader to auto-print'
-                  : 'Enter to add to batch | Shift+Enter for quick scan'}
-                {readerStatus === 'connected' && !isDesktopPrintStation && ' | Hardware scan auto-adds tags'}
-              </p>
+
+                        if (e.key === 'Enter') {
+                          const timestamps = keyTimestamps.current;
+                          const isReaderInput = timestamps.length >= 5 &&
+                            (timestamps[timestamps.length - 1] - timestamps[0]) / (timestamps.length - 1) < 50;
+                          keyTimestamps.current = [];
+
+                          if (isReaderInput) {
+                            e.preventDefault();
+                            setWd01Detected(true);
+                            if (wd01FadeTimer.current) clearTimeout(wd01FadeTimer.current);
+                            wd01FadeTimer.current = setTimeout(() => setWd01Detected(false), 5000);
+
+                            const normalizedEpc = epcInput.toUpperCase().trim();
+                            if (!normalizedEpc) return;
+
+                            if (autoPrintEnabled) {
+                              if (printedEpcs.has(normalizedEpc) || printingRef.current.has(normalizedEpc)) {
+                                setEpcInput('');
+                                inputRef.current?.focus();
+                                return;
+                              }
+                              printingRef.current.add(normalizedEpc);
+                              setEpcInput('');
+                              inputRef.current?.focus();
+
+                              fetch(`${printServerUrl}/api/rfid/auto-print`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ epc: normalizedEpc, printerIP, station, scannedBy }),
+                              })
+                                .then(res => res.json())
+                                .then(data => {
+                                  printingRef.current.delete(normalizedEpc);
+                                  if (data.printed) {
+                                    setPrintedEpcs(prev => new Set(prev).add(normalizedEpc));
+                                    setPrintLog(prev => [{
+                                      epc: data.epc || displayEpc(normalizedEpc),
+                                      name: data.graduateName,
+                                      status: 'printed',
+                                      time: new Date().toLocaleTimeString(),
+                                      titoCheckin: data.stationScan?.titoCheckin,
+                                    }, ...prev]);
+                                  } else if (data.reason === 'unregistered') {
+                                    setPrintLog(prev => [{
+                                      epc: data.epc || displayEpc(normalizedEpc),
+                                      status: 'skipped',
+                                      time: new Date().toLocaleTimeString(),
+                                    }, ...prev]);
+                                  } else {
+                                    setPrintLog(prev => [{
+                                      epc: data.epc || displayEpc(normalizedEpc),
+                                      status: 'error',
+                                      error: data.error || 'Print failed',
+                                      time: new Date().toLocaleTimeString(),
+                                    }, ...prev]);
+                                  }
+                                })
+                                .catch(err => {
+                                  printingRef.current.delete(normalizedEpc);
+                                  setPrintLog(prev => [{
+                                    epc: displayEpc(normalizedEpc),
+                                    status: 'error',
+                                    error: err instanceof Error ? err.message : 'Network error',
+                                    time: new Date().toLocaleTimeString(),
+                                  }, ...prev]);
+                                });
+                            } else {
+                              addEpc();
+                            }
+                          } else if (e.shiftKey) {
+                            handleQuickScan(epcInput);
+                          } else {
+                            addEpc();
+                          }
+                        }
+                      }}
+                      className="sr-only"
+                      aria-label="EPC tag input"
+                      autoFocus
+                    />
+                    {/* Character boxes display */}
+                    {epcInput ? (
+                      <div className="flex flex-wrap gap-1">
+                        {epcInput.toUpperCase().split('').map((char, i) => (
+                          <div
+                            key={i}
+                            className="w-7 h-9 flex items-center justify-center bg-slate-900/70 border border-green-500/40 rounded text-green-400 font-mono text-sm font-bold"
+                          >
+                            {char}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-1 animate-pulse">
+                        {Array.from({ length: 24 }).map((_, i) => (
+                          <div
+                            key={i}
+                            className="w-7 h-9 flex items-center justify-center bg-slate-900/30 border border-slate-600/40 rounded text-slate-600 font-mono text-sm"
+                          >
+                            -
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-xs text-slate-500 mt-2">
+                      {epcInput
+                        ? `Tag scanned: ${epcInput.length} characters`
+                        : 'Click here, then place folder on reader to auto-print'}
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex gap-2 mb-3">
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={epcInput}
+                      onChange={e => setEpcInput(e.target.value)}
+                      onKeyDown={e => {
+                        const now = Date.now();
+                        keyTimestamps.current.push(now);
+                        if (keyTimestamps.current.length > 10) {
+                          keyTimestamps.current = keyTimestamps.current.slice(-10);
+                        }
+
+                        if (e.key === 'Enter') {
+                          const timestamps = keyTimestamps.current;
+                          const isReaderInput = timestamps.length >= 5 &&
+                            (timestamps[timestamps.length - 1] - timestamps[0]) / (timestamps.length - 1) < 50;
+                          keyTimestamps.current = [];
+
+                          if (isReaderInput) {
+                            e.preventDefault();
+                            setWd01Detected(true);
+                            if (wd01FadeTimer.current) clearTimeout(wd01FadeTimer.current);
+                            wd01FadeTimer.current = setTimeout(() => setWd01Detected(false), 5000);
+
+                            const normalizedEpc = epcInput.toUpperCase().trim();
+                            if (!normalizedEpc) return;
+                            addEpc();
+                          } else if (e.shiftKey) {
+                            handleQuickScan(epcInput);
+                          } else {
+                            addEpc();
+                          }
+                        }
+                      }}
+                      placeholder="Scan or type EPC"
+                      className="flex-1 px-3 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-cyan-500 font-mono uppercase"
+                      autoFocus
+                    />
+                    <button
+                      onClick={addEpc}
+                      disabled={!epcInput.trim()}
+                      className="px-4 py-2.5 bg-cyan-600 hover:bg-cyan-700 disabled:bg-slate-700 disabled:text-slate-500 rounded-lg transition-colors"
+                      title="Add to batch"
+                    >
+                      <Plus className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => handleQuickScan(epcInput)}
+                      disabled={!epcInput.trim() || loading}
+                      className="px-4 py-2.5 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 rounded-lg transition-colors"
+                      title="Quick single scan (Shift+Enter)"
+                    >
+                      <Send className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Enter to add to batch | Shift+Enter for quick scan
+                    {readerStatus === 'connected' && ' | Hardware scan auto-adds tags'}
+                  </p>
+                </>
+              )}
             </div>
 
             {/* Pending EPCs */}
