@@ -739,7 +739,7 @@ export default function RfidDashboardPage() {
                     className="flex-1 px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-green-500 font-mono uppercase text-sm"
                   />
                   <button
-                    onClick={handleVerify}
+                    onClick={() => handleVerify()}
                     disabled={verifying || !verifyEpc.trim()}
                     className="px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 rounded-lg transition-colors"
                   >
