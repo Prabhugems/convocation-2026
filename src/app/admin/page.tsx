@@ -45,12 +45,31 @@ const navItems = [
   { id: 'settings', label: 'Settings', icon: Settings, shortcut: null },
 ];
 
+// Folder color based on last 3 digits of convocation number
+function getFolderColor(convocationNumber: string | undefined): 'Yellow' | 'Green' | 'Pink' | 'White' {
+  if (!convocationNumber) return 'White';
+  const last3 = parseInt(convocationNumber.slice(-3), 10);
+  if (isNaN(last3)) return 'White';
+  if (last3 <= 50) return 'Yellow';
+  if (last3 <= 100) return 'Green';
+  if (last3 <= 150) return 'Pink';
+  return 'White';
+}
+
+const folderColorStyles: Record<string, { bg: string; text: string; border: string; dot: string }> = {
+  'Yellow': { bg: 'bg-yellow-500/20', text: 'text-yellow-300', border: 'border-yellow-500/30', dot: 'bg-yellow-400' },
+  'Green': { bg: 'bg-green-500/20', text: 'text-green-300', border: 'border-green-500/30', dot: 'bg-green-400' },
+  'Pink': { bg: 'bg-pink-500/20', text: 'text-pink-300', border: 'border-pink-500/30', dot: 'bg-pink-400' },
+  'White': { bg: 'bg-slate-500/20', text: 'text-slate-300', border: 'border-slate-500/30', dot: 'bg-slate-400' },
+};
+
 export default function AdminPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [graduates, setGraduates] = useState<Graduate[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterColor, setFilterColor] = useState<string>('all');
   const [searching, setSearching] = useState(false);
   const [dispatchMeta, setDispatchMeta] = useState<{ dispatchedDTDC: number; dispatchedIndiaPost: number } | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
@@ -266,6 +285,11 @@ export default function AdminPage() {
       });
     }
 
+    // Filter by folder color
+    if (filterColor !== 'all') {
+      result = result.filter((g) => getFolderColor(g.convocationNumber) === filterColor);
+    }
+
     if (searchQuery.trim()) {
       const searchTerm = searchQuery.trim().toLowerCase();
       result.sort((a, b) => {
@@ -286,7 +310,7 @@ export default function AdminPage() {
     }
 
     return result;
-  }, [graduates, searchQuery, filterStatus, searchGraduates]);
+  }, [graduates, searchQuery, filterStatus, filterColor, searchGraduates]);
 
   // Group graduates by course
   const graduatesByCourse = useMemo(() => {
@@ -1123,6 +1147,17 @@ export default function AdminPage() {
                   <option value="uncollected">Uncollected</option>
                   <option value="pending-gown">Pending Gown</option>
                 </select>
+                <select
+                  value={filterColor}
+                  onChange={(e) => setFilterColor(e.target.value)}
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg sm:rounded-xl text-white text-xs sm:text-sm focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300 cursor-pointer"
+                >
+                  <option value="all">All Colors</option>
+                  <option value="Yellow">Yellow (1-50)</option>
+                  <option value="Green">Green (51-100)</option>
+                  <option value="Pink">Pink (101-150)</option>
+                  <option value="White">White (151+)</option>
+                </select>
               </div>
             </div>
 
@@ -1200,8 +1235,11 @@ export default function AdminPage() {
                         style={{ animationDelay: `${index * 20}ms` }}
                       >
                         <td className="py-3 px-4">
-                          <div className="text-white font-mono text-sm group-hover:text-blue-400 transition-colors">
-                            {graduate.convocationNumber || '-'}
+                          <div className="flex items-center gap-2">
+                            <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${folderColorStyles[getFolderColor(graduate.convocationNumber)].dot}`} title={getFolderColor(graduate.convocationNumber)} />
+                            <span className="text-white font-mono text-sm group-hover:text-blue-400 transition-colors">
+                              {graduate.convocationNumber || '-'}
+                            </span>
                           </div>
                         </td>
                         <td className="py-3 px-4">
@@ -1323,9 +1361,12 @@ export default function AdminPage() {
                                   className="border-b border-slate-700/20 hover:bg-slate-700/20 cursor-pointer transition-colors group"
                                 >
                                   <td className="py-2 px-4">
-                                    <span className="text-white font-mono text-sm group-hover:text-blue-400 transition-colors">
-                                      {graduate.convocationNumber || '-'}
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${folderColorStyles[getFolderColor(graduate.convocationNumber)].dot}`} title={getFolderColor(graduate.convocationNumber)} />
+                                      <span className="text-white font-mono text-sm group-hover:text-blue-400 transition-colors">
+                                        {graduate.convocationNumber || '-'}
+                                      </span>
+                                    </div>
                                   </td>
                                   <td className="py-2 px-4">
                                     <span className="text-white text-sm group-hover:text-blue-400 transition-colors">{graduate.name}</span>
