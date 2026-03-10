@@ -179,26 +179,26 @@ export interface DashboardStats {
 
 // Checkin list mapping to stations
 export const CHECKIN_LIST_MAPPING: Record<string, StationId> = {
-  'chk_pEDaCAGHy1FNgnpvbZcXNxg': 'packing',
+  'chk_pF1KC1E1RdeSl9d54kBPjdg': 'packing',
   'chk_pvErjsyTW4NdQn3DgXkRoiA': 'dispatch-venue',
-  'chk_p2UfVnVH0undd57esXyIWeg': 'registration',
-  'chk_pdJWLCS1kLdcxYVX1g7z9HA': 'gown-issue',
+  'chk_pPw9o4BbsN8mnhhQF6jmJ3g': 'registration',
+  'chk_puvdRRH6RQNHAQa7v6Aldkw': 'gown-issue',
   'chk_pbzMzIS5GqOCrs1h0jH4z6g': 'gown-return',
   'chk_pIn2aaw0MjiC2jdABMN1dsQ': 'certificate-collection',
   'chk_p6NMnIGFZY8EAf1SMwIUmvA': 'return-ho',
-  'chk_p3GV4YRIJAMuu4LlTdiMGog': 'address-label',
+  'chk_pDyuhvsdtTqBv1kfMVB3LxA': 'address-label',
   'chk_p1QwHGjQdVZXdWw2TRkhXWA': 'final-dispatch', // DTDC
   'chk_pExuj2TOmyhsjP5mFWQuz1g': 'final-dispatch', // India Post
 };
 
 export const STATION_CHECKIN_MAPPING: Record<StationId, string> = {
-  'packing': 'chk_pEDaCAGHy1FNgnpvbZcXNxg',
+  'packing': 'chk_pF1KC1E1RdeSl9d54kBPjdg',
   'dispatch-venue': 'chk_pvErjsyTW4NdQn3DgXkRoiA',
-  'registration': 'chk_p2UfVnVH0undd57esXyIWeg',
-  'gown-issue': 'chk_pdJWLCS1kLdcxYVX1g7z9HA',
+  'registration': 'chk_pPw9o4BbsN8mnhhQF6jmJ3g',
+  'gown-issue': 'chk_puvdRRH6RQNHAQa7v6Aldkw',
   'gown-return': 'chk_pbzMzIS5GqOCrs1h0jH4z6g',
   'certificate-collection': 'chk_pIn2aaw0MjiC2jdABMN1dsQ',
   'return-ho': 'chk_p6NMnIGFZY8EAf1SMwIUmvA',
-  'address-label': 'chk_p3GV4YRIJAMuu4LlTdiMGog',
+  'address-label': 'chk_pDyuhvsdtTqBv1kfMVB3LxA',
   'final-dispatch': 'chk_p1QwHGjQdVZXdWw2TRkhXWA',
 };
