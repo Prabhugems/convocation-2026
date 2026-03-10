@@ -86,6 +86,102 @@ export default function RfidEncodePage() {
   // Track keyboard input speed to detect reader vs manual typing
   const keyTimestamps = useRef<number[]>([]);
 
+  // Global USB QR scanner listener — captures Tito URLs from handheld scanner
+  // Works regardless of which input is focused
+  const qrBufferRef = useRef('');
+  const qrLastKeyRef = useRef(0);
+  const qrBufferTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      const now = Date.now();
+
+      // Buffer single printable characters that arrive rapidly (< 100ms apart = scanner)
+      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const gap = now - qrLastKeyRef.current;
+        if (qrBufferRef.current.length === 0 || gap < 100) {
+          qrBufferRef.current += e.key;
+          qrLastKeyRef.current = now;
+          if (qrBufferTimeoutRef.current) clearTimeout(qrBufferTimeoutRef.current);
+          qrBufferTimeoutRef.current = setTimeout(() => {
+            qrBufferRef.current = '';
+          }, 300);
+        } else {
+          // Too slow — manual typing, reset buffer
+          qrBufferRef.current = e.key;
+          qrLastKeyRef.current = now;
+        }
+        return;
+      }
+
+      // On Enter, check if buffer has a Tito URL from scanner
+      if (e.key === 'Enter' && qrBufferRef.current.length > 10) {
+        const scanned = qrBufferRef.current.trim();
+        qrBufferRef.current = '';
+        if (qrBufferTimeoutRef.current) clearTimeout(qrBufferTimeoutRef.current);
+
+        // Only intercept if it looks like a Tito URL or ticket slug
+        const isTitoUrl = /ti[._]to/i.test(scanned) || /^ti_/i.test(scanned);
+        const isConvNumber = /^\d{2,3}[a-zA-Z]{2,4}\d{3,5}$/i.test(scanned);
+
+        if (isTitoUrl || isConvNumber) {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('[Encode] USB QR scanner captured:', scanned);
+
+          // Clear any focused input that received the scanner chars
+          const active = document.activeElement;
+          if (active instanceof HTMLInputElement) {
+            // If it typed into convocation input, clear it — we'll set it properly
+            if (active === convocationInputRef.current) {
+              setConvocationNumber('');
+            }
+          }
+
+          if (isTitoUrl) {
+            const slugMatch = scanned.match(/ti_[a-zA-Z0-9]+/i);
+            if (slugMatch) {
+              const slug = slugMatch[0];
+              console.log('[Encode] USB QR → Tito slug:', slug);
+              setConvocationNumber('Looking up...');
+              setError(null);
+              setScanLoading(true);
+              setLookupName(null);
+              fetch(`/api/tito/ticket/${encodeURIComponent(slug)}`)
+                .then(res => res.json())
+                .then(data => {
+                  if (data.success && data.data?.convocationNumber) {
+                    setConvocationNumber(data.data.convocationNumber.toUpperCase());
+                    setLookupName(data.data.name || null);
+                    setSuccessMessage(`Found: ${data.data.name || data.data.convocationNumber}`);
+                    setTagType('graduate');
+                  } else {
+                    setError(`Ticket not found for: ${slug}`);
+                    setConvocationNumber('');
+                  }
+                })
+                .catch(() => {
+                  setError('Failed to look up ticket');
+                  setConvocationNumber('');
+                })
+                .finally(() => setScanLoading(false));
+            }
+          } else if (isConvNumber) {
+            setConvocationNumber(scanned.toUpperCase());
+            setTagType('graduate');
+            lookupConvocationNumber(scanned.toUpperCase());
+          }
+          return;
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown, true); // capture phase
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown, true);
+      if (qrBufferTimeoutRef.current) clearTimeout(qrBufferTimeoutRef.current);
+    };
+  }, []);
+
   // Duplicate read prevention
   const lastScannedEpc = useRef<string>('');
   const lastScannedTime = useRef<number>(0);
@@ -622,6 +718,7 @@ export default function RfidEncodePage() {
                     ref={convocationInputRef}
                     type="text"
                     value={convocationNumber}
+                    autoFocus
                     onChange={e => {
                       setConvocationNumber(e.target.value);
                       setLookupName(null);
@@ -630,9 +727,39 @@ export default function RfidEncodePage() {
                     onKeyDown={e => {
                       if (e.key === 'Enter' && convocationNumber.trim()) {
                         e.preventDefault();
-                        lookupConvocationNumber(convocationNumber);
-                        // Auto-focus EPC/scan field
-                        setTimeout(() => epcInputRef.current?.focus(), 100);
+                        const val = convocationNumber.trim();
+                        // Handle Tito URL immediately on Enter (USB scanner sends Enter after typing)
+                        const slugMatch = val.match(/ti_[a-zA-Z0-9]+/i);
+                        if (slugMatch || /ti[._]to/i.test(val)) {
+                          const slug = slugMatch ? slugMatch[0] : null;
+                          if (slug) {
+                            console.log('[Encode] Tito URL from input Enter:', slug);
+                            setConvocationNumber('Looking up...');
+                            setError(null);
+                            setScanLoading(true);
+                            setLookupName(null);
+                            fetch(`/api/tito/ticket/${encodeURIComponent(slug)}`)
+                              .then(res => res.json())
+                              .then(data => {
+                                if (data.success && data.data?.convocationNumber) {
+                                  setConvocationNumber(data.data.convocationNumber.toUpperCase());
+                                  setLookupName(data.data.name || null);
+                                  setSuccessMessage(`Found: ${data.data.name || data.data.convocationNumber}`);
+                                } else {
+                                  setError(`Ticket not found for: ${slug}`);
+                                  setConvocationNumber('');
+                                }
+                              })
+                              .catch(() => {
+                                setError('Failed to look up ticket');
+                                setConvocationNumber('');
+                              })
+                              .finally(() => setScanLoading(false));
+                          }
+                        } else {
+                          lookupConvocationNumber(val);
+                          setTimeout(() => epcInputRef.current?.focus(), 100);
+                        }
                       }
                     }}
                     placeholder="Convocation no. or scan QR / paste Tito URL"
