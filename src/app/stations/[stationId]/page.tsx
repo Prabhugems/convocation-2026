@@ -287,7 +287,7 @@ export default function StationPage() {
         // Refresh stats after successful scan
         fetchStationStats();
 
-        // Handle address-label station
+        // Fetch address data for address-label station (no auto-print — RFID handles printing)
         if (stationId === 'address-label' && data.data) {
           const convNum = data.data.convocationNumber || graduate.convocationNumber;
           if (convNum) {
@@ -296,36 +296,8 @@ export default function StationPage() {
             if (addrData.success && addrData.data) {
               setAirtableData(addrData.data);
               setAddress(addrData.data.address);
-
-              if (station!.printType === '4x6-label') {
-                const labelData: AddressLabelData = {
-                  name: data.data.name,
-                  course: data.data.course,
-                  convocationNumber: data.data.convocationNumber,
-                  ticketSlug: data.data.ticketSlug,
-                  registrationNumber: data.data.registrationNumber,
-                  address: addrData.data.address,
-                  phone: addrData.data.mobile,
-                  trackingNumber: addrData.data.trackingNumber,
-                  dtdcAvailable: addrData.data.dtdcAvailable,
-                };
-                setTimeout(() => {
-                  printAddressLabel4x6(labelData, printRef.current);
-                }, 500);
-              }
             }
           }
-        } else if (station!.printType) {
-          setTimeout(async () => {
-            if (station!.printType === '3x2-sticker' && data.data) {
-              printSticker3x2(data.data, printRef.current);
-            } else if (station!.printType === '4x6-badge' && data.data) {
-              // USE NEW jsPDF PRINT FUNCTION
-              await handlePrintBadge4x6(data.data);
-            } else if (printRef.current) {
-              printElement(printRef.current, station!.printType);
-            }
-          }, 500);
         }
 
         if (stationId === 'final-dispatch') {
