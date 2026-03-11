@@ -60,11 +60,13 @@ export function generatePackingLabel(data: ZPLLabelData): string {
   return `^XA
 ^CI28
 ${ZPL_PACKING_INIT}
-^CF0,36
-^FO0,25^FB420,1,0,C,0^FDDr. ${name}^FS
-^FO75,150^BQN,2,5^FDQA,${ticketUrl}^FS
+^MMP
+^CF0,30
+^FO0,100^FB420,1,0,C,0^FDDr. ${name}^FS
+^FO75,210^BQN,2,5^FDQA,${ticketUrl}^FS
 ^A0R,50,50
-^FO340,150^FD${convNum}^FS
+^FO340,210^FD${convNum}^FS
+^PQ1,0,1,Y
 ^XZ`;
 }
 
