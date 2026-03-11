@@ -29,6 +29,9 @@ import {
   ToggleRight,
   Wifi,
   WifiOff,
+  Trash2,
+  History,
+  CheckCircle2,
 } from 'lucide-react';
 import { isWd01Format, convertWd01ToUhfEpc } from '@/types/rfid';
 
@@ -157,6 +160,18 @@ export default function RfidDashboardPage() {
   const [verifyResult, setVerifyResult] = useState<VerifyResult | null>(null);
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [verifyFlash, setVerifyFlash] = useState<'success' | 'error' | null>(null);
+  const [verifyHistory, setVerifyHistory] = useState<Array<{
+    epc: string;
+    displayEpc: string;
+    found: boolean;
+    graduateName?: string;
+    convocationNumber?: string;
+    status?: string;
+    timestamp: Date;
+  }>>([]);
+  const [showVerifyHistory, setShowVerifyHistory] = useState(false);
+  const verifyInputRef = useRef<HTMLInputElement>(null);
 
   // Dispatch/Handover dialog
   const [dispatchDialog, setDispatchDialog] = useState<DispatchDialogState>({
@@ -270,7 +285,7 @@ export default function RfidDashboardPage() {
     const checkBridge = async () => {
       try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 3000);
+        const timeout = setTimeout(() => controller.abort('Bridge check timeout'), 3000);
         const dashBridgeUrl = (typeof window !== 'undefined' && localStorage.getItem('rfid_bridge_url')) || 'http://localhost:8080';
         await fetch(`${dashBridgeUrl}/api/status`, { signal: controller.signal });
         clearTimeout(timeout);
@@ -416,12 +431,14 @@ export default function RfidDashboardPage() {
   }, [dashAutoRefresh, fetchStats]);
 
   // Verify tag — accepts optional EPC directly (for auto-verify from onChange)
-  const handleVerify = async (directEpc?: string) => {
+  // autoScanned=true means it came from a 32-char reader scan (auto-clear input for next scan)
+  const handleVerify = async (directEpc?: string, autoScanned = false) => {
     const epcToVerify = (directEpc || verifyEpc).trim();
     if (!epcToVerify) return;
     setVerifying(true);
     setVerifyError(null);
     setVerifyResult(null);
+    setVerifyFlash(null);
 
     try {
       const response = await fetch(
@@ -431,20 +448,48 @@ export default function RfidDashboardPage() {
 
       if (!data.success) {
         setVerifyError(data.error || 'Verification failed');
+        setVerifyFlash('error');
+        // Add to history as not found
+        setVerifyHistory(prev => [{
+          epc: epcToVerify.toUpperCase(),
+          displayEpc: displayEpc(epcToVerify),
+          found: false,
+          timestamp: new Date(),
+        }, ...prev]);
         return;
       }
 
-      setVerifyResult({
+      const result = {
         found: data.found,
         tag: data.data?.tag,
         boxItems: data.data?.boxItems,
-      });
+      };
+      setVerifyResult(result);
+      setVerifyFlash(data.found ? 'success' : 'error');
+
+      // Add to verify history
+      setVerifyHistory(prev => [{
+        epc: epcToVerify.toUpperCase(),
+        displayEpc: displayEpc(epcToVerify),
+        found: data.found,
+        graduateName: data.data?.tag?.graduateName,
+        convocationNumber: data.data?.tag?.convocationNumber,
+        status: data.data?.tag?.status,
+        timestamp: new Date(),
+      }, ...prev]);
     } catch (err) {
       setVerifyError(
         `Network error: ${err instanceof Error ? err.message : 'Unknown error'}`
       );
+      setVerifyFlash('error');
     } finally {
       setVerifying(false);
+      // Always clear input after verification so next scan works immediately
+      setVerifyEpc('');
+      // Refocus input for continuous scanning
+      setTimeout(() => verifyInputRef.current?.focus(), 100);
+      // Clear flash after animation
+      setTimeout(() => setVerifyFlash(null), 1500);
     }
   };
 
@@ -715,33 +760,91 @@ export default function RfidDashboardPage() {
               </div>
 
               {/* Verify Tag */}
-              <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700/50 p-5">
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                  <Search className="w-5 h-5 text-green-400" />
-                  Verify Tag
-                </h3>
+              <div className={`bg-slate-800/50 backdrop-blur-sm rounded-xl border p-5 transition-all duration-300 ${
+                verifyFlash === 'success' ? 'border-green-500/70 shadow-[0_0_15px_rgba(34,197,94,0.2)]' :
+                verifyFlash === 'error' ? 'border-red-500/70 shadow-[0_0_15px_rgba(239,68,68,0.2)]' :
+                'border-slate-700/50'
+              }`}>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Search className="w-5 h-5 text-green-400" />
+                    Verify Tag
+                    {verifyHistory.length > 0 && (
+                      <span className="text-xs font-normal text-slate-500 bg-slate-700/50 px-2 py-0.5 rounded-full">
+                        {verifyHistory.filter(h => h.found).length}/{verifyHistory.length} found
+                      </span>
+                    )}
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    {verifyHistory.length > 0 && (
+                      <button
+                        onClick={() => setShowVerifyHistory(!showVerifyHistory)}
+                        className="text-xs text-slate-400 hover:text-slate-300 flex items-center gap-1 transition-colors"
+                        title="Toggle scan history"
+                      >
+                        <History className="w-3.5 h-3.5" />
+                        History
+                      </button>
+                    )}
+                    {(verifyEpc || verifyResult || verifyError) && (
+                      <button
+                        onClick={() => {
+                          setVerifyEpc('');
+                          setVerifyResult(null);
+                          setVerifyError(null);
+                          setVerifyFlash(null);
+                          setShowHistory(false);
+                          setVoidSuccess(null);
+                          verifyInputRef.current?.focus();
+                        }}
+                        className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 transition-colors"
+                        title="Clear"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Flash indicator for auto-scans */}
+                {verifyFlash && (
+                  <div className={`flex items-center gap-2 mb-3 p-2 rounded-lg text-sm animate-pulse ${
+                    verifyFlash === 'success'
+                      ? 'bg-green-500/15 border border-green-500/30 text-green-300'
+                      : 'bg-red-500/15 border border-red-500/30 text-red-300'
+                  }`}>
+                    {verifyFlash === 'success' ? (
+                      <><CheckCircle2 className="w-4 h-4" /> Tag verified successfully</>
+                    ) : (
+                      <><XCircle className="w-4 h-4" /> Tag not found</>
+                    )}
+                  </div>
+                )}
+
                 <div className="flex gap-2 mb-4">
                   <input
+                    ref={verifyInputRef}
                     type="text"
                     value={verifyEpc}
-                    maxLength={32}
                     onChange={e => {
-                      const val = e.target.value.slice(0, 32);
+                      const val = e.target.value;
                       setVerifyEpc(val);
                       // Auto-verify when 24 or 32 hex chars received (reader scan)
                       const trimmed = val.trim();
                       if ((trimmed.length === 24 || trimmed.length === 32) && /^[0-9A-Fa-f]+$/.test(trimmed)) {
-                        handleVerify(trimmed);
+                        handleVerify(trimmed, trimmed.length === 32);
                       }
                     }}
                     onKeyDown={e => e.key === 'Enter' && handleVerify()}
-                    placeholder="Enter EPC"
+                    placeholder="Scan or enter EPC / Convocation No."
                     className="flex-1 px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-green-500 font-mono uppercase text-sm"
                   />
                   <button
                     onClick={() => handleVerify()}
                     disabled={verifying || !verifyEpc.trim()}
                     className="px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 rounded-lg transition-colors"
+                    title="Verify"
                   >
                     {verifying ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -770,7 +873,10 @@ export default function RfidDashboardPage() {
                   <div className="space-y-2">
                     <div className="p-3 bg-slate-900/30 rounded-lg space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="font-mono text-sm font-medium">{displayEpc(verifyResult.tag.epc)}</span>
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-green-400" />
+                          <span className="font-mono text-sm font-medium">{displayEpc(verifyResult.tag.epc)}</span>
+                        </div>
                         <span
                           className={`text-xs px-2 py-0.5 rounded-full border ${
                             STATUS_COLORS[verifyResult.tag.status] || STATUS_COLORS.encoded
@@ -867,6 +973,54 @@ export default function RfidDashboardPage() {
                 {voidSuccess && (
                   <div className="p-2 bg-green-500/10 border border-green-500/30 rounded-lg mt-3">
                     <p className="text-xs text-green-300">{voidSuccess}</p>
+                  </div>
+                )}
+
+                {/* Session Verify History */}
+                {showVerifyHistory && verifyHistory.length > 0 && (
+                  <div className="mt-4 border-t border-slate-700/50 pt-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-medium text-slate-400">Session History ({verifyHistory.length})</p>
+                      <button
+                        onClick={() => {
+                          setVerifyHistory([]);
+                          setShowVerifyHistory(false);
+                        }}
+                        className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        Clear All
+                      </button>
+                    </div>
+                    <div className="space-y-1 max-h-48 overflow-y-auto">
+                      {verifyHistory.map((entry, i) => (
+                        <div
+                          key={i}
+                          onClick={() => {
+                            setVerifyEpc(entry.epc);
+                            handleVerify(entry.epc);
+                          }}
+                          className="flex items-center justify-between px-3 py-2 bg-slate-900/30 rounded-lg text-xs cursor-pointer hover:bg-slate-900/50 transition-colors"
+                        >
+                          <div className="flex items-center gap-2">
+                            {entry.found ? (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
+                            ) : (
+                              <XCircle className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
+                            )}
+                            <div>
+                              <span className="font-mono text-slate-300">{entry.displayEpc}</span>
+                              {entry.graduateName && (
+                                <span className="text-slate-500 ml-2">{entry.graduateName}</span>
+                              )}
+                            </div>
+                          </div>
+                          <span className="text-slate-600 flex-shrink-0">
+                            {entry.timestamp.toLocaleTimeString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
