@@ -32,6 +32,7 @@ export type SearchInputType =
   | 'mobile'
   | 'reference'
   | 'barcode'
+  | 'rfid_epc'
   | 'unknown';
 
 type CameraStatus = 'idle' | 'requesting' | 'scanning' | 'denied' | 'not_found' | 'error';
@@ -66,6 +67,11 @@ export function detectInputType(input: string): SearchInputType {
 
   if (/^[a-zA-Z\s.]+$/.test(trimmed) && trimmed.includes(' ')) {
     return 'name';
+  }
+
+  // RFID EPC: 24 or 32 hex chars (from UHF reader or WD01 desktop reader)
+  if (/^[0-9A-Fa-f]{24}$/.test(trimmed) || /^[0-9A-Fa-f]{32}$/.test(trimmed)) {
+    return 'rfid_epc';
   }
 
   if (/^\d{8,20}$/.test(trimmed)) {
@@ -744,7 +750,16 @@ export default function UniversalScanner({
             ref={inputRef}
             type="text"
             value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setSearchInput(val);
+              // Auto-submit if RFID reader sends 24/32 hex chars into focused input
+              const trimmed = val.trim();
+              if ((trimmed.length === 24 || trimmed.length === 32) && /^[0-9A-Fa-f]+$/.test(trimmed)) {
+                onSearch(trimmed, 'rfid_epc');
+                setSearchInput('');
+              }
+            }}
             placeholder={placeholder}
             className="w-full pl-12 pr-24 py-4 bg-white/10 border border-white/20 rounded-xl text-white placeholder:text-white/40 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50"
             autoComplete="off"

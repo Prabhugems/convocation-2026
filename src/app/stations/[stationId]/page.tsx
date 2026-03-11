@@ -325,7 +325,7 @@ export default function StationPage() {
   };
 
   // Handle search from UniversalScanner
-  const handleSearch = useCallback(async (query: string, _type: SearchInputType) => {
+  const handleSearch = useCallback(async (query: string, type: SearchInputType) => {
     if (loading) return;
     setLoading(true);
     setResult(null);
@@ -333,6 +333,41 @@ export default function StationPage() {
     setShowResults(false);
 
     try {
+      // Handle RFID EPC: resolve to convocation number via RFID verify API
+      if (type === 'rfid_epc') {
+        const rfidRes = await fetch(`/api/rfid/verify?epc=${encodeURIComponent(query.toUpperCase())}`);
+        const rfidData = await rfidRes.json();
+
+        if (rfidData.success && rfidData.found && rfidData.data?.tag?.convocationNumber) {
+          // Use the convocation number to search for the graduate
+          const convNum = rfidData.data.tag.convocationNumber;
+          const searchRes = await fetch(`/api/search?q=${encodeURIComponent(convNum)}&includeAddress=${stationId === 'address-label'}`);
+          const searchData = await searchRes.json();
+
+          if (searchData.success && searchData.data?.length > 0) {
+            const graduates = searchData.data as Graduate[];
+            if (graduates.length === 1) {
+              setLoading(false);
+              await processGraduate(graduates[0]);
+            } else {
+              setSearchResults(graduates);
+              setShowResults(true);
+              setLoading(false);
+            }
+            return;
+          }
+        }
+
+        setResult({
+          success: false,
+          message: rfidData.found
+            ? 'RFID tag found but no matching graduate. Check tag encoding.'
+            : 'RFID tag not found in system. Scan a QR code or enter a name/number instead.',
+        });
+        setLoading(false);
+        return;
+      }
+
       const apiUrl = `/api/search?q=${encodeURIComponent(query)}&includeAddress=${stationId === 'address-label'}`;
       const searchResponse = await fetch(apiUrl);
       const searchData = await searchResponse.json();

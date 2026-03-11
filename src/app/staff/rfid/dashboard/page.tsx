@@ -786,8 +786,7 @@ export default function RfidDashboardPage() {
                         History
                       </button>
                     )}
-                    {(verifyEpc || verifyResult || verifyError) && (
-                      <button
+                    <button
                         onClick={() => {
                           setVerifyEpc('');
                           setVerifyResult(null);
@@ -803,7 +802,6 @@ export default function RfidDashboardPage() {
                         <Trash2 className="w-3.5 h-3.5" />
                         Clear
                       </button>
-                    )}
                   </div>
                 </div>
 
