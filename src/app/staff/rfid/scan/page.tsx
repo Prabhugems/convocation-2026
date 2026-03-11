@@ -283,11 +283,24 @@ export default function RfidScanPage() {
     return () => controller.abort();
   }, [pendingEpcs]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Send ZPL to USB printer via Zebra Browser Print
+  // Send ZPL to USB printer via Zebra Browser Print, with CUPS fallback
   const printViaUsb = useCallback(async (zpl: string): Promise<{ success: boolean; error?: string }> => {
     const result = await printToDefaultPrinter(zpl);
-    return { success: result.success, error: result.error };
-  }, []);
+    if (result.success) return { success: true };
+    // Fallback: try server-side CUPS printing (IP="USB")
+    try {
+      const res = await fetch(`${printServerUrl}/api/print/zpl/raw`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ zpl, printerIP: 'USB' }),
+      });
+      const data = await res.json();
+      if (data.success) return { success: true };
+      return { success: false, error: data.error || result.error };
+    } catch {
+      return { success: false, error: result.error || 'USB print failed' };
+    }
+  }, [printServerUrl]);
 
   // Unified auto-print handler: calls API, then prints via USB or lets server print via network
   const handleAutoPrint = useCallback(async (epc: string): Promise<void> => {
@@ -394,8 +407,12 @@ export default function RfidScanPage() {
     const isConvocation = /^\d+(?:AEC|WEC)\d+$/i.test(trimmed);
     if (!isWd01 && !isConvocation) return;
     if (trimmed.length < 10) return;
-    // Skip duplicates
-    if (printedEpcs.has(trimmed) || printingRef.current.has(trimmed)) return;
+    // Skip duplicates but still clear input so next tag can be scanned
+    if (printedEpcs.has(trimmed) || printingRef.current.has(trimmed)) {
+      setEpcInput('');
+      inputRef.current?.focus();
+      return;
+    }
 
     const triggerPrint = () => {
       // Show WD01 badge
@@ -421,6 +438,16 @@ export default function RfidScanPage() {
     return () => clearTimeout(timer);
   }, [epcInput, autoPrintEnabled, printedEpcs, station, handleAutoPrint]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Auto-clear stale input after 5 seconds (safety net for stuck scans)
+  useEffect(() => {
+    if (!epcInput) return;
+    const timer = setTimeout(() => {
+      setEpcInput('');
+      inputRef.current?.focus();
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [epcInput]);
+
   // Cleanup polling on unmount
   useEffect(() => {
     return () => {
@@ -432,6 +459,7 @@ export default function RfidScanPage() {
   }, []);
 
   // Check USB printer status when mode is USB
+  // First checks Zebra Browser Print, then falls back to CUPS check
   useEffect(() => {
     if (printerMode !== 'usb') return;
     let cancelled = false;
@@ -439,12 +467,23 @@ export default function RfidScanPage() {
       setUsbPrinterStatus('checking');
       const status = await getBrowserPrintStatus();
       if (cancelled) return;
-      setUsbPrinterStatus(status.running && status.printers.length > 0 ? 'ready' : 'not_found');
+      if (status.running && status.printers.length > 0) {
+        setUsbPrinterStatus('ready');
+        return;
+      }
+      // Fallback: if running on localhost, CUPS USB printing is available
+      if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+        if (!cancelled) {
+          setUsbPrinterStatus('ready');
+          return;
+        }
+      }
+      if (!cancelled) setUsbPrinterStatus('not_found');
     };
     check();
     const interval = setInterval(check, 15000);
     return () => { cancelled = true; clearInterval(interval); };
-  }, [printerMode]);
+  }, [printerMode, printServerUrl]);
 
   // Test printer connection
   const handleTestPrint = async () => {
@@ -1136,7 +1175,7 @@ export default function RfidScanPage() {
                       </button>
                     </div>
                     <p className="text-xs text-slate-500">
-                      Requires <span className="text-slate-400">Zebra Browser Print</span> installed on this computer. Printer must be connected via USB.
+                      Prints via USB-connected printer (CUPS) on localhost, or Zebra Browser Print on remote.
                     </p>
                     {usbPrinterStatus === 'not_found' && (
                       <div className="flex items-center gap-2 px-2.5 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
@@ -1164,9 +1203,23 @@ export default function RfidScanPage() {
                     }`}
                     onClick={() => inputRef.current?.focus()}
                   >
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
-                      Scan Tag (place on WD01 reader)
-                    </label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-sm font-medium text-slate-300">
+                        Scan Tag (place on WD01 reader)
+                      </label>
+                      {epcInput && (
+                        <button
+                          onClick={() => {
+                            setEpcInput('');
+                            inputRef.current?.focus();
+                          }}
+                          className="px-2.5 py-1 text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors flex items-center gap-1"
+                        >
+                          <X className="w-3 h-3" />
+                          Clear
+                        </button>
+                      )}
+                    </div>
                     {/* Hidden input to capture reader keystrokes */}
                     <input
                       ref={inputRef}
