@@ -166,13 +166,18 @@ export default function RfidScanPage() {
   });
   const [printerIP, setPrinterIP] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('rfid_printer_ip') || '10.0.1.13';
+      return localStorage.getItem('rfid_printer_ip') || 'USB';
     }
-    return '10.0.1.13';
+    return 'USB';
   });
   const [printServerUrl, setPrintServerUrl] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('rfid_print_server') || '';
+      const stored = localStorage.getItem('rfid_print_server');
+      if (stored) return stored;
+      // On live site, default to localhost:3001 for USB printing
+      if (!window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1')) {
+        return 'http://localhost:3001';
+      }
     }
     return '';
   });
