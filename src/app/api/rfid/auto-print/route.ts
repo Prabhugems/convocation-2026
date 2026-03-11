@@ -27,7 +27,7 @@ export async function OPTIONS() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { epc, printerIP, printerPort, station, scannedBy } = body;
+    const { epc, printerIP, printerPort, station, scannedBy, printMode } = body;
 
     if (!epc) {
       return jsonResponse(
@@ -35,6 +35,8 @@ export async function POST(request: NextRequest) {
         400
       );
     }
+
+    const isUsbMode = printMode === 'usb';
 
     let normalizedEpc = (epc as string).toUpperCase().trim();
     const ip = printerIP || DEFAULT_PRINTER_SETTINGS.ip;
@@ -82,9 +84,45 @@ export async function POST(request: NextRequest) {
       ticketUrl,
     });
 
+    // 4. USB mode: return ZPL for client-side printing via Zebra Browser Print
+    if (isUsbMode) {
+      console.log(`[Auto-Print] USB mode — returning ZPL for ${tag.graduateName} (${tag.convocationNumber})`);
+
+      // Still do station scan if requested, but skip server-side printing
+      let stationScan: { success: boolean; titoCheckin?: { success: boolean; error?: string } } | undefined;
+      if (station) {
+        const scanBy = scannedBy || 'Auto-Print';
+        const scanResult = await processRfidScan(
+          tag.epc,
+          station as RfidStation,
+          scanBy,
+          `Auto-print (USB) + scan at ${station}`
+        );
+        if (scanResult.success && scanResult.data) {
+          stationScan = {
+            success: true,
+            titoCheckin: scanResult.data.titoCheckin,
+          };
+        } else {
+          stationScan = { success: false };
+        }
+      }
+
+      return jsonResponse({
+        success: true,
+        printed: false,
+        reason: 'usb_mode',
+        zpl: zplCode,
+        epc: normalizedEpc,
+        graduateName: tag.graduateName,
+        convocationNumber: tag.convocationNumber,
+        stationScan,
+      });
+    }
+
     console.log(`[Auto-Print] Printing label for ${tag.graduateName} (${tag.convocationNumber}) → ${ip}:${port}`);
 
-    // 4. Send to printer via TCP
+    // 4b. Network mode: Send to printer via TCP
     const printResult = await sendToPrinter(zplCode, ip, port);
 
     if (!printResult.success) {

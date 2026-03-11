@@ -33,6 +33,9 @@ import {
 } from 'lucide-react';
 
 import { isWd01Format, convertWd01ToUhfEpc } from '@/types/rfid';
+import { printToDefaultPrinter, getBrowserPrintStatus } from '@/lib/zebra-browser-print';
+
+type PrinterMode = 'network' | 'usb';
 
 // Display EPC in clean 24-char format (convert 32-char WD01 if needed)
 function displayEpc(epc: string): string {
@@ -174,6 +177,13 @@ export default function RfidScanPage() {
     return '';
   });
   const [showPrinterSettings, setShowPrinterSettings] = useState(false);
+  const [printerMode, setPrinterMode] = useState<PrinterMode>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('rfid_printer_mode') as PrinterMode) || 'network';
+    }
+    return 'network';
+  });
+  const [usbPrinterStatus, setUsbPrinterStatus] = useState<'checking' | 'ready' | 'not_found'>('checking');
   const [printedEpcs, setPrintedEpcs] = useState<Set<string>>(new Set());
   const [printLog, setPrintLog] = useState<PrintLogEntry[]>([]);
   const [testingPrinter, setTestingPrinter] = useState(false);
@@ -273,6 +283,90 @@ export default function RfidScanPage() {
     return () => controller.abort();
   }, [pendingEpcs]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Send ZPL to USB printer via Zebra Browser Print
+  const printViaUsb = useCallback(async (zpl: string): Promise<{ success: boolean; error?: string }> => {
+    const result = await printToDefaultPrinter(zpl);
+    return { success: result.success, error: result.error };
+  }, []);
+
+  // Unified auto-print handler: calls API, then prints via USB or lets server print via network
+  const handleAutoPrint = useCallback(async (epc: string): Promise<void> => {
+    const isUsb = printerMode === 'usb';
+    try {
+      const res = await fetch(`${printServerUrl}/api/rfid/auto-print`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          epc,
+          printerIP,
+          station,
+          scannedBy,
+          ...(isUsb ? { printMode: 'usb' } : {}),
+        }),
+      });
+      const data = await res.json();
+
+      // USB mode: API returns ZPL, we print client-side
+      if (isUsb && data.reason === 'usb_mode' && data.zpl) {
+        const usbResult = await printViaUsb(data.zpl);
+        printingRef.current.delete(epc);
+        if (usbResult.success) {
+          setPrintedEpcs(prev => new Set(prev).add(epc));
+          setPrintLog(prev => [{
+            epc: data.epc || displayEpc(epc),
+            name: data.graduateName,
+            status: 'printed',
+            time: new Date().toLocaleTimeString(),
+            titoCheckin: data.stationScan?.titoCheckin,
+          }, ...prev]);
+        } else {
+          setPrintLog(prev => [{
+            epc: data.epc || displayEpc(epc),
+            name: data.graduateName,
+            status: 'error',
+            error: usbResult.error || 'USB print failed',
+            time: new Date().toLocaleTimeString(),
+          }, ...prev]);
+        }
+        return;
+      }
+
+      // Network mode: server already printed
+      printingRef.current.delete(epc);
+      if (data.printed) {
+        setPrintedEpcs(prev => new Set(prev).add(epc));
+        setPrintLog(prev => [{
+          epc: data.epc || displayEpc(epc),
+          name: data.graduateName,
+          status: 'printed',
+          time: new Date().toLocaleTimeString(),
+          titoCheckin: data.stationScan?.titoCheckin,
+        }, ...prev]);
+      } else if (data.reason === 'unregistered') {
+        setPrintLog(prev => [{
+          epc: data.epc || displayEpc(epc),
+          status: 'skipped',
+          time: new Date().toLocaleTimeString(),
+        }, ...prev]);
+      } else {
+        setPrintLog(prev => [{
+          epc: data.epc || displayEpc(epc),
+          status: 'error',
+          error: data.error || 'Print failed',
+          time: new Date().toLocaleTimeString(),
+        }, ...prev]);
+      }
+    } catch (err) {
+      printingRef.current.delete(epc);
+      setPrintLog(prev => [{
+        epc: displayEpc(epc),
+        status: 'error',
+        error: err instanceof Error ? err.message : 'Network error',
+        time: new Date().toLocaleTimeString(),
+      }, ...prev]);
+    }
+  }, [printerMode, printServerUrl, printerIP, station, scannedBy, printViaUsb]);
+
   // Auto-print: trigger print when tag details arrive for found tags
   useEffect(() => {
     if (!autoPrintEnabled) return;
@@ -285,51 +379,9 @@ export default function RfidScanPage() {
 
       // Mark as in-flight to prevent duplicate calls
       printingRef.current.add(epc);
-
-      fetch(`${printServerUrl}/api/rfid/auto-print`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ epc, printerIP, station, scannedBy }),
-      })
-        .then(res => res.json())
-        .then(data => {
-          printingRef.current.delete(epc);
-          if (data.printed) {
-            setPrintedEpcs(prev => new Set(prev).add(epc));
-            setPrintLog(prev => [{
-              epc: data.epc || displayEpc(epc),
-              name: data.graduateName || detail.graduateName,
-              status: 'printed',
-              time: new Date().toLocaleTimeString(),
-              titoCheckin: data.stationScan?.titoCheckin,
-            }, ...prev]);
-          } else if (data.reason === 'unregistered') {
-            setPrintLog(prev => [{
-              epc: data.epc || displayEpc(epc),
-              status: 'skipped',
-              time: new Date().toLocaleTimeString(),
-            }, ...prev]);
-          } else {
-            setPrintLog(prev => [{
-              epc: data.epc || displayEpc(epc),
-              name: data.graduateName || detail.graduateName,
-              status: 'error',
-              error: data.error || 'Print failed',
-              time: new Date().toLocaleTimeString(),
-            }, ...prev]);
-          }
-        })
-        .catch(err => {
-          printingRef.current.delete(epc);
-          setPrintLog(prev => [{
-            epc,
-            status: 'error',
-            error: err instanceof Error ? err.message : 'Network error',
-            time: new Date().toLocaleTimeString(),
-          }, ...prev]);
-        });
+      handleAutoPrint(epc);
     }
-  }, [pendingEpcs, pendingTagDetails, autoPrintEnabled, printerIP, printedEpcs, printServerUrl]);
+  }, [pendingEpcs, pendingTagDetails, autoPrintEnabled, printedEpcs, handleAutoPrint]);
 
   // WD01 auto-print: watch epcInput for complete EPC and auto-trigger
   // Only active for desktop print stations (packing, address-label)
@@ -355,47 +407,7 @@ export default function RfidScanPage() {
       setEpcInput('');
       inputRef.current?.focus();
 
-      fetch(`${printServerUrl}/api/rfid/auto-print`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ epc: trimmed, printerIP, station, scannedBy }),
-      })
-        .then(res => res.json())
-        .then(data => {
-          printingRef.current.delete(trimmed);
-          if (data.printed) {
-            setPrintedEpcs(prev => new Set(prev).add(trimmed));
-            setPrintLog(prev => [{
-              epc: data.epc || displayEpc(trimmed),
-              name: data.graduateName,
-              status: 'printed',
-              time: new Date().toLocaleTimeString(),
-              titoCheckin: data.stationScan?.titoCheckin,
-            }, ...prev]);
-          } else if (data.reason === 'unregistered') {
-            setPrintLog(prev => [{
-              epc: data.epc || displayEpc(trimmed),
-              status: 'skipped',
-              time: new Date().toLocaleTimeString(),
-            }, ...prev]);
-          } else {
-            setPrintLog(prev => [{
-              epc: data.epc || displayEpc(trimmed),
-              status: 'error',
-              error: data.error || 'Print failed',
-              time: new Date().toLocaleTimeString(),
-            }, ...prev]);
-          }
-        })
-        .catch(err => {
-          printingRef.current.delete(trimmed);
-          setPrintLog(prev => [{
-            epc: displayEpc(trimmed),
-            status: 'error',
-            error: err instanceof Error ? err.message : 'Network error',
-            time: new Date().toLocaleTimeString(),
-          }, ...prev]);
-        });
+      handleAutoPrint(trimmed);
     };
 
     // 32 hex chars = WD01 complete → fire immediately (no delay)
@@ -407,7 +419,7 @@ export default function RfidScanPage() {
     // Convocation number pattern → short delay to ensure input is complete
     const timer = setTimeout(triggerPrint, 300);
     return () => clearTimeout(timer);
-  }, [epcInput, autoPrintEnabled, printerIP, printedEpcs, station, printServerUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [epcInput, autoPrintEnabled, printedEpcs, station, handleAutoPrint]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cleanup polling on unmount
   useEffect(() => {
@@ -419,16 +431,41 @@ export default function RfidScanPage() {
     };
   }, []);
 
+  // Check USB printer status when mode is USB
+  useEffect(() => {
+    if (printerMode !== 'usb') return;
+    let cancelled = false;
+    const check = async () => {
+      setUsbPrinterStatus('checking');
+      const status = await getBrowserPrintStatus();
+      if (cancelled) return;
+      setUsbPrinterStatus(status.running && status.printers.length > 0 ? 'ready' : 'not_found');
+    };
+    check();
+    const interval = setInterval(check, 15000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [printerMode]);
+
   // Test printer connection
   const handleTestPrint = async () => {
     setTestingPrinter(true);
     try {
-      const res = await fetch(`${printServerUrl}/api/print/zpl?ip=${encodeURIComponent(printerIP)}&port=9100`);
-      const data = await res.json();
-      if (data.success) {
-        setPrintLog(prev => [{ epc: 'TEST', status: 'printed', time: new Date().toLocaleTimeString(), name: 'Test Print OK' }, ...prev]);
+      if (printerMode === 'usb') {
+        const testZpl = `^XA^CI28^PW440^LL520^MNY^CF0,40^FO50,50^FD*** TEST PRINT ***^FS^CF0,30^FO50,120^FDMode: USB (Browser Print)^FS^FO50,170^FD${new Date().toLocaleString()}^FS^XZ`;
+        const result = await printViaUsb(testZpl);
+        if (result.success) {
+          setPrintLog(prev => [{ epc: 'TEST', status: 'printed', time: new Date().toLocaleTimeString(), name: 'USB Test Print OK' }, ...prev]);
+        } else {
+          setPrintLog(prev => [{ epc: 'TEST', status: 'error', time: new Date().toLocaleTimeString(), error: result.error || 'USB print failed' }, ...prev]);
+        }
       } else {
-        setPrintLog(prev => [{ epc: 'TEST', status: 'error', time: new Date().toLocaleTimeString(), error: data.error || 'Connection failed' }, ...prev]);
+        const res = await fetch(`${printServerUrl}/api/print/zpl?ip=${encodeURIComponent(printerIP)}&port=9100`);
+        const data = await res.json();
+        if (data.success) {
+          setPrintLog(prev => [{ epc: 'TEST', status: 'printed', time: new Date().toLocaleTimeString(), name: 'Test Print OK' }, ...prev]);
+        } else {
+          setPrintLog(prev => [{ epc: 'TEST', status: 'error', time: new Date().toLocaleTimeString(), error: data.error || 'Connection failed' }, ...prev]);
+        }
       }
     } catch (err) {
       setPrintLog(prev => [{ epc: 'TEST', status: 'error', time: new Date().toLocaleTimeString(), error: err instanceof Error ? err.message : 'Network error' }, ...prev]);
@@ -655,22 +692,9 @@ export default function RfidScanPage() {
       // Auto-print on quick scan if enabled
       if (autoPrintEnabled && result.success) {
         const normalizedEpc = epc.toUpperCase().trim();
-        if (!printedEpcs.has(normalizedEpc)) {
-          fetch(`${printServerUrl}/api/rfid/auto-print`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ epc: normalizedEpc, printerIP, station, scannedBy }),
-          })
-            .then(res => res.json())
-            .then(printData => {
-              if (printData.printed) {
-                setPrintedEpcs(prev => new Set(prev).add(normalizedEpc));
-                setPrintLog(prev => [{ epc: printData.epc || displayEpc(normalizedEpc), name: printData.graduateName || result.tag?.graduateName, status: 'printed', time: new Date().toLocaleTimeString(), titoCheckin: printData.stationScan?.titoCheckin }, ...prev]);
-              } else {
-                setPrintLog(prev => [{ epc: printData.epc || displayEpc(normalizedEpc), status: printData.reason === 'unregistered' ? 'skipped' : 'error', error: printData.error, time: new Date().toLocaleTimeString() }, ...prev]);
-              }
-            })
-            .catch(() => {});
+        if (!printedEpcs.has(normalizedEpc) && !printingRef.current.has(normalizedEpc)) {
+          printingRef.current.add(normalizedEpc);
+          handleAutoPrint(normalizedEpc);
         }
       }
     } catch (err) {
@@ -986,62 +1010,144 @@ export default function RfidScanPage() {
                     Close
                   </button>
                 </div>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={printerIP}
-                    onChange={e => {
-                      setPrinterIP(e.target.value);
-                      localStorage.setItem('rfid_printer_ip', e.target.value);
-                    }}
-                    placeholder="10.0.1.13"
-                    className="flex-1 px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 font-mono"
-                  />
+
+                {/* Printer Mode Toggle */}
+                <div className="flex gap-1 p-1 bg-slate-900/50 rounded-lg">
                   <button
-                    onClick={handleTestPrint}
-                    disabled={testingPrinter || !printerIP.trim()}
-                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-700 disabled:text-slate-500 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+                    onClick={() => {
+                      setPrinterMode('network');
+                      localStorage.setItem('rfid_printer_mode', 'network');
+                    }}
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
+                      printerMode === 'network'
+                        ? 'bg-purple-600 text-white'
+                        : 'text-slate-400 hover:text-slate-300'
+                    }`}
                   >
-                    {testingPrinter ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Printer className="w-3.5 h-3.5" />}
-                    Test Print
+                    <Wifi className="w-3.5 h-3.5" />
+                    Network (IP)
+                  </button>
+                  <button
+                    onClick={() => {
+                      setPrinterMode('usb');
+                      localStorage.setItem('rfid_printer_mode', 'usb');
+                    }}
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
+                      printerMode === 'usb'
+                        ? 'bg-purple-600 text-white'
+                        : 'text-slate-400 hover:text-slate-300'
+                    }`}
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    USB (Browser Print)
                   </button>
                 </div>
-                <p className="text-xs text-slate-500">
-                  Honeywell PC42t IP address (port 9100) &nbsp;|&nbsp; Labels print automatically when tags are detected
-                </p>
-                {/* Print Server URL */}
-                <div className="pt-2 border-t border-slate-700/50">
-                  <label className="block text-xs font-medium text-purple-300 mb-1.5">Print Server URL</label>
-                  <input
-                    type="text"
-                    value={printServerUrl}
-                    onChange={e => {
-                      const val = e.target.value.trim().replace(/\/$/, '');
-                      setPrintServerUrl(val);
-                      localStorage.setItem('rfid_print_server', val);
-                    }}
-                    placeholder="http://localhost:3001"
-                    className="w-full px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 font-mono"
-                  />
-                  <p className="text-xs text-slate-500 mt-1">
-                    Leave empty when running on localhost. Set to <span className="font-mono text-slate-400">http://localhost:3001</span> when using the live site.
-                  </p>
-                  {typeof window !== 'undefined' && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1') && !printServerUrl && (
-                    <div className="mt-2 flex items-center gap-2 px-2.5 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                      <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                      <span className="text-xs text-amber-300">
-                        You&apos;re on the live site. Set Print Server URL to <button
-                          onClick={() => {
-                            const val = 'http://localhost:3001';
-                            setPrintServerUrl(val);
-                            localStorage.setItem('rfid_print_server', val);
-                          }}
-                          className="font-mono underline hover:text-amber-200"
-                        >http://localhost:3001</button> to route prints to your local machine.
-                      </span>
+
+                {printerMode === 'network' ? (
+                  <>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={printerIP}
+                        onChange={e => {
+                          setPrinterIP(e.target.value);
+                          localStorage.setItem('rfid_printer_ip', e.target.value);
+                        }}
+                        placeholder="10.0.1.13"
+                        className="flex-1 px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 font-mono"
+                      />
+                      <button
+                        onClick={handleTestPrint}
+                        disabled={testingPrinter || !printerIP.trim()}
+                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-700 disabled:text-slate-500 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+                      >
+                        {testingPrinter ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Printer className="w-3.5 h-3.5" />}
+                        Test Print
+                      </button>
                     </div>
-                  )}
-                </div>
+                    <p className="text-xs text-slate-500">
+                      Printer IP address (port 9100) &nbsp;|&nbsp; Labels print automatically when tags are detected
+                    </p>
+                    {/* Print Server URL */}
+                    <div className="pt-2 border-t border-slate-700/50">
+                      <label className="block text-xs font-medium text-purple-300 mb-1.5">Print Server URL</label>
+                      <input
+                        type="text"
+                        value={printServerUrl}
+                        onChange={e => {
+                          const val = e.target.value.trim().replace(/\/$/, '');
+                          setPrintServerUrl(val);
+                          localStorage.setItem('rfid_print_server', val);
+                        }}
+                        placeholder="http://localhost:3001"
+                        className="w-full px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 font-mono"
+                      />
+                      <p className="text-xs text-slate-500 mt-1">
+                        Leave empty when running on localhost. Set to <span className="font-mono text-slate-400">http://localhost:3001</span> when using the live site.
+                      </p>
+                      {typeof window !== 'undefined' && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1') && !printServerUrl && (
+                        <div className="mt-2 flex items-center gap-2 px-2.5 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                          <span className="text-xs text-amber-300">
+                            You&apos;re on the live site. Set Print Server URL to <button
+                              onClick={() => {
+                                const val = 'http://localhost:3001';
+                                setPrintServerUrl(val);
+                                localStorage.setItem('rfid_print_server', val);
+                              }}
+                              className="font-mono underline hover:text-amber-200"
+                            >http://localhost:3001</button> to route prints to your local machine.
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* USB Mode Settings */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {usbPrinterStatus === 'checking' && (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 text-slate-400 animate-spin" />
+                            <span className="text-xs text-slate-400">Detecting USB printer...</span>
+                          </>
+                        )}
+                        {usbPrinterStatus === 'ready' && (
+                          <>
+                            <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                            <span className="text-xs text-emerald-300">USB printer ready</span>
+                          </>
+                        )}
+                        {usbPrinterStatus === 'not_found' && (
+                          <>
+                            <XCircle className="w-3.5 h-3.5 text-red-400" />
+                            <span className="text-xs text-red-300">No USB printer found</span>
+                          </>
+                        )}
+                      </div>
+                      <button
+                        onClick={handleTestPrint}
+                        disabled={testingPrinter || usbPrinterStatus !== 'ready'}
+                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-700 disabled:text-slate-500 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+                      >
+                        {testingPrinter ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Printer className="w-3.5 h-3.5" />}
+                        Test Print
+                      </button>
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      Requires <span className="text-slate-400">Zebra Browser Print</span> installed on this computer. Printer must be connected via USB.
+                    </p>
+                    {usbPrinterStatus === 'not_found' && (
+                      <div className="flex items-center gap-2 px-2.5 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        <span className="text-xs text-amber-300">
+                          Install &amp; start Zebra Browser Print, then connect your Zebra printer via USB.
+                        </span>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             )}
 
@@ -1103,47 +1209,7 @@ export default function RfidScanPage() {
                               setEpcInput('');
                               inputRef.current?.focus();
 
-                              fetch(`${printServerUrl}/api/rfid/auto-print`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ epc: normalizedEpc, printerIP, station, scannedBy }),
-                              })
-                                .then(res => res.json())
-                                .then(data => {
-                                  printingRef.current.delete(normalizedEpc);
-                                  if (data.printed) {
-                                    setPrintedEpcs(prev => new Set(prev).add(normalizedEpc));
-                                    setPrintLog(prev => [{
-                                      epc: data.epc || displayEpc(normalizedEpc),
-                                      name: data.graduateName,
-                                      status: 'printed',
-                                      time: new Date().toLocaleTimeString(),
-                                      titoCheckin: data.stationScan?.titoCheckin,
-                                    }, ...prev]);
-                                  } else if (data.reason === 'unregistered') {
-                                    setPrintLog(prev => [{
-                                      epc: data.epc || displayEpc(normalizedEpc),
-                                      status: 'skipped',
-                                      time: new Date().toLocaleTimeString(),
-                                    }, ...prev]);
-                                  } else {
-                                    setPrintLog(prev => [{
-                                      epc: data.epc || displayEpc(normalizedEpc),
-                                      status: 'error',
-                                      error: data.error || 'Print failed',
-                                      time: new Date().toLocaleTimeString(),
-                                    }, ...prev]);
-                                  }
-                                })
-                                .catch(err => {
-                                  printingRef.current.delete(normalizedEpc);
-                                  setPrintLog(prev => [{
-                                    epc: displayEpc(normalizedEpc),
-                                    status: 'error',
-                                    error: err instanceof Error ? err.message : 'Network error',
-                                    time: new Date().toLocaleTimeString(),
-                                  }, ...prev]);
-                                });
+                              handleAutoPrint(normalizedEpc);
                             } else {
                               addEpc();
                             }
