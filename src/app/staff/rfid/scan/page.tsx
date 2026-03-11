@@ -1053,7 +1053,7 @@ export default function RfidScanPage() {
                           setPrinterIP(e.target.value);
                           localStorage.setItem('rfid_printer_ip', e.target.value);
                         }}
-                        placeholder="10.0.1.13"
+                        placeholder="10.0.1.13 or USB"
                         className="flex-1 px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 font-mono"
                       />
                       <button
@@ -1066,7 +1066,7 @@ export default function RfidScanPage() {
                       </button>
                     </div>
                     <p className="text-xs text-slate-500">
-                      Printer IP address (port 9100) &nbsp;|&nbsp; Labels print automatically when tags are detected
+                      Printer IP address (port 9100) or type &quot;USB&quot; for USB-connected printer &nbsp;|&nbsp; Labels print automatically when tags are detected
                     </p>
                     {/* Print Server URL */}
                     <div className="pt-2 border-t border-slate-700/50">
