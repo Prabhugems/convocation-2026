@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { universalSearch, getTicketBySlug, ticketToGraduate } from '@/lib/tito';
 import { getAirtableDataByConvocationNumber } from '@/lib/airtable';
 
+export const maxDuration = 60;
+
 // Extract ticket slug from various URL formats
 function extractTicketSlug(input: string): string | null {
   const trimmed = input.trim();

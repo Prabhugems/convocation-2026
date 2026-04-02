@@ -279,16 +279,16 @@ export function ticketToGraduate(ticket: TitoTicket): Graduate {
   };
 
   return {
-    id: ticket.slug,
-    registrationNumber: ticket.reference,
+    id: ticket.slug || '',
+    registrationNumber: ticket.reference || '',
     convocationNumber: convocationNumber.toUpperCase(),
-    name: ticket.name,
-    email: ticket.email,
+    name: ticket.name || '',
+    email: ticket.email || '',
     phone: ticket.phone_number || '',
     course: ticket.release_title || 'Unknown',
-    titoSlug: ticket.registration_slug,
-    ticketSlug: ticket.slug,
-    ticketId: ticket.id, // Numeric ID for check-in API
+    titoSlug: ticket.registration_slug || '',
+    ticketSlug: ticket.slug || '',
+    ticketId: ticket.id || 0, // Numeric ID for check-in API
     status: emptyStatus,
     scans: [],
   };
@@ -546,7 +546,7 @@ export async function universalSearch(query: string): Promise<ApiResponse<Gradua
       const cacheResult = await getAllGraduatesWithCache();
       if (cacheResult.success && cacheResult.data) {
         const matches = cacheResult.data.filter(g =>
-          g.ticketSlug.toLowerCase() === ticketId.toLowerCase()
+          g.ticketSlug?.toLowerCase() === ticketId.toLowerCase()
         );
         if (matches.length > 0) {
           return { success: true, data: matches };
@@ -579,42 +579,42 @@ export async function universalSearch(query: string): Promise<ApiResponse<Gradua
     return { success: false, error: 'Search failed' };
   }
 
-  // Search across all fields
+  // Search across all fields (with null safety for API data)
   const matches = cacheResult.data.filter(graduate => {
     // Convocation number (partial, case-insensitive)
-    if (graduate.convocationNumber.toLowerCase().includes(searchTerm)) {
+    if (graduate.convocationNumber?.toLowerCase().includes(searchTerm)) {
       return true;
     }
 
     // Name (partial, case-insensitive)
-    if (graduate.name.toLowerCase().includes(searchTerm)) {
+    if (graduate.name?.toLowerCase().includes(searchTerm)) {
       return true;
     }
 
     // Email (partial, case-insensitive)
-    if (graduate.email.toLowerCase().includes(searchTerm)) {
+    if (graduate.email?.toLowerCase().includes(searchTerm)) {
       return true;
     }
 
     // Mobile/Phone (partial, numbers only)
-    const cleanPhone = graduate.phone.replace(/[\s\-\+]/g, '');
+    const cleanPhone = (graduate.phone || '').replace(/[\s\-\+]/g, '');
     const cleanQuery = searchTerm.replace(/[\s\-\+]/g, '');
     if (cleanPhone.includes(cleanQuery)) {
       return true;
     }
 
     // Tito reference (case-insensitive)
-    if (graduate.registrationNumber.toLowerCase().includes(searchTerm)) {
+    if (graduate.registrationNumber?.toLowerCase().includes(searchTerm)) {
       return true;
     }
 
     // Course (partial, case-insensitive)
-    if (graduate.course.toLowerCase().includes(searchTerm)) {
+    if (graduate.course?.toLowerCase().includes(searchTerm)) {
       return true;
     }
 
     // Ticket slug
-    if (graduate.ticketSlug.toLowerCase().includes(searchTerm)) {
+    if (graduate.ticketSlug?.toLowerCase().includes(searchTerm)) {
       return true;
     }
 
@@ -628,25 +628,25 @@ export async function universalSearch(query: string): Promise<ApiResponse<Gradua
   // Sort by relevance (exact matches first, then by name)
   matches.sort((a, b) => {
     // Exact convocation number match first
-    const aExactConv = a.convocationNumber.toLowerCase() === searchTerm;
-    const bExactConv = b.convocationNumber.toLowerCase() === searchTerm;
+    const aExactConv = (a.convocationNumber || '').toLowerCase() === searchTerm;
+    const bExactConv = (b.convocationNumber || '').toLowerCase() === searchTerm;
     if (aExactConv && !bExactConv) return -1;
     if (bExactConv && !aExactConv) return 1;
 
     // Exact reference match
-    const aExactRef = a.registrationNumber.toLowerCase() === searchTerm;
-    const bExactRef = b.registrationNumber.toLowerCase() === searchTerm;
+    const aExactRef = (a.registrationNumber || '').toLowerCase() === searchTerm;
+    const bExactRef = (b.registrationNumber || '').toLowerCase() === searchTerm;
     if (aExactRef && !bExactRef) return -1;
     if (bExactRef && !aExactRef) return 1;
 
     // Name starts with query
-    const aNameStarts = a.name.toLowerCase().startsWith(searchTerm);
-    const bNameStarts = b.name.toLowerCase().startsWith(searchTerm);
+    const aNameStarts = (a.name || '').toLowerCase().startsWith(searchTerm);
+    const bNameStarts = (b.name || '').toLowerCase().startsWith(searchTerm);
     if (aNameStarts && !bNameStarts) return -1;
     if (bNameStarts && !aNameStarts) return 1;
 
     // Alphabetical by name
-    return a.name.localeCompare(b.name);
+    return (a.name || '').localeCompare(b.name || '');
   });
 
   return { success: true, data: matches.slice(0, 50) }; // Limit to 50 results

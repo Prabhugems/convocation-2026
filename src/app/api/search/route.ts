@@ -3,6 +3,9 @@ import { universalSearch, getTicketBySlug, ticketToGraduate, getTicketCheckins }
 import { getAddressByConvocationNumber, getAirtableDataByConvocationNumber } from '@/lib/airtable';
 import { Graduate } from '@/types';
 
+// Allow up to 60 seconds for cold cache builds (fetches Tito + Airtable + checkins)
+export const maxDuration = 60;
+
 // Extract ticket slug from various URL formats
 function extractTicketSlug(input: string): string | null {
   const trimmed = input.trim();
@@ -94,7 +97,7 @@ export async function GET(request: NextRequest) {
               // ALWAYS use Airtable name if available (has full name with middle name)
               name: airtableResult.data.name || graduate.name,
               phone: graduate.phone || airtableResult.data.mobile,
-              address: airtableResult.data.address.line1
+              address: airtableResult.data.address?.line1
                 ? airtableResult.data.address
                 : graduate.address,
             };

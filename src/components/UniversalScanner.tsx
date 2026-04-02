@@ -69,8 +69,13 @@ export function detectInputType(input: string): SearchInputType {
     return 'name';
   }
 
-  // RFID EPC: 24 or 32 hex chars (from UHF reader or WD01 desktop reader)
+  // RFID EPC: known lengths from UHF reader (24 chars) or WD01 desktop reader (32 chars),
+  // plus shorter hex reads (10-20 chars) that contain A-F letters and aren't other formats
   if (/^[0-9A-Fa-f]{24}$/.test(trimmed) || /^[0-9A-Fa-f]{32}$/.test(trimmed)) {
+    return 'rfid_epc';
+  }
+  // Shorter RFID hex (10-20 chars with A-F letters, not matching other patterns above)
+  if (/^[0-9A-Fa-f]{10,20}$/.test(trimmed) && /[A-Fa-f]/.test(trimmed)) {
     return 'rfid_epc';
   }
 
@@ -753,7 +758,9 @@ export default function UniversalScanner({
             onChange={(e) => {
               const val = e.target.value;
               setSearchInput(val);
-              // Auto-submit if RFID reader sends 24/32 hex chars into focused input
+              // Auto-submit if RFID reader sends hex chars into focused input
+              // Known lengths: 24 (UHF reader) or 32 (WD01 desktop reader)
+              // Shorter RFID reads (e.g. 10 chars) are handled via Enter key / barcode buffer
               const trimmed = val.trim();
               if ((trimmed.length === 24 || trimmed.length === 32) && /^[0-9A-Fa-f]+$/.test(trimmed)) {
                 onSearch(trimmed, 'rfid_epc');
