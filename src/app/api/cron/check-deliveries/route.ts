@@ -69,11 +69,11 @@ export async function GET(request: NextRequest) {
           convocationNumber: graduate.convocationNumber,
           course: graduate.courseDetails || 'FMAS',
           address: {
-            line1: graduate.address.line1,
-            line2: graduate.address.line2,
-            city: graduate.address.city,
-            state: graduate.address.state,
-            pincode: graduate.address.pincode,
+            line1: graduate.address?.line1 || '',
+            line2: graduate.address?.line2 || '',
+            city: graduate.address?.city || '',
+            state: graduate.address?.state || '',
+            pincode: graduate.address?.pincode || '',
           },
         });
       }

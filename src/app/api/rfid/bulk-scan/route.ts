@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(
-      `[RFID Bulk Scan] Complete: ${result.data!.summary.successful}/${result.data!.summary.total} successful, ${result.data!.summary.titoCheckins} Tito check-ins`
+      `[RFID Bulk Scan] Complete: ${result.data?.summary.successful}/${result.data?.summary.total} successful, ${result.data?.summary.titoCheckins} Tito check-ins`
     );
 
     return NextResponse.json({

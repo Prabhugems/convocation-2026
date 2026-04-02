@@ -73,8 +73,8 @@ export async function getAllTickets(): Promise<ApiResponse<TitoTicket[]>> {
       return { success: false, error: response.error || 'Failed to fetch tickets' };
     }
 
-    allTickets.push(...response.data.tickets);
-    hasMore = response.data.meta?.next_page !== null;
+    allTickets.push(...(response.data.tickets || []));
+    hasMore = response.data.meta?.next_page != null;
     page++;
   }
 
@@ -96,8 +96,8 @@ export async function getAllRegistrations(): Promise<ApiResponse<TitoRegistratio
       return { success: false, error: response.error || 'Failed to fetch registrations' };
     }
 
-    allRegistrations.push(...response.data.registrations);
-    hasMore = response.data.meta.next_page !== null;
+    allRegistrations.push(...(response.data.registrations || []));
+    hasMore = response.data.meta?.next_page != null;
     page++;
   }
 
