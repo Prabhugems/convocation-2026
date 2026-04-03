@@ -84,11 +84,27 @@ export async function POST(request: NextRequest) {
       ticketUrl,
     });
 
-    // 4. USB mode: return ZPL for client-side printing via Zebra Browser Print
+    // 4. USB mode: print server-side via CUPS
     if (isUsbMode) {
-      console.log(`[Auto-Print] USB mode — returning ZPL for ${tag.graduateName} (${tag.convocationNumber})`);
+      console.log(`[Auto-Print] USB mode — printing via CUPS for ${tag.graduateName} (${tag.convocationNumber})`);
 
-      // Still do station scan if requested, but skip server-side printing
+      const printResult = await sendToPrinter(zplCode, 'USB');
+
+      if (!printResult.success) {
+        console.error(`[Auto-Print] USB print failed: ${printResult.error}`);
+        return jsonResponse({
+          success: false,
+          printed: false,
+          reason: 'print_error',
+          error: printResult.error,
+          graduateName: tag.graduateName,
+          convocationNumber: tag.convocationNumber,
+        });
+      }
+
+      console.log(`[Auto-Print] USB label printed for ${tag.convocationNumber}`);
+
+      // Station scan + Tito check-in
       let stationScan: { success: boolean; titoCheckin?: { success: boolean; error?: string } } | undefined;
       if (station) {
         const scanBy = scannedBy || 'Auto-Print';
@@ -110,9 +126,7 @@ export async function POST(request: NextRequest) {
 
       return jsonResponse({
         success: true,
-        printed: false,
-        reason: 'usb_mode',
-        zpl: zplCode,
+        printed: true,
         epc: normalizedEpc,
         graduateName: tag.graduateName,
         convocationNumber: tag.convocationNumber,

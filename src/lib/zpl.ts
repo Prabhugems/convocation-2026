@@ -26,15 +26,7 @@ export interface ZPLLabelData {
  * ^LH - Label Home (X,Y offset from top-left)
  * ^MD - Media Darkness (-30 to 30, higher = darker)
  */
-const ZPL_PACKING_INIT = `
-^PW440
-^LL520
-^MTT
-^MNY
-^POI
-^LH10,10
-^MD15
-`.trim();  // 55mm×65mm, thermal transfer, gap sensing, inverted
+const ZPL_PACKING_INIT = ''; // printer permanently configured via ^JUS (PW440, LL520)
 
 const ZPL_BADGE_INIT = `
 ^PW803
@@ -60,13 +52,12 @@ export function generatePackingLabel(data: ZPLLabelData): string {
   return `^XA
 ^CI28
 ${ZPL_PACKING_INIT}
-^MMP
-^CF0,30
-^FO0,100^FB420,1,0,C,0^FDDr. ${name}^FS
-^FO75,210^BQN,2,5^FDQA,${ticketUrl}^FS
-^A0R,50,50
-^FO340,210^FD${convNum}^FS
-^PQ1,0,1,Y
+^MD15
+^CF0,28
+^FO0,60^FB440,1,0,C,0^FDDr. ${name}^FS
+^FO130,130^BQN,2,5^FDQA,${ticketUrl}^FS
+^CF0,40
+^FO0,410^FB440,1,0,C,0^FD${convNum}^FS
 ^XZ`;
 }
 
@@ -107,7 +98,8 @@ ${ZPL_BADGE_INIT}
  * Call this once when loading new label stock
  */
 export function generateCalibrationCommand(): string {
-  return `~JC^XA^JUS^XZ`;
+  return `^XA^MNM^XZ~JC^XA^JUS^XZ`;
+  // ^MNM = Set media type to mark sensing
   // ~JC = Calibrate label length sensor
   // ^JUS = Save settings to printer
 }

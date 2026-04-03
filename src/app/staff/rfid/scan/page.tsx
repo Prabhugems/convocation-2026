@@ -133,6 +133,8 @@ function getBridgeUrl(): string {
 }
 
 export default function RfidScanPage() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const [bridgeUrl, setBridgeUrl] = useState(getBridgeUrl);
   const [showBridgeSettings, setShowBridgeSettings] = useState(false);
   const [bridgeInput, setBridgeInput] = useState('');
@@ -152,7 +154,7 @@ export default function RfidScanPage() {
   const [pendingTagDetails, setPendingTagDetails] = useState<Record<string, { found: boolean; graduateName?: string; convocationNumber?: string; type?: string }>>({});
   const [showResultsExpanded, setShowResultsExpanded] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [readerStatus, setReaderStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+  const [readerStatus, setReaderStatus] = useState<'checking' | 'connected' | 'disconnected'>('disconnected');
   const [isScanning, setIsScanning] = useState(false);
   const [scannedCount, setScannedCount] = useState(0);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -249,8 +251,10 @@ export default function RfidScanPage() {
     }
   }, [bridgeUrl]);
 
-  // Poll reader status every 10s
+  // Poll reader status every 10s (only if bridge URL was explicitly set by user)
   useEffect(() => {
+    const userSetBridge = typeof window !== 'undefined' && localStorage.getItem('rfid_bridge_url');
+    if (!userSetBridge) return; // Skip polling when using default — avoids console noise
     checkReaderStatus();
     const interval = setInterval(checkReaderStatus, 10000);
     return () => clearInterval(interval);
@@ -288,11 +292,9 @@ export default function RfidScanPage() {
     return () => controller.abort();
   }, [pendingEpcs]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Send ZPL to USB printer via Zebra Browser Print, with CUPS fallback
+  // Send ZPL to USB printer via CUPS first, then Zebra Browser Print fallback
   const printViaUsb = useCallback(async (zpl: string): Promise<{ success: boolean; error?: string }> => {
-    const result = await printToDefaultPrinter(zpl);
-    if (result.success) return { success: true };
-    // Fallback: try server-side CUPS printing (IP="USB")
+    // Try server-side CUPS printing first (most reliable for USB printers)
     try {
       const res = await fetch(`${printServerUrl}/api/print/zpl/raw`, {
         method: 'POST',
@@ -301,10 +303,13 @@ export default function RfidScanPage() {
       });
       const data = await res.json();
       if (data.success) return { success: true };
-      return { success: false, error: data.error || result.error };
     } catch {
-      return { success: false, error: result.error || 'USB print failed' };
+      // CUPS not available, fall through to Browser Print
     }
+    // Fallback: try Zebra Browser Print
+    const result = await printToDefaultPrinter(zpl);
+    if (result.success) return { success: true };
+    return { success: false, error: result.error || 'USB print failed' };
   }, [printServerUrl]);
 
   // Unified auto-print handler: calls API, then prints via USB or lets server print via network
@@ -464,24 +469,24 @@ export default function RfidScanPage() {
   }, []);
 
   // Check USB printer status when mode is USB
-  // First checks Zebra Browser Print, then falls back to CUPS check
+  // On localhost, CUPS is available so skip Browser Print polling entirely
   useEffect(() => {
     if (printerMode !== 'usb') return;
     let cancelled = false;
+    const isLocalhost = typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
     const check = async () => {
       setUsbPrinterStatus('checking');
+      // On localhost, CUPS USB printing is always available — skip Browser Print check
+      if (isLocalhost) {
+        if (!cancelled) setUsbPrinterStatus('ready');
+        return;
+      }
       const status = await getBrowserPrintStatus();
       if (cancelled) return;
       if (status.running && status.printers.length > 0) {
         setUsbPrinterStatus('ready');
         return;
-      }
-      // Fallback: if running on localhost, CUPS USB printing is available
-      if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-        if (!cancelled) {
-          setUsbPrinterStatus('ready');
-          return;
-        }
       }
       if (!cancelled) setUsbPrinterStatus('not_found');
     };
@@ -752,6 +757,16 @@ export default function RfidScanPage() {
   const successCount = scanResults.filter(r => r.success).length;
   const failCount = scanResults.filter(r => !r.success).length;
   const titoCount = scanResults.filter(r => r.titoCheckin?.success).length;
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-[#0c1222] text-[#f1f5f9]">
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-slate-400 text-sm">Loading...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0c1222] text-[#f1f5f9]">
