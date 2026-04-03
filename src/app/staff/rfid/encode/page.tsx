@@ -17,6 +17,8 @@ import {
   Camera,
   Zap,
   Search,
+  Lock,
+  Pencil,
 } from 'lucide-react';
 import UniversalScanner, { SearchInputType, extractTicketFromUrl } from '@/components/UniversalScanner';
 import { isWd01Format, convertWd01ToUhfEpc } from '@/types/rfid';
@@ -80,8 +82,13 @@ export default function RfidEncodePage() {
   const [readerDetected, setReaderDetected] = useState(false);
   const [lastScanTime, setLastScanTime] = useState<number>(0);
   const [autoLinkEnabled, setAutoLinkEnabled] = useState(true);
+  const [step1Locked, setStep1Locked] = useState(false);
   const epcInputRef = useRef<HTMLInputElement>(null);
   const convocationInputRef = useRef<HTMLInputElement>(null);
+
+  // Cooldown: block EPC reads for 1.5s after convocation is verified
+  // This prevents nearby RFID tags from being auto-linked immediately
+  const epcBlockedUntilRef = useRef<number>(0);
 
   // Track keyboard input speed to detect reader vs manual typing
   const keyTimestamps = useRef<number[]>([]);
@@ -190,6 +197,14 @@ export default function RfidEncodePage() {
   // Auto-link when reader scan is detected
   const handleEpcKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     const now = Date.now();
+
+    // Block all EPC input during cooldown or if Step 1 not complete
+    if (now < epcBlockedUntilRef.current || (tagType === 'graduate' && !step1Locked)) {
+      e.preventDefault();
+      setEpc('');
+      return;
+    }
+
     keyTimestamps.current.push(now);
 
     // Keep only last 10 timestamps
@@ -237,7 +252,7 @@ export default function RfidEncodePage() {
         }, 100);
       }
     }
-  }, [autoLinkEnabled]);
+  }, [autoLinkEnabled, tagType, step1Locked]);
 
   // Ref for auto-link function (avoids stale closures)
   const autoLinkRef = useRef<((epcValue: string) => void) | null>(null);
@@ -318,6 +333,7 @@ export default function RfidEncodePage() {
           setBoxItemEpcs([]);
           setPendingEncode(null);
           setLookupName(null);
+          setStep1Locked(false);
 
           // Auto-focus convocation number for next tag
           setTimeout(() => convocationInputRef.current?.focus(), 300);
@@ -338,12 +354,19 @@ export default function RfidEncodePage() {
     }
   }, [successMessage]);
 
-  // Auto-focus EPC/scan field when graduate name is found (convocation verified)
+  // Lock Step 1 and auto-move to Step 2 when graduate name is found
+  // Add cooldown to prevent nearby RFID tags from being read immediately
   useEffect(() => {
-    if (lookupName && epcInputRef.current && !epc.trim()) {
-      setTimeout(() => epcInputRef.current?.focus(), 300);
+    if (lookupName && !epc.trim()) {
+      setStep1Locked(true);
+      // Block EPC reads for 1.5s to avoid stray nearby tag reads
+      epcBlockedUntilRef.current = Date.now() + 1500;
+      const timer = setTimeout(() => {
+        epcInputRef.current?.focus();
+      }, 1500);
+      return () => clearTimeout(timer);
     }
-  }, [lookupName]);
+  }, [lookupName, epc]);
 
   // Debounced Tito URL detection — waits for input to stabilize (barcode scanners type char by char)
   const titoLookupRef = useRef(false);
@@ -548,6 +571,7 @@ export default function RfidEncodePage() {
       setBoxItemEpcs([]);
       setPendingEncode(null);
       setLookupName(null);
+      setStep1Locked(false);
     } catch (err) {
       setError(`Network error: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
@@ -709,74 +733,120 @@ export default function RfidEncodePage() {
 
             {/* Step 1: Convocation Number (for graduate) */}
             {tagType === 'graduate' && (
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-slate-300 mb-1">
-                  Step 1: Convocation Number
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    ref={convocationInputRef}
-                    type="text"
-                    value={convocationNumber}
-                    autoFocus
-                    onChange={e => {
-                      setConvocationNumber(e.target.value);
-                      setLookupName(null);
-                    }}
-                    onBlur={() => lookupConvocationNumber(convocationNumber)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && convocationNumber.trim()) {
-                        e.preventDefault();
-                        const val = convocationNumber.trim();
-                        // Handle Tito URL immediately on Enter (USB scanner sends Enter after typing)
-                        const slugMatch = val.match(/ti_[a-zA-Z0-9]+/i);
-                        if (slugMatch || /ti[._]to/i.test(val)) {
-                          const slug = slugMatch ? slugMatch[0] : null;
-                          if (slug) {
-                            console.log('[Encode] Tito URL from input Enter:', slug);
-                            setConvocationNumber('Looking up...');
-                            setError(null);
-                            setScanLoading(true);
-                            setLookupName(null);
-                            fetch(`/api/tito/ticket/${encodeURIComponent(slug)}`)
-                              .then(res => res.json())
-                              .then(data => {
-                                if (data.success && data.data?.convocationNumber) {
-                                  setConvocationNumber(data.data.convocationNumber.toUpperCase());
-                                  setLookupName(data.data.name || null);
-                                  setSuccessMessage(`Found: ${data.data.name || data.data.convocationNumber}`);
-                                } else {
-                                  setError(`Ticket not found for: ${slug}`);
-                                  setConvocationNumber('');
-                                }
-                              })
-                              .catch(() => {
-                                setError('Failed to look up ticket');
-                                setConvocationNumber('');
-                              })
-                              .finally(() => setScanLoading(false));
-                          }
-                        } else {
-                          lookupConvocationNumber(val);
-                          setTimeout(() => epcInputRef.current?.focus(), 100);
-                        }
-                      }
-                    }}
-                    placeholder="Convocation no. or scan QR / paste Tito URL"
-                    className="flex-1 px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 font-mono"
-                  />
-                  <button
-                    onClick={() => lookupConvocationNumber(convocationNumber)}
-                    className="px-3 py-2 text-sm bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
-                    title="Look up name"
-                  >
-                    <Search className="w-4 h-4" />
-                  </button>
+              <div className={`mb-4 p-3 rounded-xl border transition-all ${
+                step1Locked
+                  ? 'border-green-500/40 bg-green-500/5'
+                  : 'border-slate-700/50 bg-transparent'
+              }`}>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-slate-300 flex items-center gap-2">
+                    {step1Locked ? (
+                      <Lock className="w-3.5 h-3.5 text-green-400" />
+                    ) : (
+                      <span className="w-5 h-5 flex items-center justify-center rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold">1</span>
+                    )}
+                    {step1Locked ? 'Convocation Number (Locked)' : 'Step 1: Convocation Number'}
+                  </label>
+                  {step1Locked && (
+                    <button
+                      onClick={() => {
+                        setStep1Locked(false);
+                        setLookupName(null);
+                        setEpc('');
+                        setTimeout(() => convocationInputRef.current?.focus(), 100);
+                      }}
+                      className="flex items-center gap-1 px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded-md transition-colors text-slate-300"
+                      title="Unlock to edit convocation number"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      Edit
+                    </button>
+                  )}
                 </div>
-                {lookupName && (
-                  <p className="text-sm text-green-400 mt-1.5">
-                    ✓ {lookupName}
-                  </p>
+                {step1Locked ? (
+                  <div className="flex items-center gap-3 mt-2">
+                    <span className="font-mono text-lg font-bold text-green-300">{convocationNumber}</span>
+                    {lookupName && (
+                      <span className="text-sm text-green-400">— {lookupName}</span>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex gap-2">
+                      <input
+                        ref={convocationInputRef}
+                        type="text"
+                        value={convocationNumber}
+                        autoFocus
+                        onChange={e => {
+                          const val = e.target.value;
+                          // Detect stray RFID hex reads landing in convocation field
+                          // RFID EPCs are 24 or 32 hex chars — not a valid convocation number
+                          const trimmed = val.trim().toUpperCase();
+                          if (/^[0-9A-F]{20,}$/.test(trimmed)) {
+                            console.log('[Encode] RFID hex detected in convocation field, clearing:', trimmed.slice(0, 12));
+                            setConvocationNumber('');
+                            return;
+                          }
+                          setConvocationNumber(val);
+                          setLookupName(null);
+                        }}
+                        onBlur={() => lookupConvocationNumber(convocationNumber)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && convocationNumber.trim()) {
+                            e.preventDefault();
+                            const val = convocationNumber.trim();
+                            // Handle Tito URL immediately on Enter (USB scanner sends Enter after typing)
+                            const slugMatch = val.match(/ti_[a-zA-Z0-9]+/i);
+                            if (slugMatch || /ti[._]to/i.test(val)) {
+                              const slug = slugMatch ? slugMatch[0] : null;
+                              if (slug) {
+                                console.log('[Encode] Tito URL from input Enter:', slug);
+                                setConvocationNumber('Looking up...');
+                                setError(null);
+                                setScanLoading(true);
+                                setLookupName(null);
+                                fetch(`/api/tito/ticket/${encodeURIComponent(slug)}`)
+                                  .then(res => res.json())
+                                  .then(data => {
+                                    if (data.success && data.data?.convocationNumber) {
+                                      setConvocationNumber(data.data.convocationNumber.toUpperCase());
+                                      setLookupName(data.data.name || null);
+                                      setSuccessMessage(`Found: ${data.data.name || data.data.convocationNumber}`);
+                                    } else {
+                                      setError(`Ticket not found for: ${slug}`);
+                                      setConvocationNumber('');
+                                    }
+                                  })
+                                  .catch(() => {
+                                    setError('Failed to look up ticket');
+                                    setConvocationNumber('');
+                                  })
+                                  .finally(() => setScanLoading(false));
+                              }
+                            } else {
+                              lookupConvocationNumber(val);
+                              // Don't auto-focus EPC — wait for lookupName to trigger step1Locked
+                            }
+                          }
+                        }}
+                        placeholder="Convocation no. or scan QR / paste Tito URL"
+                        className="flex-1 px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-blue-500 font-mono"
+                      />
+                      <button
+                        onClick={() => lookupConvocationNumber(convocationNumber)}
+                        className="px-3 py-2 text-sm bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+                        title="Look up name"
+                      >
+                        <Search className="w-4 h-4" />
+                      </button>
+                    </div>
+                    {lookupName && (
+                      <p className="text-sm text-green-400 mt-1.5">
+                        ✓ {lookupName}
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
             )}
@@ -850,16 +920,30 @@ export default function RfidEncodePage() {
 
             {/* Step 2: EPC from Reader */}
             <div
-              className={`mb-4 p-4 rounded-xl border-2 border-dashed transition-colors cursor-text ${
-                epc
-                  ? 'border-green-500/50 bg-green-500/5'
-                  : 'border-blue-500/40 bg-blue-500/5'
+              className={`mb-4 p-4 rounded-xl border-2 border-dashed transition-colors ${
+                tagType === 'graduate' && !step1Locked
+                  ? 'border-slate-600/30 bg-slate-900/20 opacity-50 cursor-not-allowed'
+                  : epc
+                    ? 'border-green-500/50 bg-green-500/5 cursor-text'
+                    : 'border-blue-500/40 bg-blue-500/5 cursor-text'
               }`}
-              onClick={() => epcInputRef.current?.focus()}
+              onClick={() => {
+                if (tagType === 'graduate' && !step1Locked) return;
+                epcInputRef.current?.focus();
+              }}
             >
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-slate-300">
-                  {tagType === 'graduate' ? 'Step 2: ' : ''}Scan Tag (place on WD01 reader)
+                <label className="block text-sm font-medium text-slate-300 flex items-center gap-2">
+                  {tagType === 'graduate' && (
+                    <span className={`w-5 h-5 flex items-center justify-center rounded-full text-xs font-bold ${
+                      step1Locked ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-700 text-slate-500'
+                    }`}>2</span>
+                  )}
+                  {tagType === 'graduate'
+                    ? step1Locked
+                      ? 'Scan Tag (place on WD01 reader)'
+                      : 'Scan Tag (complete Step 1 first)'
+                    : 'Scan Tag (place on WD01 reader)'}
                 </label>
                 {epc && (
                   <button
@@ -881,14 +965,27 @@ export default function RfidEncodePage() {
                 ref={epcInputRef}
                 type="text"
                 value={epc}
+                disabled={tagType === 'graduate' && !step1Locked}
                 maxLength={32}
                 onChange={e => {
+                  const now = Date.now();
+                  // Block EPC reads during cooldown (after convocation verified)
+                  if (now < epcBlockedUntilRef.current) {
+                    console.log('[Encode] EPC blocked during cooldown, clearing');
+                    setEpc('');
+                    return;
+                  }
+                  // Block EPC reads if Step 1 not complete (graduate mode)
+                  if (tagType === 'graduate' && !step1Locked) {
+                    console.log('[Encode] EPC blocked — Step 1 not complete, clearing');
+                    setEpc('');
+                    return;
+                  }
                   // Cap at 32 chars — WD01 reader sometimes sends EPC twice (64 chars)
                   const val = e.target.value.slice(0, 32);
                   setEpc(val);
                   const trimmed = val.trim();
                   if (autoLinkEnabled && (trimmed.length === 32 || trimmed.length === 24)) {
-                    const now = Date.now();
                     if (trimmed.toUpperCase() === lastScannedEpc.current && now - lastScannedTime.current < 3000) {
                       console.log('[Encode] Duplicate read ignored:', trimmed.slice(0, 12));
                       setEpc('');
