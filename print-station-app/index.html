@@ -1172,18 +1172,10 @@ ${autoCut ? '^MMC\n' : ''}^LT${verticalOffset}
       printButton.classList.add('printing');
       printButton.innerHTML = '<div class="spinner"></div> Printing...';
 
-      let zpl;
-      if (settings.serverType === 'amasi') {
-        zpl = await fetchAmasiZpl(currentBadgeData._amasiRegistration);
-        if (!zpl) {
-          printButton.classList.remove('printing');
-          printButton.disabled = false;
-          showStatus('AMASI server did not return ZPL', 'error');
-          return;
-        }
-      } else {
-        zpl = generateBadgeZPL(currentBadgeData);
-      }
+      // Always use the local generator — the AMASI server's ZPL output
+      // wedges this 4BARCODE printer (parser silently locks after one print).
+      // currentBadgeData carries AMASI fields mapped to convocation shape.
+      const zpl = generateBadgeZPL(currentBadgeData);
 
       const result = await sendZpl(zpl);
 
