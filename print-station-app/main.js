@@ -238,6 +238,7 @@ ipcMain.handle('load-settings', async () => {
       autoPrint: false,
       rotatePrint: true,
       autoCut: false,
+      verticalOffset: -30,
       printMode: 'network',
       usbPrinterName: ''
     };
@@ -249,6 +250,7 @@ ipcMain.handle('load-settings', async () => {
       autoPrint: false,
       rotatePrint: true,
       autoCut: false,
+      verticalOffset: -30,
       printMode: 'network',
       usbPrinterName: ''
     };
