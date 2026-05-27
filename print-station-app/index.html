@@ -623,6 +623,20 @@
             <small>Enable if badge prints upside down</small>
           </div>
 
+          <div class="form-group">
+            <div class="checkbox-group">
+              <input type="checkbox" id="autoCut">
+              <label for="autoCut" style="margin: 0;">Auto-cut after each label</label>
+            </div>
+            <small>Requires a printer with a cutter accessory</small>
+          </div>
+
+          <div class="form-group">
+            <label>Vertical offset (dots)</label>
+            <input type="number" id="verticalOffset" value="0" min="-120" max="120" step="1">
+            <small>Fine-tune top-of-form. Negative shifts content up. ~8 dots = 1mm at 203 dpi. Range -120 to 120.</small>
+          </div>
+
           <div class="btn-group">
             <button id="saveSettings" class="btn btn-primary">Save Settings</button>
             <button id="testConnection" class="btn btn-secondary">Test Connection</button>
@@ -724,6 +738,8 @@
       document.getElementById('apiUrl').value = settings.apiUrl || '';
       document.getElementById('autoPrint').checked = settings.autoPrint || false;
       document.getElementById('rotatePrint').checked = settings.rotatePrint !== false;
+      document.getElementById('autoCut').checked = settings.autoCut || false;
+      document.getElementById('verticalOffset').value = settings.verticalOffset ?? 0;
       document.getElementById('printMode').value = settings.printMode || 'network';
       await refreshUsbPrinters(settings.usbPrinterName || '');
       applyPrintModeUI();
@@ -909,6 +925,8 @@
 
       // Rotation based on checkbox (read directly from UI)
       const rotatePrint = document.getElementById('rotatePrint').checked;
+      const autoCut = document.getElementById('autoCut').checked;
+      const verticalOffset = parseInt(document.getElementById('verticalOffset').value) || 0;
 
       // Font orientation: N=Normal, I=Inverted (180°)
       const fontOrient = rotatePrint ? 'I' : 'N';
@@ -946,7 +964,8 @@
 ^LH0,0
 ^LL${H}
 ^PW${W}
-^MNY
+^MNM
+${autoCut ? '^MMC\n' : ''}^LT${verticalOffset}
 ^MD15
 
 ^FO0,${yTitle}^FB${W},1,0,C,0^A0${fontOrient},${F_TITLE},${F_TITLE}^FDCONVOCATION 2026^FS
@@ -1209,6 +1228,8 @@
         apiUrl: document.getElementById('apiUrl').value,
         autoPrint: document.getElementById('autoPrint').checked,
         rotatePrint: document.getElementById('rotatePrint').checked,
+        autoCut: document.getElementById('autoCut').checked,
+        verticalOffset: parseInt(document.getElementById('verticalOffset').value) || 0,
         printMode: document.getElementById('printMode').value,
         usbPrinterName: document.getElementById('usbPrinterName').value
       };
@@ -1242,6 +1263,9 @@
       settings.printerPort = parseInt(document.getElementById('printerPort').value) || 9100;
       settings.printMode = document.getElementById('printMode').value;
       settings.usbPrinterName = document.getElementById('usbPrinterName').value;
+      const rotatePrint = document.getElementById('rotatePrint').checked;
+      const autoCut = document.getElementById('autoCut').checked;
+      const verticalOffset = parseInt(document.getElementById('verticalOffset').value) || 0;
 
       showStatus('Printing test label...', 'info');
 
@@ -1253,7 +1277,8 @@
 ^LH0,0
 ^LL1218
 ^PW812
-^MNY
+^MNM
+${rotatePrint ? '^POI\n' : ''}${autoCut ? '^MMC\n' : ''}^LT${verticalOffset}
 ^MD15
 
 ^FO0,${HEADER_ZONE + 50}^FB812,1,0,C,0^A0N,40,40^FD*** TEST PRINT ***^FS

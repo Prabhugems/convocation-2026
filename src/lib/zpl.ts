@@ -21,7 +21,7 @@ export interface ZPLLabelData {
  * Commands:
  * ^PW - Print Width in dots
  * ^LL - Label Length in dots
- * ^MNY - Media type: Gap/notch sensing
+ * ^MNM - Media type: Mark sensing (black bar on backing)
  * ^POI - Print Orientation Inverted (180° rotation)
  * ^LH - Label Home (X,Y offset from top-left)
  * ^MD - Media Darkness (-30 to 30, higher = darker)
@@ -31,10 +31,10 @@ const ZPL_PACKING_INIT = ''; // printer permanently configured via ^JUS (PW440, 
 const ZPL_BADGE_INIT = `
 ^PW803
 ^LL1229
-^MNY
+^MNM
 ^LH10,10
 ^MD10
-`.trim();  // 100mm×153mm, gap sensing, with offset and darkness
+`.trim();  // 100mm×153mm, black-mark sensing, with offset and darkness
 
 /**
  * Generate ZPL code for 55mm × 65mm packing label

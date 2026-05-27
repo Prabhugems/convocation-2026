@@ -236,6 +236,8 @@ ipcMain.handle('load-settings', async () => {
       printerPort: 9100,
       apiUrl: 'https://convocation-2026.vercel.app',
       autoPrint: false,
+      rotatePrint: true,
+      autoCut: false,
       printMode: 'network',
       usbPrinterName: ''
     };
@@ -245,6 +247,8 @@ ipcMain.handle('load-settings', async () => {
       printerPort: 9100,
       apiUrl: 'https://convocation-2026.vercel.app',
       autoPrint: false,
+      rotatePrint: true,
+      autoCut: false,
       printMode: 'network',
       usbPrinterName: ''
     };
