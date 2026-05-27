@@ -1,9 +1,17 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('printStation', {
-  // Print ZPL to printer
+  // Print ZPL via TCP to a network printer
   printZpl: (printerIp, printerPort, zplCode) =>
     ipcRenderer.invoke('print-zpl', printerIp, printerPort, zplCode),
+
+  // Print ZPL via CUPS to a USB-connected printer (macOS/Linux only)
+  // requestedPrinter is optional; if omitted, picker chooses default/first USB printer
+  printZplUsb: (zplCode, requestedPrinter) =>
+    ipcRenderer.invoke('print-zpl-usb', zplCode, requestedPrinter),
+
+  // List enabled USB-connected CUPS printers
+  listUsbPrinters: () => ipcRenderer.invoke('list-usb-printers'),
 
   // Test printer connection
   testConnection: (printerIp, printerPort) =>

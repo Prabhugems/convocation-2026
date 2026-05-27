@@ -574,7 +574,16 @@
         <div class="settings-section">
           <h2 style="margin-bottom: 24px;">Printer Settings</h2>
 
-          <div class="form-row">
+          <div class="form-group">
+            <label>Print Mode</label>
+            <select id="printMode">
+              <option value="network">Network (TCP / Wi-Fi or Ethernet)</option>
+              <option value="usb">USB (CUPS — macOS/Linux only)</option>
+            </select>
+            <small>USB mode prints to a locally-connected printer via CUPS</small>
+          </div>
+
+          <div class="form-row" id="networkSettings">
             <div class="form-group">
               <label>Printer IP Address</label>
               <input type="text" id="printerIp" placeholder="192.168.1.100">
@@ -585,6 +594,12 @@
               <input type="number" id="printerPort" placeholder="9100" value="9100">
               <small>Default: 9100</small>
             </div>
+          </div>
+
+          <div class="form-group" id="usbSettings" style="display: none;">
+            <label>USB Printer</label>
+            <select id="usbPrinterName"></select>
+            <small>Leave on "Auto (system default)" to use the macOS default printer</small>
           </div>
 
           <div class="form-group">
@@ -651,6 +666,55 @@
     const connectionDot = document.getElementById('connectionDot');
     const connectionText = document.getElementById('connectionText');
 
+    // Show network or USB settings block based on current mode
+    function applyPrintModeUI() {
+      const mode = document.getElementById('printMode').value;
+      document.getElementById('networkSettings').style.display = mode === 'usb' ? 'none' : '';
+      document.getElementById('usbSettings').style.display = mode === 'usb' ? '' : 'none';
+    }
+
+    // Populate the USB printer <select>
+    async function refreshUsbPrinters(preferredName) {
+      const select = document.getElementById('usbPrinterName');
+      select.innerHTML = '';
+
+      const auto = document.createElement('option');
+      auto.value = '';
+      auto.textContent = 'Auto (system default)';
+      select.appendChild(auto);
+
+      try {
+        const result = await window.printStation.listUsbPrinters();
+        if (result.success) {
+          for (const p of result.printers) {
+            const opt = document.createElement('option');
+            opt.value = p.name;
+            opt.textContent = p.isDefault ? `${p.name}  (default)` : p.name;
+            select.appendChild(opt);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to list USB printers:', e);
+      }
+
+      if (preferredName) {
+        select.value = preferredName;
+      }
+    }
+
+    // Send ZPL via the currently-selected mode. Returns the same shape both sides use.
+    async function sendZpl(zpl) {
+      const mode = settings.printMode || 'network';
+      if (mode === 'usb') {
+        return window.printStation.printZplUsb(zpl, settings.usbPrinterName || undefined);
+      }
+      return window.printStation.printZpl(
+        settings.printerIp,
+        parseInt(settings.printerPort) || 9100,
+        zpl
+      );
+    }
+
     // Initialize
     async function init() {
       settings = await window.printStation.loadSettings();
@@ -660,6 +724,9 @@
       document.getElementById('apiUrl').value = settings.apiUrl || '';
       document.getElementById('autoPrint').checked = settings.autoPrint || false;
       document.getElementById('rotatePrint').checked = settings.rotatePrint !== false;
+      document.getElementById('printMode').value = settings.printMode || 'network';
+      await refreshUsbPrinters(settings.usbPrinterName || '');
+      applyPrintModeUI();
 
       // Load history from localStorage
       const savedHistory = localStorage.getItem('printHistory');
@@ -925,11 +992,7 @@
 
       const zpl = generateBadgeZPL(currentBadgeData);
 
-      const result = await window.printStation.printZpl(
-        settings.printerIp,
-        parseInt(settings.printerPort) || 9100,
-        zpl
-      );
+      const result = await sendZpl(zpl);
 
       if (result.success) {
         printButton.classList.remove('printing');
@@ -1096,6 +1159,17 @@
 
     // Test printer connection
     async function testPrinterConnection() {
+      if (settings.printMode === 'usb') {
+        const result = await window.printStation.listUsbPrinters();
+        if (result.success && result.printers.length > 0) {
+          const target = settings.usbPrinterName || (result.printers.find(p => p.isDefault) || result.printers[0]).name;
+          updateConnectionStatus(true, `USB: ${target}`);
+        } else {
+          updateConnectionStatus(false, result.error || 'No USB printer detected');
+        }
+        return;
+      }
+
       if (!settings.printerIp) {
         updateConnectionStatus(false, 'No printer configured');
         return;
@@ -1120,13 +1194,23 @@
     }
 
     // Settings
+    // Print mode toggle — refresh USB list and show/hide blocks
+    document.getElementById('printMode').addEventListener('change', async () => {
+      applyPrintModeUI();
+      if (document.getElementById('printMode').value === 'usb') {
+        await refreshUsbPrinters(document.getElementById('usbPrinterName').value);
+      }
+    });
+
     document.getElementById('saveSettings').addEventListener('click', async () => {
       settings = {
         printerIp: document.getElementById('printerIp').value,
         printerPort: parseInt(document.getElementById('printerPort').value) || 9100,
         apiUrl: document.getElementById('apiUrl').value,
         autoPrint: document.getElementById('autoPrint').checked,
-        rotatePrint: document.getElementById('rotatePrint').checked
+        rotatePrint: document.getElementById('rotatePrint').checked,
+        printMode: document.getElementById('printMode').value,
+        usbPrinterName: document.getElementById('usbPrinterName').value
       };
 
       const result = await window.printStation.saveSettings(settings);
@@ -1156,6 +1240,8 @@
     document.getElementById('testPrint').addEventListener('click', async () => {
       settings.printerIp = document.getElementById('printerIp').value;
       settings.printerPort = parseInt(document.getElementById('printerPort').value) || 9100;
+      settings.printMode = document.getElementById('printMode').value;
+      settings.usbPrinterName = document.getElementById('usbPrinterName').value;
 
       showStatus('Printing test label...', 'info');
 
@@ -1182,11 +1268,7 @@
 
 ^XZ`;
 
-      const result = await window.printStation.printZpl(
-        settings.printerIp,
-        settings.printerPort,
-        testZpl
-      );
+      const result = await sendZpl(testZpl);
 
       if (result.success) {
         showStatus('Test print sent successfully!', 'success');
