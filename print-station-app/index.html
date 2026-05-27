@@ -479,6 +479,9 @@
         <span>AMASI</span> Print Station
       </h1>
       <div style="display: flex; align-items: center; gap: 16px;">
+        <div id="modeIndicator" style="padding: 8px 16px; background: var(--bg-card); border-radius: 8px; font-size: 13px; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          —
+        </div>
         <div id="sessionCounter" style="padding: 8px 16px; background: var(--bg-card); border-radius: 8px; font-size: 14px;">
           🖨️ <span id="printCount">0</span> printed
         </div>
@@ -603,9 +606,24 @@
           </div>
 
           <div class="form-group">
+            <label>Server Type</label>
+            <select id="serverType">
+              <option value="convocation">Convocation (client-side ZPL)</option>
+              <option value="amasi">AMASI Management (server-side ZPL)</option>
+            </select>
+            <small>AMASI mode fetches ZPL from /api/print-stations/zpl-print so it uses your badge templates</small>
+          </div>
+
+          <div class="form-group">
             <label>API URL (Your Vercel App)</label>
             <input type="text" id="apiUrl" placeholder="https://convocation-2026.vercel.app">
             <small>Enter your Vercel app URL for fetching registration data</small>
+          </div>
+
+          <div class="form-group" id="amasiTokenGroup" style="display: none;">
+            <label>AMASI Print Station Token</label>
+            <input type="text" id="amasiStationToken" placeholder="e.g. 3b2da831a6784123d6...">
+            <small>Token from the /print/&lt;token&gt; URL of your AMASI print station</small>
           </div>
 
           <div class="form-group">
@@ -716,6 +734,86 @@
       }
     }
 
+    // AMASI mode: cached print station config (loaded from /api/print-stations?token=...)
+    let amasiStation = null;
+
+    function applyServerTypeUI() {
+      const isAmasi = document.getElementById('serverType').value === 'amasi';
+      document.getElementById('amasiTokenGroup').style.display = isAmasi ? '' : 'none';
+    }
+
+    function updateModeIndicator() {
+      const el = document.getElementById('modeIndicator');
+      if (!el) return;
+      if (settings.serverType === 'amasi') {
+        if (amasiStation) {
+          const stationName = amasiStation.name || 'AMASI Station';
+          const eventName = amasiStation.events?.name || amasiStation.event_name || '';
+          el.textContent = `🎟 ${stationName}${eventName ? ' · ' + eventName : ''}`;
+          el.title = el.textContent;
+          el.style.color = '';
+        } else if (settings.amasiStationToken) {
+          el.textContent = '🎟 AMASI · station not loaded';
+          el.style.color = '#f59e0b';
+        } else {
+          el.textContent = '🎟 AMASI · no token set';
+          el.style.color = '#f59e0b';
+        }
+      } else {
+        el.textContent = '🎓 Convocation';
+        el.style.color = '';
+      }
+    }
+
+    async function loadAmasiStation() {
+      const apiUrl = settings.apiUrl;
+      const token = settings.amasiStationToken;
+      if (!apiUrl || !token) {
+        amasiStation = null;
+        return;
+      }
+      try {
+        const res = await fetch(`${apiUrl}/api/print-stations?token=${encodeURIComponent(token)}`);
+        const data = await res.json();
+        if (res.ok && data) {
+          amasiStation = data.station || data;
+        } else {
+          console.error('AMASI station load failed:', data);
+          amasiStation = null;
+        }
+      } catch (e) {
+        console.error('AMASI station fetch error:', e);
+        amasiStation = null;
+      }
+    }
+
+    // Ask the AMASI server to generate ZPL for a registration using the configured
+    // print station + badge template. Returns the ZPL string or null on failure.
+    async function fetchAmasiZpl(registration) {
+      if (!amasiStation) await loadAmasiStation();
+      const apiUrl = settings.apiUrl;
+      try {
+        const res = await fetch(`${apiUrl}/api/print-stations/zpl-print`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            registration,
+            station: amasiStation,
+            badge_template: amasiStation?.badge_templates,
+            print_mode: amasiStation?.print_mode,
+            generate_only: true,
+          }),
+        });
+        const data = await res.json();
+        if (res.ok && data?.zpl) return data.zpl;
+        console.error('AMASI ZPL fetch failed:', data);
+        return null;
+      } catch (e) {
+        console.error('AMASI ZPL fetch error:', e);
+        return null;
+      }
+    }
+
     // Send ZPL via the currently-selected mode. Returns the same shape both sides use.
     async function sendZpl(zpl) {
       const mode = settings.printMode || 'network';
@@ -740,6 +838,13 @@
       document.getElementById('rotatePrint').checked = settings.rotatePrint !== false;
       document.getElementById('autoCut').checked = settings.autoCut || false;
       document.getElementById('verticalOffset').value = settings.verticalOffset ?? 0;
+      document.getElementById('serverType').value = settings.serverType || 'convocation';
+      document.getElementById('amasiStationToken').value = settings.amasiStationToken || '';
+      applyServerTypeUI();
+      if ((settings.serverType || 'convocation') === 'amasi' && settings.amasiStationToken) {
+        await loadAmasiStation();
+      }
+      updateModeIndicator();
       document.getElementById('printMode').value = settings.printMode || 'network';
       await refreshUsbPrinters(settings.usbPrinterName || '');
       applyPrintModeUI();
@@ -815,6 +920,7 @@
         showStatus('Looking up registration...', 'info');
 
         const apiUrl = settings.apiUrl || 'https://convocation-2026.vercel.app';
+        const isAmasi = settings.serverType === 'amasi';
 
         const response = await fetch(`${apiUrl}/api/print/lookup?code=${encodeURIComponent(code)}`);
         const data = await response.json();
@@ -824,18 +930,46 @@
           return;
         }
 
-        // Display attendee info
-        displayBadge(data.badge);
+        if (isAmasi) {
+          // AMASI /api/print/lookup returns formatted, camelCase + masked PII.
+          // Remap to the snake_case shape that /api/print-stations/zpl-print's
+          // replacePlaceholders() expects ({{name}}, {{registration_number}}, ...)
+          // — otherwise every placeholder substitutes to empty string and the
+          // badge prints with only static template text.
+          const reg = data.registration;
+          const snakeReg = {
+            id: reg.id,
+            attendee_name: reg.name || '',
+            attendee_email: reg.email || '',
+            attendee_phone: reg.phone || '',
+            attendee_institution: reg.organization || reg.institution || '',
+            attendee_designation: reg.designation || '',
+            attendee_city: reg.city || '',
+            registration_number: reg.registrationNumber || reg.registration_number || '',
+            ticket_type: reg.ticketType || reg.ticket_type || '',
+            participation_mode: reg.participationMode || 'offline',
+            events: { name: reg.eventName || amasiStation?.events?.name || '' },
+          };
+          currentBadgeData = {
+            name: snakeReg.attendee_name || 'Guest',
+            institution: snakeReg.attendee_institution,
+            convocationNumber: snakeReg.registration_number,
+            registrationId: snakeReg.id || snakeReg.registration_number,
+            _amasiRegistration: snakeReg,
+          };
+          currentRegistrationId = currentBadgeData.registrationId;
+        } else {
+          // Convocation shape: data.badge + data.registrationId
+          currentBadgeData = data.badge;
+          currentRegistrationId = data.registrationId;
+        }
 
-        // Store for printing
-        currentBadgeData = data.badge;
-        currentRegistrationId = data.registrationId;
+        displayBadge(currentBadgeData);
 
         showStatus('Ready to print', 'success');
         printButton.disabled = false;
         document.getElementById('previewZplButton').disabled = false;
 
-        // Auto print if enabled
         if (settings.autoPrint) {
           await handlePrint();
         }
@@ -1008,7 +1142,18 @@ ${autoCut ? '^MMC\n' : ''}^LT${verticalOffset}
       printButton.classList.add('printing');
       printButton.innerHTML = '<div class="spinner"></div> Printing...';
 
-      const zpl = generateBadgeZPL(currentBadgeData);
+      let zpl;
+      if (settings.serverType === 'amasi') {
+        zpl = await fetchAmasiZpl(currentBadgeData._amasiRegistration);
+        if (!zpl) {
+          printButton.classList.remove('printing');
+          printButton.disabled = false;
+          showStatus('AMASI server did not return ZPL', 'error');
+          return;
+        }
+      } else {
+        zpl = generateBadgeZPL(currentBadgeData);
+      }
 
       const result = await sendZpl(zpl);
 
@@ -1100,10 +1245,22 @@ ${autoCut ? '^MMC\n' : ''}^LT${verticalOffset}
     const rotationStatus = document.getElementById('rotationStatus');
     const closeZplPreview = document.getElementById('closeZplPreview');
 
-    previewZplButton.addEventListener('click', () => {
+    previewZplButton.addEventListener('click', async () => {
       if (!currentBadgeData) return;
 
-      const zpl = generateBadgeZPL(currentBadgeData);
+      let zpl;
+      if (settings.serverType === 'amasi') {
+        zplPreviewCode.textContent = 'Fetching ZPL from AMASI server...';
+        zplPreviewModal.style.display = 'block';
+        zpl = await fetchAmasiZpl(currentBadgeData._amasiRegistration);
+        if (!zpl) {
+          zplPreviewCode.textContent = '⚠️ AMASI server did not return ZPL — check token and API URL';
+          rotationStatus.textContent = '';
+          return;
+        }
+      } else {
+        zpl = generateBadgeZPL(currentBadgeData);
+      }
       zplPreviewCode.textContent = zpl;
 
       // Check if rotation is enabled
@@ -1220,6 +1377,8 @@ ${autoCut ? '^MMC\n' : ''}^LT${verticalOffset}
       }
     });
 
+    document.getElementById('serverType').addEventListener('change', applyServerTypeUI);
+
     document.getElementById('saveSettings').addEventListener('click', async () => {
       settings = {
         printerIp: document.getElementById('printerIp').value,
@@ -1230,13 +1389,17 @@ ${autoCut ? '^MMC\n' : ''}^LT${verticalOffset}
         autoCut: document.getElementById('autoCut').checked,
         verticalOffset: parseInt(document.getElementById('verticalOffset').value) || 0,
         printMode: document.getElementById('printMode').value,
-        usbPrinterName: document.getElementById('usbPrinterName').value
+        usbPrinterName: document.getElementById('usbPrinterName').value,
+        serverType: document.getElementById('serverType').value,
+        amasiStationToken: document.getElementById('amasiStationToken').value,
       };
 
       const result = await window.printStation.saveSettings(settings);
 
       if (result.success) {
         showStatus('Settings saved!', 'success');
+        if (settings.serverType === 'amasi') await loadAmasiStation();
+        updateModeIndicator();
         await testPrinterConnection();
       } else {
         showStatus('Failed to save settings', 'error');

@@ -240,7 +240,9 @@ ipcMain.handle('load-settings', async () => {
       autoCut: false,
       verticalOffset: -30,
       printMode: 'network',
-      usbPrinterName: ''
+      usbPrinterName: '',
+      serverType: 'convocation',
+      amasiStationToken: ''
     };
   } catch (err) {
     return {
@@ -252,7 +254,9 @@ ipcMain.handle('load-settings', async () => {
       autoCut: false,
       verticalOffset: -30,
       printMode: 'network',
-      usbPrinterName: ''
+      usbPrinterName: '',
+      serverType: 'convocation',
+      amasiStationToken: ''
     };
   }
 });
