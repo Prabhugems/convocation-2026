@@ -901,18 +901,17 @@
       const F_COLLECT = 26;    // Collection lines
       const F_DISCLAIM = 22;   // Disclaimer (larger for single line)
 
-      // Y positions (% of work area + header offset)
-      // Added 2 inches (406 dots) offset to move content down
-      const OFFSET = 406;  // 2 inches at 203 DPI
-      const Y_TITLE = HEADER + OFFSET + Math.round(WORK * 0.01);     // 1%
-      const Y_COURSE = HEADER + OFFSET + Math.round(WORK * 0.07);    // 7%
-      const Y_NAME = HEADER + OFFSET + Math.round(WORK * 0.14);      // 14%
-      const Y_QR = HEADER + OFFSET + Math.round(WORK * 0.24);        // 24%
-      const Y_CERT = HEADER + OFFSET + Math.round(WORK * 0.50);      // 50%
-      const Y_COLL1 = HEADER + OFFSET + Math.round(WORK * 0.60);     // 60%
-      const Y_COLL2 = HEADER + OFFSET + Math.round(WORK * 0.65);     // 65%
-      const Y_LINE = HEADER + OFFSET + Math.round(WORK * 0.71);      // 71%
-      const Y_DISC = HEADER + OFFSET + Math.round(WORK * 0.75);      // 75% - single disclaimer line
+      // Y positions: percentages of work area, offset from below the
+      // pre-printed header. Use Settings → Vertical offset for fine-tuning.
+      const Y_TITLE = HEADER + Math.round(WORK * 0.01);
+      const Y_COURSE = HEADER + Math.round(WORK * 0.07);
+      const Y_NAME = HEADER + Math.round(WORK * 0.14);
+      const Y_QR = HEADER + Math.round(WORK * 0.24);
+      const Y_CERT = HEADER + Math.round(WORK * 0.50);
+      const Y_COLL1 = HEADER + Math.round(WORK * 0.60);
+      const Y_COLL2 = HEADER + Math.round(WORK * 0.65);
+      const Y_LINE = HEADER + Math.round(WORK * 0.71);
+      const Y_DISC = HEADER + Math.round(WORK * 0.75);
 
       // QR Code: smaller size with mag 6
       const qrMag = 6;
