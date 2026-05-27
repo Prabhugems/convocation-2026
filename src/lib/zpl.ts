@@ -137,65 +137,100 @@ function sanitizeZPL(text: string): string {
 /**
  * Send ZPL to USB-connected printer via CUPS (lp command)
  * Uses raw mode to send ZPL directly without driver processing
+ *
+ * Printer selection priority:
+ *   1. CUPS_PRINTER env var (explicit override)
+ *   2. System default destination, IF it has a usb:// device URI and is enabled
+ *   3. First enabled printer with a usb:// device URI
+ *
+ * The old logic preferred any system default — which silently sent jobs
+ * to whichever printer was last set as default (often a stale network or
+ * disconnected device) instead of the printer actually plugged in now.
  */
 async function sendToPrinterUSB(
   zplCode: string
 ): Promise<{ success: boolean; error?: string }> {
   const { exec } = await import('child_process');
 
-  return new Promise((resolve) => {
-    // First, find available CUPS printers
-    exec('lpstat -p -d', (lpErr, lpOut) => {
-      if (lpErr) {
-        resolve({ success: false, error: 'No CUPS printers found. Is the printer connected via USB?' });
-        return;
-      }
-
-      // Find the printer name from lpstat output (first enabled printer that isn't a generic one)
-      const lines = lpOut.split('\n');
-      let printerName = '';
-
-      // Check for system default first
-      const defaultLine = lines.find(l => l.includes('system default destination:'));
-      if (defaultLine) {
-        printerName = defaultLine.split('system default destination:')[1].trim();
-      }
-
-      // If no default, use first available printer
-      if (!printerName) {
-        const printerLine = lines.find(l => l.startsWith('printer ') && l.includes('enabled'));
-        if (printerLine) {
-          printerName = printerLine.split(' ')[1];
-        }
-      }
-
-      if (!printerName) {
-        resolve({ success: false, error: 'No enabled USB printer found in CUPS' });
-        return;
-      }
-
-      console.log(`[Print USB] Sending ZPL to CUPS printer: ${printerName}`);
-
-      // Use lp with raw option to send ZPL directly
-      const child = exec(
-        `lp -d ${printerName} -o raw`,
-        (err, stdout, stderr) => {
-          if (err) {
-            console.error(`[Print USB] Error: ${err.message}`);
-            resolve({ success: false, error: `USB print error: ${err.message}` });
-          } else {
-            console.log(`[Print USB] Success: ${stdout.trim()}`);
-            resolve({ success: true });
-          }
-        }
-      );
-
-      // Write ZPL to stdin
-      if (child.stdin) {
-        child.stdin.write(zplCode);
-        child.stdin.end();
-      }
+  const run = (cmd: string) =>
+    new Promise<string>((resolve, reject) => {
+      exec(cmd, (err, stdout) => (err ? reject(err) : resolve(stdout)));
     });
+
+  let printerName = '';
+
+  try {
+    if (process.env.CUPS_PRINTER) {
+      printerName = process.env.CUPS_PRINTER;
+    } else {
+      const [lpvOut, lppOut] = await Promise.all([run('lpstat -v'), run('lpstat -p')]);
+
+      const usbPrinters: string[] = [];
+      for (const line of lpvOut.split('\n')) {
+        const m = line.match(/^device for ([^:]+):\s*(usb:\/\/.+)$/);
+        if (m) usbPrinters.push(m[1].trim());
+      }
+
+      if (usbPrinters.length === 0) {
+        return { success: false, error: 'No USB printers found in CUPS. Is the printer connected via USB?' };
+      }
+
+      const enabled = new Set<string>();
+      for (const line of lppOut.split('\n')) {
+        const m = line.match(/^printer (\S+) .* enabled/);
+        if (m) enabled.add(m[1]);
+      }
+
+      const candidates = usbPrinters.filter((p) => enabled.has(p));
+      if (candidates.length === 0) {
+        return { success: false, error: 'No enabled USB printer found in CUPS' };
+      }
+
+      try {
+        const defOut = await run('lpstat -d');
+        const m = defOut.match(/system default destination:\s*(\S+)/);
+        if (m && candidates.includes(m[1])) {
+          printerName = m[1];
+        }
+      } catch {
+        // no system default — fall through
+      }
+
+      if (!printerName) {
+        printerName = candidates[0];
+      }
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { success: false, error: `Failed to query CUPS: ${msg}` };
+  }
+
+  // Validate printer name before passing to shell — CUPS names are limited to
+  // letters, digits, underscores, hyphens, dots
+  if (!/^[A-Za-z0-9_.\-]+$/.test(printerName)) {
+    return { success: false, error: `Invalid CUPS printer name: ${printerName}` };
+  }
+
+  console.log(`[Print USB] Sending ZPL to CUPS printer: ${printerName}`);
+
+  return new Promise((resolve) => {
+    const child = exec(
+      `lp -d ${printerName} -o raw`,
+      (err, stdout) => {
+        if (err) {
+          console.error(`[Print USB] Error: ${err.message}`);
+          resolve({ success: false, error: `USB print error: ${err.message}` });
+        } else {
+          console.log(`[Print USB] Success: ${stdout.trim()}`);
+          resolve({ success: true });
+        }
+      }
+    );
+
+    if (child.stdin) {
+      child.stdin.write(zplCode);
+      child.stdin.end();
+    }
   });
 }
 
