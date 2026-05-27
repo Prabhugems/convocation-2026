@@ -737,9 +737,25 @@
     // AMASI mode: cached print station config (loaded from /api/print-stations?token=...)
     let amasiStation = null;
 
+    // Default API URLs per server type. When mode changes, the URL auto-fills
+    // unless the operator has set a custom one (anything not matching a known
+    // default). Removes a class of "wrong URL → not found" errors.
+    const SERVER_DEFAULT_URLS = {
+      convocation: 'https://convocation-2026.vercel.app',
+      amasi: 'https://collegeofmas.org.in',
+    };
+
     function applyServerTypeUI() {
-      const isAmasi = document.getElementById('serverType').value === 'amasi';
+      const mode = document.getElementById('serverType').value;
+      const isAmasi = mode === 'amasi';
       document.getElementById('amasiTokenGroup').style.display = isAmasi ? '' : 'none';
+
+      const urlInput = document.getElementById('apiUrl');
+      const current = (urlInput.value || '').trim();
+      const isKnownDefault = Object.values(SERVER_DEFAULT_URLS).includes(current);
+      if (!current || isKnownDefault) {
+        urlInput.value = SERVER_DEFAULT_URLS[mode] || '';
+      }
     }
 
     function updateModeIndicator() {
