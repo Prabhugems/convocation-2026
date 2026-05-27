@@ -985,6 +985,10 @@
             institution: snakeReg.attendee_institution,
             convocationNumber: snakeReg.registration_number,
             registrationId: snakeReg.id || snakeReg.registration_number,
+            eventName: snakeReg.events?.name || '',
+            ticketType: snakeReg.ticket_type || '',
+            qrContent: snakeReg.registration_number, // AMASI badges encode just the reg number
+            isAmasi: true,                            // hide convocation footer text
             _amasiRegistration: snakeReg,
           };
           currentRegistrationId = currentBadgeData.registrationId;
@@ -1030,7 +1034,11 @@
         name = 'Guest',
         degree = '',
         convocationNumber = '',
-        registrationId = ''
+        registrationId = '',
+        eventName = '',
+        ticketType = '',
+        qrContent = '',     // raw QR text override (used in AMASI mode)
+        isAmasi = false     // suppress convocation-specific footer text
       } = data;
 
       // Sanitize text for ZPL
@@ -1040,13 +1048,19 @@
       };
 
       const safeName = sanitize(name);
-      const safeDegree = sanitize(degree) || 'FMAS Course';
+      // Course/sub-title: prefer ticketType (e.g. "Skill Course and Examination -Surgery"),
+      // then degree, then default
+      const safeDegree = sanitize(ticketType) || sanitize(degree) || 'FMAS Course';
       const safeConvNum = sanitize(convocationNumber);
+      // Title: event name in AMASI mode, "CONVOCATION 2026" fallback
+      const safeTitle = sanitize(eventName) || 'CONVOCATION 2026';
 
-      // QR code URL
-      const qrUrl = registrationId.startsWith('http')
-        ? sanitize(registrationId)
-        : `https://ti.to/tickets/${sanitize(registrationId)}`;
+      // QR code data: explicit override > URL string passthrough > ti.to link
+      const qrUrl = qrContent
+        ? sanitize(qrContent)
+        : (registrationId.startsWith('http')
+            ? sanitize(registrationId)
+            : `https://ti.to/tickets/${sanitize(registrationId)}`);
 
       // Label dimensions at 203 DPI
       const W = 812;   // Width
@@ -1109,6 +1123,21 @@
         yName = HEADER + Math.round(WORK * 0.68);      // 818
         yCourse = HEADER + Math.round(WORK * 0.76);    // 893
         yTitle = HEADER + Math.round(WORK * 0.83);     // 958
+      } else if (isAmasi) {
+        // AMASI mode: 5 elements vertically centered between the pre-printed
+        // header (~y=183) and footer (~y=1121). Reading order:
+        //   1. Course/Event name  (yTitle)
+        //   2. Doctor name        (yName)
+        //   3. QR code            (yQr)
+        //   4. Registration ID    (yCert)
+        //   5. Ticket type        (yCourse)  ← intentionally last
+        yTitle = 335;
+        yName = 460;
+        yQr = 570;   // QR is ~150 dots tall, so spans 570 to ~720
+        yCert = 780;
+        yCourse = 880;
+        yColl1 = Y_COLL1;
+        yColl2 = Y_COLL2;
       } else {
         // Normal Y positions - content prints from top to bottom
         yTitle = Y_TITLE;
@@ -1131,7 +1160,7 @@
 ${autoCut ? '^MMC\n' : ''}^LT${verticalOffset}
 ^MD15
 
-^FO0,${yTitle}^FB${W},1,0,C,0^A0${fontOrient},${F_TITLE},${F_TITLE}^FDCONVOCATION 2026^FS
+^FO0,${yTitle}^FB${W},1,0,C,0^A0${fontOrient},${F_TITLE},${F_TITLE}^FD${safeTitle}^FS
 
 ^FO0,${yCourse}^FB${W},1,0,C,0^A0${fontOrient},${F_COURSE},${F_COURSE}^FD${safeDegree}^FS
 
@@ -1140,7 +1169,7 @@ ${autoCut ? '^MMC\n' : ''}^LT${verticalOffset}
 ^FO${rotatePrint ? 256 : qrX},${yQr}^BQ${fontOrient},2,${qrMag}^FDQA,${qrUrl}^FS
 
 ^FO0,${yCert}^FB${W},1,0,C,0^A0${fontOrient},${F_CERT},${F_CERT}^FD${safeConvNum}^FS
-
+${isAmasi ? '' : `
 ^FO0,${yColl1}^FB${W},1,0,C,0^A0${fontOrient},${F_COLLECT},${F_COLLECT}^FDCollect your certificate on 28th Aug^FS
 
 ^FO0,${yColl2}^FB${W},1,0,C,0^A0${fontOrient},${F_COLLECT},${F_COLLECT}^FDat AMASI Office (Venue)^FS
@@ -1148,7 +1177,7 @@ ${autoCut ? '^MMC\n' : ''}^LT${verticalOffset}
 ^FO${lineMargin},${yLine}^GB${lineWidth},1,1^FS
 
 ^FO0,${yDisc}^FB${W},1,0,C,0^A0${fontOrient},${F_DISCLAIM},${F_DISCLAIM}^FDThis badge is valid for Convocation Ceremony only^FS
-
+`}
 ^XZ`.trim();
     }
 
