@@ -922,11 +922,25 @@
         const apiUrl = settings.apiUrl || 'https://convocation-2026.vercel.app';
         const isAmasi = settings.serverType === 'amasi';
 
-        const response = await fetch(`${apiUrl}/api/print/lookup?code=${encodeURIComponent(code)}`);
+        // In AMASI mode, scope lookup to the station's event so short codes
+        // (e.g. "1043" → last 4 of registration number) are unique.
+        let lookupUrl = `${apiUrl}/api/print/lookup?code=${encodeURIComponent(code)}`;
+        if (isAmasi && amasiStation?.event_id) {
+          lookupUrl += `&event_id=${encodeURIComponent(amasiStation.event_id)}`;
+        }
+
+        const response = await fetch(lookupUrl);
         const data = await response.json();
 
         if (!response.ok || !data.success) {
-          showStatus(`Not found: ${code}`, 'error');
+          if (data?.multiple_results && Array.isArray(data.results)) {
+            const names = data.results
+              .map(r => `${r.registrationNumber || r.id}: ${r.name || ''}`)
+              .join(', ');
+            showStatus(`Ambiguous "${code}" (${data.results.length} matches): ${names}. Enter more digits.`, 'error');
+          } else {
+            showStatus(data?.error || `Not found: ${code}`, 'error');
+          }
           return;
         }
 
