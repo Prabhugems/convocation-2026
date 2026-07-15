@@ -10,16 +10,26 @@ import {
 
 export const maxDuration = 300;
 
-// Sized to comfortably finish both tables inside `maxDuration` (300s).
-// Two tables run sequentially in one invocation, so budget ~280s of
-// usable time (20s margin for cold start / Airtable list latency etc.),
-// or ~140s per table. Each record costs ~1.1s for the rate-limited
-// AMASICON API call plus ~0.2-0.3s for the awaited Airtable PATCH,
-// i.e. ~1.3-1.4s/record. 140s / 1.4s ≈ 100 records/table/run.
-// This is a bounded, resumable batch job (oldest-unchecked records are
-// processed first via `AMASICON Last Checked` sorting), so a smaller
-// batch just means more daily runs to clear a backlog — no lost progress.
+// Upper bound on how many records are ever attempted per table per run.
+// This is *not* the safety mechanism against exceeding `maxDuration` —
+// per-record latency (AMASICON API call + Airtable PATCH) is an estimate,
+// not a guarantee, so batch size alone can't be trusted to keep a run
+// under the time limit. The actual safety guarantee is the wall-clock
+// cutoff (`PER_TABLE_TIME_BUDGET_MS`) enforced inside `checkTable`'s loop,
+// which bails out of a table's batch once its time budget is spent,
+// regardless of how far through `limit` it got. This is a bounded,
+// resumable batch job (oldest-unchecked records are processed first via
+// `AMASICON Last Checked` sorting), so stopping early just means more
+// daily runs to clear a backlog — no lost progress.
 const DEFAULT_BATCH_LIMIT = 100;
+
+// Two tables run sequentially within `maxDuration` (300s). Give each
+// table a wall-clock budget well under half of that, leaving real margin
+// (~40s total) for the two `fetchUnconfirmedForRegistrationCheck` list
+// calls, cold start, and Vercel's own overhead. This bounds total runtime
+// deterministically — it doesn't depend on assumptions about per-record
+// Airtable/AMASICON latency.
+const PER_TABLE_TIME_BUDGET_MS = 130_000;
 
 interface TableCheckSummary {
   table: string;
@@ -40,6 +50,8 @@ async function checkTable(
     errors: 0,
   };
 
+  const startTime = Date.now();
+
   const batchResult = await fetchUnconfirmedForRegistrationCheck(
     tableId,
     limit
@@ -55,6 +67,13 @@ async function checkTable(
   }
 
   for (const record of batchResult.data) {
+    if (Date.now() - startTime >= PER_TABLE_TIME_BUDGET_MS) {
+      console.warn(
+        `[Cron] Time budget exceeded checking ${label}, stopping this table's batch early`
+      );
+      break;
+    }
+
     if (!record.email) {
       // No email to check against — stamp so it cycles to the back of
       // the queue instead of being retried every run.
