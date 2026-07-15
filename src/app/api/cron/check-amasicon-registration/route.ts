@@ -10,7 +10,16 @@ import {
 
 export const maxDuration = 300;
 
-const DEFAULT_BATCH_LIMIT = 250;
+// Sized to comfortably finish both tables inside `maxDuration` (300s).
+// Two tables run sequentially in one invocation, so budget ~280s of
+// usable time (20s margin for cold start / Airtable list latency etc.),
+// or ~140s per table. Each record costs ~1.1s for the rate-limited
+// AMASICON API call plus ~0.2-0.3s for the awaited Airtable PATCH,
+// i.e. ~1.3-1.4s/record. 140s / 1.4s ≈ 100 records/table/run.
+// This is a bounded, resumable batch job (oldest-unchecked records are
+// processed first via `AMASICON Last Checked` sorting), so a smaller
+// batch just means more daily runs to clear a backlog — no lost progress.
+const DEFAULT_BATCH_LIMIT = 100;
 
 interface TableCheckSummary {
   table: string;
