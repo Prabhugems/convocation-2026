@@ -308,7 +308,7 @@ export async function fetchUnconfirmedForRegistrationCheck(
 
   const records = response.data.records.map((record) => ({
     id: record.id,
-    email: (record.fields['Email'] || '').trim(),
+    email: (record.fields['Email'] || '').toLowerCase().trim(),
   }));
 
   return { success: true, data: records };

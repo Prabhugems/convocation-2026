@@ -77,8 +77,20 @@ async function checkTable(
     if (!record.email) {
       // No email to check against — stamp so it cycles to the back of
       // the queue instead of being retried every run.
-      await updateRegistrationCheckResult(tableId, record.id, false);
-      summary.checked++;
+      const updateResult = await updateRegistrationCheckResult(
+        tableId,
+        record.id,
+        false
+      );
+      if (updateResult.success) {
+        summary.checked++;
+      } else {
+        console.error(
+          `[Cron] Failed to update ${label} record ${record.id}:`,
+          updateResult.error
+        );
+        summary.errors++;
+      }
       continue;
     }
 
@@ -103,11 +115,23 @@ async function checkTable(
     }
 
     const matched = status.userExists && status.isPaymentCompleted;
-    await updateRegistrationCheckResult(tableId, record.id, matched);
+    const updateResult = await updateRegistrationCheckResult(
+      tableId,
+      record.id,
+      matched
+    );
 
-    summary.checked++;
-    if (matched) {
-      summary.newlyMatched++;
+    if (updateResult.success) {
+      summary.checked++;
+      if (matched) {
+        summary.newlyMatched++;
+      }
+    } else {
+      console.error(
+        `[Cron] Failed to update ${label} record ${record.id}:`,
+        updateResult.error
+      );
+      summary.errors++;
     }
   }
 
