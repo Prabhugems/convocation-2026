@@ -274,3 +274,70 @@ export async function getRecordByEmail(email: string): Promise<ApiResponse<Airta
 
   return { success: true, data: null };
 }
+
+export interface UnconfirmedRegistrationRecord {
+  id: string;
+  email: string;
+}
+
+// Fetch a batch of records not yet confirmed as "Registered for AMASICON",
+// oldest-checked (or never-checked) first, so a bounded daily batch makes
+// steady progress through the whole unconfirmed pool over multiple runs.
+export async function fetchUnconfirmedForRegistrationCheck(
+  tableId: string,
+  limit: number
+): Promise<ApiResponse<UnconfirmedRegistrationRecord[]>> {
+  const params = new URLSearchParams();
+  params.set('maxRecords', String(limit));
+  params.set('filterByFormula', 'NOT({Registered for AMASICON})');
+  params.append('fields[]', 'Email');
+  params.append('sort[0][field]', 'AMASICON Last Checked');
+  params.append('sort[0][direction]', 'asc');
+
+  const response = await airtableFetch<{ records: AirtableRecord[] }>(
+    tableId,
+    `?${params.toString()}`
+  );
+
+  if (!response.success || !response.data) {
+    return {
+      success: false,
+      error: response.error || 'Failed to fetch unconfirmed records',
+    };
+  }
+
+  const records = response.data.records.map((record) => ({
+    id: record.id,
+    email: (record.fields['Email'] || '').trim(),
+  }));
+
+  return { success: true, data: records };
+}
+
+// Stamps a record's registration check result: always updates
+// "AMASICON Last Checked" to now, and sets "Registered for AMASICON" to
+// true only when matched. Never unsets an existing true value.
+export async function updateRegistrationCheckResult(
+  tableId: string,
+  recordId: string,
+  matched: boolean
+): Promise<ApiResponse<void>> {
+  const fields: Record<string, unknown> = {
+    'AMASICON Last Checked': new Date().toISOString(),
+  };
+
+  if (matched) {
+    fields['Registered for AMASICON'] = true;
+  }
+
+  const response = await airtableFetch<unknown>(tableId, `/${recordId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ fields }),
+  });
+
+  if (!response.success) {
+    return { success: false, error: response.error };
+  }
+
+  return { success: true };
+}

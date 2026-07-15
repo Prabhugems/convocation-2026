@@ -141,6 +141,8 @@ export interface AirtableRecord {
     'Tracking Number'?: string;
     'DTDC Service available'?: string; // YES or NO
     'Form A'?: string; // Fillout form URL for address update
+    'Registered for AMASICON'?: boolean;
+    'AMASICON Last Checked'?: string;
   };
 }
 
