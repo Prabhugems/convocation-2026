@@ -686,18 +686,30 @@ html,body{width:75mm!important;height:50mm!important;overflow:hidden!important;f
 // FIXED: rotate(180deg) to fix reversed/upside-down print on Zebra ZD230
 // Uses different approach for iOS (window.print) vs desktop (iframe)
 export function printBadge4x6(graduate: Graduate, elementRef?: HTMLElement | null): void {
-  // On iOS/iPad, use window.print() directly
+  // On iOS/iPad, use window.print() directly, with a temporary print-CSS
+  // override (see below) since the global stylesheet is sized for a
+  // different label type
   if (isIOS()) {
     const printBadge = document.querySelector('.print-badge-4x6') as HTMLElement;
     if (printBadge) {
       printBadge.style.display = 'block';
     }
 
-    // globals.css hardcodes @page to the 75mm x 50mm packing-sticker size for
-    // the whole document. Override it to the 100mm x 153mm badge size for the
-    // duration of this print call, then remove the override below.
+    // globals.css hardcodes @page (and html/body sizing) to the 75mm x 50mm
+    // packing-sticker size for the whole document. Override it to the
+    // 100mm x 153mm badge size for the duration of this print call, then
+    // remove the override below.
     const pageSizeOverride = document.createElement('style');
-    pageSizeOverride.textContent = '@media print { @page { size: 100mm 153mm; margin: 0 !important; } }';
+    pageSizeOverride.textContent = `@media print {
+      @page { size: 100mm 153mm; margin: 0 !important; }
+      html, body {
+        width: 100mm !important;
+        height: 153mm !important;
+        max-width: 100mm !important;
+        max-height: 153mm !important;
+        overflow: visible !important;
+      }
+    }`;
     document.head.appendChild(pageSizeOverride);
 
     window.print();

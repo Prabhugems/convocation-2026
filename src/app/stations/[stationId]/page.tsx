@@ -203,6 +203,7 @@ export default function StationPage() {
       } catch (e) {
         console.warn('[Registration] Native browser print failed, trying other methods', e);
         setNativePrintState('error');
+        setTimeout(() => setNativePrintState('idle'), 2000);
       }
 
       // 2. Try Browser Print (desktop with Zebra Browser Print software)
