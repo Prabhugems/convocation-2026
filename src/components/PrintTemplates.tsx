@@ -692,11 +692,20 @@ export function printBadge4x6(graduate: Graduate, elementRef?: HTMLElement | nul
     if (printBadge) {
       printBadge.style.display = 'block';
     }
+
+    // globals.css hardcodes @page to the 75mm x 50mm packing-sticker size for
+    // the whole document. Override it to the 100mm x 153mm badge size for the
+    // duration of this print call, then remove the override below.
+    const pageSizeOverride = document.createElement('style');
+    pageSizeOverride.textContent = '@media print { @page { size: 100mm 153mm; margin: 0 !important; } }';
+    document.head.appendChild(pageSizeOverride);
+
     window.print();
     setTimeout(() => {
       if (printBadge) {
         printBadge.style.display = 'none';
       }
+      document.head.removeChild(pageSizeOverride);
     }, 1000);
     return;
   }
