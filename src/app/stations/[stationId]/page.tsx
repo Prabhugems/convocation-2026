@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import GlassCard from '@/components/GlassCard';
 import UniversalScanner, { SearchInputType } from '@/components/UniversalScanner';
 import StatusBadge from '@/components/StatusBadge';
-import { Sticker3x2, Badge4x6, AddressLabel4x6, AddressLabelData, printElement, printSticker3x2, printAddressLabel4x6 } from '@/components/PrintTemplates';
+import { Sticker3x2, Badge4x6, AddressLabel4x6, AddressLabelData, printElement, printSticker3x2, printAddressLabel4x6, printBadge4x6 } from '@/components/PrintTemplates';
 import { printBadge4x6PDF, generateQRDataUrl } from '@/lib/pdfPrint';
 import { stations, getStation } from '@/lib/stations';
 import { Graduate, StationId, Address, AirtableGraduateData } from '@/types';
@@ -104,6 +104,8 @@ export default function StationPage() {
   const browserPrint = useBrowserPrint();
   // Mobile/Network print (works from phone - no software needed)
   const mobilePrint = useMobilePrint();
+  // Native browser print (primary method for registration station 4x6 badges)
+  const [nativePrintState, setNativePrintState] = useState<'idle' | 'printing' | 'success' | 'error'>('idle');
   const [showPrinterSetup, setShowPrinterSetup] = useState(false);
 
   // Get the shareable station URL
@@ -183,11 +185,27 @@ export default function StationPage() {
   }, [result]);
 
   // Helper function to print 4x6 badge
-  // Uses Browser Print, Mobile Print, or falls back to jsPDF
+  // Registration tries native browser print, then Browser Print (Zebra SDK), then Mobile Print; other stations use jsPDF
   const handlePrintBadge4x6 = async (graduate: Graduate) => {
     // For registration station, try different print methods
     if (stationId === 'registration') {
-      // 1. Try Browser Print first (desktop with Zebra Browser Print software)
+      // 1. Try native browser print first - works with any installed printer/driver,
+      // no vendor software required. A native print dialog gives no JS success
+      // callback, so "did not throw" is treated as success (same convention
+      // usePrinter.ts already uses for this same function at other stations).
+      setNativePrintState('printing');
+      try {
+        printBadge4x6(graduate, printRef.current);
+        setNativePrintState('success');
+        setTimeout(() => setNativePrintState('idle'), 2000);
+        console.log('[Registration] Badge printed via native browser print');
+        return;
+      } catch (e) {
+        console.warn('[Registration] Native browser print failed, trying other methods', e);
+        setNativePrintState('error');
+      }
+
+      // 2. Try Browser Print (desktop with Zebra Browser Print software)
       if (browserPrint.isRunning) {
         const success = await browserPrint.printBadge(graduate);
         if (success) {
@@ -197,7 +215,7 @@ export default function StationPage() {
         console.warn('[Registration] Browser Print failed, trying other methods');
       }
 
-      // 2. Try Mobile/Network Print - check localStorage directly
+      // 3. Try Mobile/Network Print - check localStorage directly
       let mobileSettings = null;
       try {
         const saved = localStorage.getItem('mobile-printer-settings');
@@ -905,11 +923,11 @@ export default function StationPage() {
                   {station.printType && lastScanned && (() => {
                     // Determine current print state based on print method
                     const currentPrintState = stationId === 'registration'
-                      ? (browserPrint.state === 'printing' || mobilePrint.state === 'printing'
+                      ? (nativePrintState === 'printing' || browserPrint.state === 'printing' || mobilePrint.state === 'printing'
                         ? 'printing'
-                        : browserPrint.state === 'success' || mobilePrint.state === 'success'
+                        : nativePrintState === 'success' || browserPrint.state === 'success' || mobilePrint.state === 'success'
                         ? 'success'
-                        : browserPrint.state === 'error' || mobilePrint.state === 'error'
+                        : nativePrintState === 'error' || browserPrint.state === 'error' || mobilePrint.state === 'error'
                         ? 'error'
                         : 'idle')
                       : printStatus;
