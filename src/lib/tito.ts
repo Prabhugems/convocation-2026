@@ -395,6 +395,58 @@ function mergeWithAirtableData(
   };
 }
 
+// A raw check-in record as returned by the Tito Check-in API
+interface RawCheckin {
+  ticket_id: number;
+  created_at: string;
+  deleted_at: string | null;
+}
+
+// The Tito Check-in API caps each response at 1000 records and paginates via
+// a plain `?page=N` (1-indexed) query param. It does NOT support `page[size]`
+// (that 500s) and IGNORES a `ticket_id` filter, always returning the first
+// page's 1000 records. So the ONLY reliable way to read a full check-in list
+// is to walk every page until a short/empty page. Without this, any list with
+// more than 1000 check-ins (e.g. Packing) silently drops check-ins, making
+// checked-in graduates appear "not scanned".
+const CHECKIN_PAGE_SIZE = 1000;
+const CHECKIN_MAX_PAGES = 50; // safety cap: 50k check-ins per list
+
+async function fetchAllCheckinsForList(checkinListSlug: string): Promise<RawCheckin[]> {
+  const all: RawCheckin[] = [];
+
+  for (let page = 1; page <= CHECKIN_MAX_PAGES; page++) {
+    const url = `https://checkin.tito.io/checkin_lists/${checkinListSlug}/checkins?page=${page}`;
+    const response = await fetch(url, {
+      headers: { 'Accept': 'application/json' },
+      next: { revalidate: 60 },
+    });
+
+    if (!response.ok) {
+      console.log(`[Tito Check-in] Failed to fetch ${checkinListSlug} page ${page}: ${response.status}`);
+      break;
+    }
+
+    const data = await response.json();
+    if (!Array.isArray(data) || data.length === 0) {
+      break;
+    }
+
+    all.push(...(data as RawCheckin[]));
+
+    // A short page means we've reached the end - no need to fetch further.
+    if (data.length < CHECKIN_PAGE_SIZE) {
+      break;
+    }
+
+    if (page === CHECKIN_MAX_PAGES) {
+      console.warn(`[Tito Check-in] Hit max page cap (${CHECKIN_MAX_PAGES}) for ${checkinListSlug}; some check-ins may be missing`);
+    }
+  }
+
+  return all;
+}
+
 // Fetch all check-ins from all check-in lists and build a status map
 // Returns a map of ticketId -> ScanStatus
 async function getAllCheckinsMap(): Promise<Map<number, ScanStatus>> {
@@ -413,21 +465,11 @@ async function getAllCheckinsMap(): Promise<Map<number, ScanStatus>> {
     'final-dispatch': 'finalDispatched',
   };
 
-  // Fetch check-ins from all check-in lists in parallel
+  // Fetch check-ins from all check-in lists in parallel.
+  // Each list is paginated (Tito caps responses at 1000 records per page).
   const checkinPromises = Object.entries(STATION_CHECKIN_MAPPING).map(async ([stationId, checkinListSlug]) => {
     try {
-      const url = `https://checkin.tito.io/checkin_lists/${checkinListSlug}/checkins`;
-      const response = await fetch(url, {
-        headers: { 'Accept': 'application/json' },
-        next: { revalidate: 60 },
-      });
-
-      if (!response.ok) {
-        console.log(`[Tito Bulk Check-in] Failed to fetch ${stationId}: ${response.status}`);
-        return { stationId: stationId as StationId, checkins: [] };
-      }
-
-      const data = await response.json() as Array<{ ticket_id: number; deleted_at: string | null }>;
+      const data = await fetchAllCheckinsForList(checkinListSlug);
       // Filter out deleted check-ins
       const validCheckins = data.filter(c => !c.deleted_at);
       console.log(`[Tito Bulk Check-in] ${stationId}: ${validCheckins.length} check-ins`);
@@ -658,15 +700,6 @@ export function clearGraduatesCache(): void {
   cacheTime = 0;
 }
 
-// Checkin data structure from Tito Check-in API
-interface TitoCheckin {
-  id: number;
-  uuid: string;
-  ticket_id: number;
-  created_at: string;
-  deleted_at: string | null;
-}
-
 // Reverse mapping: checkin list slug -> station ID
 const CHECKIN_LIST_TO_STATION: Record<string, StationId> = Object.entries(STATION_CHECKIN_MAPPING)
   .reduce((acc, [stationId, slug]) => {
@@ -710,24 +743,16 @@ export async function getTicketCheckins(ticketId: number): Promise<ApiResponse<{
     'final-dispatch': 'finalDispatched',
   };
 
-  // Fetch checkins from each station's checkin list in parallel
+  // Fetch checkins from each station's checkin list in parallel.
+  // The Tito API IGNORES the `ticket_id` query param and caps each page at
+  // 1000 records, so we must page through the whole list and filter locally -
+  // otherwise a ticket whose check-in falls beyond the first 1000 records
+  // (e.g. in a busy Packing list) would wrongly read as "not checked in".
   const checkinPromises = Object.entries(STATION_CHECKIN_MAPPING).map(async ([stationId, checkinListSlug]) => {
     try {
-      const url = `https://checkin.tito.io/checkin_lists/${checkinListSlug}/checkins?ticket_id=${ticketId}`;
-      const response = await fetch(url, {
-        headers: { 'Accept': 'application/json' },
-        next: { revalidate: 30 }, // Cache for 30 seconds
-      });
-
-      if (!response.ok) {
-        console.log(`[Tito Check-in] No checkins for station ${stationId}: ${response.status}`);
-        return null;
-      }
-
-      const data = await response.json() as TitoCheckin[];
+      const data = await fetchAllCheckinsForList(checkinListSlug);
 
       // Find valid (non-deleted) checkin for THIS SPECIFIC TICKET
-      // Important: The Tito API returns ALL checkins, we must filter by ticket_id
       const validCheckin = data.find(c => c.ticket_id === ticketId && !c.deleted_at);
 
       if (validCheckin) {
