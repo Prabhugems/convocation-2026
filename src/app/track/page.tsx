@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import GlassCard from '@/components/GlassCard';
 import { Graduate, Address } from '@/types';
 import { stations } from '@/lib/stations';
@@ -102,6 +102,9 @@ export default function TrackPage() {
   const [addressLoading, setAddressLoading] = useState(false);
   const [showMobileGuide, setShowMobileGuide] = useState(false);
 
+  const lastSearchedQueryRef = useRef<string>('');
+  const idleSubmitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Determine current step based on graduate status
   function getCurrentStep(): number {
     if (!graduate) return 0;
@@ -149,9 +152,8 @@ export default function TrackPage() {
     fetchAddress();
   }, [graduate?.convocationNumber]);
 
-  async function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    if (!query.trim()) return;
+  const performSearch = useCallback(async (searchQuery: string) => {
+    lastSearchedQueryRef.current = searchQuery;
 
     setLoading(true);
     setError(null);
@@ -162,7 +164,7 @@ export default function TrackPage() {
     setGraduate(null);
 
     try {
-      const response = await fetch(`/api/search?q=${encodeURIComponent(query.trim())}`);
+      const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
       const data = await response.json();
 
       if (data.success && data.data) {
@@ -184,7 +186,42 @@ export default function TrackPage() {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  async function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    await performSearch(trimmed);
   }
+
+  // Auto-submit 5s after the user stops typing/scanning into the search box,
+  // so an external scanner that doesn't send Enter still triggers a search.
+  useEffect(() => {
+    const trimmed = query.trim();
+
+    if (idleSubmitTimerRef.current) {
+      clearTimeout(idleSubmitTimerRef.current);
+      idleSubmitTimerRef.current = null;
+    }
+
+    if (trimmed.length < 3) {
+      return;
+    }
+
+    idleSubmitTimerRef.current = setTimeout(() => {
+      if (trimmed !== lastSearchedQueryRef.current) {
+        performSearch(trimmed);
+      }
+    }, 5000);
+
+    return () => {
+      if (idleSubmitTimerRef.current) {
+        clearTimeout(idleSubmitTimerRef.current);
+        idleSubmitTimerRef.current = null;
+      }
+    };
+  }, [query, performSearch]);
 
   function selectGraduate(g: Graduate) {
     setGraduate(g);
