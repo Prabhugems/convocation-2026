@@ -104,6 +104,8 @@ export default function TrackPage() {
 
   const lastSearchedQueryRef = useRef<string>('');
   const idleSubmitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const resultResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Determine current step based on graduate status
   function getCurrentStep(): number {
@@ -229,7 +231,8 @@ export default function TrackPage() {
     setSearchResults([]);
   }
 
-  function clearSearch() {
+  const clearSearch = useCallback(() => {
+    lastSearchedQueryRef.current = '';
     setQuery('');
     setGraduate(null);
     setSearchResults([]);
@@ -238,7 +241,46 @@ export default function TrackPage() {
     setSuggestions([]);
     setAddressData(null);
     setSearched(false);
-  }
+  }, []);
+
+  // Auto-reset back to a blank search box 12s after a result is shown,
+  // pausing the countdown while the visitor interacts with the page.
+  useEffect(() => {
+    if (!searched || loading) {
+      return;
+    }
+
+    function scheduleReset() {
+      if (resultResetTimerRef.current) {
+        clearTimeout(resultResetTimerRef.current);
+      }
+      resultResetTimerRef.current = setTimeout(() => {
+        clearSearch();
+        searchInputRef.current?.focus();
+      }, 12000);
+    }
+
+    function handleInteraction() {
+      scheduleReset();
+    }
+
+    scheduleReset();
+    window.addEventListener('click', handleInteraction);
+    window.addEventListener('keydown', handleInteraction);
+    window.addEventListener('scroll', handleInteraction, { passive: true });
+    window.addEventListener('touchstart', handleInteraction, { passive: true });
+
+    return () => {
+      if (resultResetTimerRef.current) {
+        clearTimeout(resultResetTimerRef.current);
+        resultResetTimerRef.current = null;
+      }
+      window.removeEventListener('click', handleInteraction);
+      window.removeEventListener('keydown', handleInteraction);
+      window.removeEventListener('scroll', handleInteraction);
+      window.removeEventListener('touchstart', handleInteraction);
+    };
+  }, [searched, loading, clearSearch]);
 
   function getStationStatus(stationId: string): 'completed' | 'pending' {
     if (!graduate) return 'pending';
@@ -424,6 +466,7 @@ export default function TrackPage() {
               <div className="relative flex-1">
                 <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
+                  ref={searchInputRef}
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
