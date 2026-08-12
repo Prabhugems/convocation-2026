@@ -930,17 +930,34 @@ function generateBarcodeSvg(text: string): string {
 // FIXED: Exact 4in × 6in sizing with proper constraints
 // Uses different approach for iOS (window.print) vs desktop (iframe)
 export function printAddressLabel4x6(data: AddressLabelData, elementRef?: HTMLElement | null): void {
-  // On iOS/iPad, use window.print() directly
+  // On iOS/iPad, use window.print() directly, with a temporary print-CSS
+  // override (see printBadge4x6 above) since the global stylesheet is sized
+  // for the packing-sticker label, not this 4in x 6in address label.
   if (isIOS()) {
     const printBadge = document.querySelector('.print-badge-4x6') as HTMLElement;
     if (printBadge) {
       printBadge.style.display = 'block';
     }
+
+    const pageSizeOverride = document.createElement('style');
+    pageSizeOverride.textContent = `@media print {
+      @page { size: 4in 6in; margin: 0 !important; }
+      html, body {
+        width: 4in !important;
+        height: 6in !important;
+        max-width: 4in !important;
+        max-height: 6in !important;
+        overflow: visible !important;
+      }
+    }`;
+    document.head.appendChild(pageSizeOverride);
+
     window.print();
     setTimeout(() => {
       if (printBadge) {
         printBadge.style.display = 'none';
       }
+      document.head.removeChild(pageSizeOverride);
     }, 1000);
     return;
   }

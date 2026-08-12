@@ -262,6 +262,43 @@ export default function StationPage() {
     });
   };
 
+  // Print the 4x6 address label with the real address fetched from Airtable.
+  // Browser print only (no direct-ZPL path) — same native-print approach
+  // handlePrintBadge4x6 uses for registration, works with any installed
+  // printer/driver without vendor software.
+  const handlePrintAddressLabel4x6 = (graduate: Graduate) => {
+    if (!address || !airtableData) {
+      console.warn('[Address Label] No address data loaded yet — cannot print');
+      setNativePrintState('error');
+      setTimeout(() => setNativePrintState('idle'), 2000);
+      return;
+    }
+
+    setNativePrintState('printing');
+    try {
+      printAddressLabel4x6(
+        {
+          name: graduate.name,
+          course: graduate.course,
+          convocationNumber: graduate.convocationNumber,
+          ticketSlug: graduate.ticketSlug,
+          registrationNumber: graduate.registrationNumber,
+          address,
+          phone: airtableData.mobile,
+          trackingNumber: airtableData.trackingNumber,
+          dtdcAvailable: airtableData.dtdcAvailable,
+        },
+        printRef.current
+      );
+      setNativePrintState('success');
+    } catch (e) {
+      console.warn('[Address Label] Print failed', e);
+      setNativePrintState('error');
+    } finally {
+      setTimeout(() => setNativePrintState('idle'), 2000);
+    }
+  };
+
   // Process a graduate at this station
   const processGraduate = async (graduate: Graduate) => {
     setLoading(true);
@@ -931,6 +968,8 @@ export default function StationPage() {
                         : nativePrintState === 'error' || browserPrint.state === 'error' || mobilePrint.state === 'error'
                         ? 'error'
                         : 'idle')
+                      : stationId === 'address-label'
+                      ? nativePrintState
                       : printStatus;
 
                     return (
@@ -938,9 +977,10 @@ export default function StationPage() {
                         onClick={async () => {
                           if (station.printType === '4x6-badge') {
                             await handlePrintBadge4x6(lastScanned);
+                          } else if (station.printType === '4x6-label') {
+                            handlePrintAddressLabel4x6(lastScanned);
                           } else {
-                            const printType = station.printType === '3x2-sticker' ? 'packing' : 'badge';
-                            printLabel(lastScanned, printType, printRef.current);
+                            printLabel(lastScanned, 'packing', printRef.current);
                           }
                         }}
                         disabled={currentPrintState === 'printing'}
