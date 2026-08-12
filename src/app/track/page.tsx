@@ -106,6 +106,7 @@ export default function TrackPage() {
   const idleSubmitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resultResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchRequestIdRef = useRef(0);
 
   // Determine current step based on graduate status
   function getCurrentStep(): number {
@@ -156,6 +157,7 @@ export default function TrackPage() {
 
   const performSearch = useCallback(async (searchQuery: string) => {
     lastSearchedQueryRef.current = searchQuery;
+    const requestId = ++searchRequestIdRef.current;
 
     setLoading(true);
     setError(null);
@@ -168,6 +170,12 @@ export default function TrackPage() {
     try {
       const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
       const data = await response.json();
+
+      if (requestId !== searchRequestIdRef.current) {
+        // A newer search has started since this request was sent; discard
+        // this stale response so it can't overwrite fresher state.
+        return;
+      }
 
       if (data.success && data.data) {
         if (data.data.length === 1) {
@@ -184,9 +192,14 @@ export default function TrackPage() {
         }
       }
     } catch {
+      if (requestId !== searchRequestIdRef.current) {
+        return;
+      }
       setError('Network error. Please try again.');
     } finally {
-      setLoading(false);
+      if (requestId === searchRequestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -267,8 +280,16 @@ export default function TrackPage() {
     scheduleReset();
     window.addEventListener('click', handleInteraction);
     window.addEventListener('keydown', handleInteraction);
-    window.addEventListener('scroll', handleInteraction, { passive: true });
+    // capture: true so this also catches scroll events on descendant
+    // elements (e.g. the scrollable "multiple matches" list), since scroll
+    // events don't bubble to window in the bubbling phase.
+    window.addEventListener('scroll', handleInteraction, { capture: true, passive: true });
+    window.addEventListener('wheel', handleInteraction, { passive: true });
     window.addEventListener('touchstart', handleInteraction, { passive: true });
+    // focusin bubbles and catches most assistive-technology navigation that
+    // moves DOM focus (e.g. screen-reader browse-mode), which may otherwise
+    // generate none of the events above.
+    window.addEventListener('focusin', handleInteraction);
 
     return () => {
       if (resultResetTimerRef.current) {
@@ -277,8 +298,10 @@ export default function TrackPage() {
       }
       window.removeEventListener('click', handleInteraction);
       window.removeEventListener('keydown', handleInteraction);
-      window.removeEventListener('scroll', handleInteraction);
+      window.removeEventListener('scroll', handleInteraction, { capture: true });
+      window.removeEventListener('wheel', handleInteraction);
       window.removeEventListener('touchstart', handleInteraction);
+      window.removeEventListener('focusin', handleInteraction);
     };
   }, [searched, loading, clearSearch]);
 
