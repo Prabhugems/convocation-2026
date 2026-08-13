@@ -143,6 +143,10 @@ export interface AirtableRecord {
     'Form A'?: string; // Fillout form URL for address update
     'Registered for AMASICON'?: boolean;
     'AMASICON Last Checked'?: string;
+    'RTO'?: boolean; // checked when a dispatched certificate was returned by the courier
+    'reason for RTO'?: string; // Master-FMAS's RTO note field
+    'RTO Remarks'?: string; // Master-MMAS's RTO note field (same purpose, different name)
+    'old Tracking Number'?: string; // previous tracking number, preserved on resend
   };
 }
 
@@ -157,6 +161,11 @@ export interface AirtableGraduateData {
   trackingNumber?: string;
   dtdcAvailable?: boolean; // true if DTDC Service available = YES
   formAUrl?: string; // Fillout form URL for address update
+  airtableRecordId: string; // Airtable record id, e.g. "recXXXXXXXXXXXXXX" — needed to PATCH this exact record
+  airtableTableId: string; // which table (FMAS/MMAS table id) this record lives in — needed to PATCH the right table
+  rto?: boolean; // true if this certificate was returned by the courier and is pending resend
+  oldTrackingNumber?: string; // previous tracking number, preserved when a returned parcel is resent
+  reasonForRto?: string; // free-text note about the return (from 'reason for RTO' on FMAS, 'RTO Remarks' on MMAS)
 }
 
 export interface ApiResponse<T> {
