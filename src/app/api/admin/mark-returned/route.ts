@@ -31,16 +31,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const markResult = await markCertificateReturned(
-      airtableTableId,
-      airtableRecordId,
-      trackingNumber,
-      note
-    );
-    if (!markResult.success) {
-      return NextResponse.json({ success: false, error: markResult.error }, { status: 500 });
-    }
-
+    // Unlock Tito stations BEFORE writing to Airtable, ensuring the operation is safely retryable
     const [finalDispatchResult, addressLabelResult] = await Promise.all([
       unlockStationForResend(ticketId, 'final-dispatch'),
       unlockStationForResend(ticketId, 'address-label'),
@@ -54,6 +45,17 @@ export async function POST(request: NextRequest) {
         },
         { status: 500 }
       );
+    }
+
+    // Only after Tito unlocks succeed, mark the certificate as returned in Airtable
+    const markResult = await markCertificateReturned(
+      airtableTableId,
+      airtableRecordId,
+      trackingNumber,
+      note
+    );
+    if (!markResult.success) {
+      return NextResponse.json({ success: false, error: markResult.error }, { status: 500 });
     }
 
     clearGraduatesCache();
