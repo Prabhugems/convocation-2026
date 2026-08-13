@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-13
 **Status:** Approved
-**Scope:** `src/app/stations/[stationId]/page.tsx` (address-label + final-dispatch stations), `src/app/api/scan/route.ts`, `src/lib/tito.ts`, `src/lib/airtable.ts`, `src/app/admin/page.tsx`
+**Scope:** `src/app/stations/[stationId]/page.tsx` (address-label + final-dispatch stations), `src/app/api/scan/route.ts`, `src/lib/tito.ts`, `src/lib/airtable.ts`, `src/types/index.ts`, `src/app/admin/page.tsx`
 
 ## Problem
 
@@ -38,15 +38,18 @@ A new action on the graduate detail view in `src/app/admin/page.tsx`, visible on
 Clicking it opens a confirm dialog (with an optional free-text note) and, on confirm:
 
 1. **Locate and delete the Tito check-ins.** For both the `final-dispatch` and `address-label` check-in lists, find this ticket's non-deleted check-in (same full-list-pagination approach already used by `getTicketCheckins`/`getAllCheckinsMap`, since Tito's API ignores a `ticket_id` filter) and call `DELETE https://checkin.tito.io/checkin_lists/:slug/checkins/:uuid` on each. This is what actually unlocks the graduate — Tito refuses a second check-in on a list that already has one for that ticket, regardless of any app-level flag.
-2. **Archive the old attempt.** Before clearing anything, append a line to a new Airtable long-text field, **"Return History"**, on that graduate's record: `{old trackingNumber} via {dispatchMethod}, dispatched {date}, returned {today}{, note if provided}`. Each return appends a new line rather than overwriting, so multiple returns for the same person stay in the trail.
-3. **Clear the tracking number.** Blank the Airtable "Tracking Number" field for that record, so the Final Dispatch form has nothing to prefill — staff must type in a genuinely new number next time, never the archived one.
+2. **Archive the old attempt into existing Airtable RTO fields** (discovered during design — the org already has a manual RTO process in Airtable that this should plug into rather than duplicate; see Data model changes): move the current `Tracking Number` value into `old Tracking Number`, set `RTO` to checked, and write the optional note into `reason for RTO` (FMAS) / `RTO Remarks` (MMAS). If a value already exists in `old Tracking Number` (a second return for the same person), it is overwritten — only the most recent prior attempt is preserved, matching the single-value shape of the existing field.
+3. **Clear the tracking number.** Blank the Airtable `Tracking Number` field for that record, so the Final Dispatch form has nothing to prefill — staff must type in a genuinely new number next time, never the archived one.
 4. **Invalidate caches.** Call `clearGraduatesCache()` (`src/lib/tito.ts:698`) so the unlocked status is reflected immediately, not after the next cache expiry.
 
 After this, the graduate reads as `finalDispatched: false` / `addressLabeled: false` again and can be scanned through Address Label and Final Dispatch as a fresh cycle, entering a new tracking number.
 
 ## Data model changes
 
-- **New Airtable field:** `Return History` (long text, append-only from the app) on the same table `parseAirtableRecord` reads from (`src/lib/airtable.ts`). Read by `parseAirtableRecord`/`AirtableGraduateData` alongside the existing `trackingNumber` field so it can be shown in Admin.
+- **Reuses existing Airtable fields**, discovered on `Master-FMAS` (`tbl9CuIgSFdoNVk9x`) during design: `RTO` (checkbox), `reason for RTO` (text), `old Tracking Number` (text) — these already exist and are evidently used manually today, so the admin action writes to them rather than inventing a parallel "return history" field.
+- `Master-MMAS` (`tblBXE3iZGd9zHbKo`) only had `RTO Remarks` (text). Added via Airtable during design (2026-08-13, before implementation) to match FMAS: `RTO` (checkbox, `fld6xvwgiCjkt3LG4`) and `old Tracking Number` (text, `fld77kviVR64Whljx`). MMAS's note goes to the pre-existing `RTO Remarks` field (no `reason for RTO` field was added — `RTO Remarks` already serves that purpose).
+- `AirtableRecord['fields']` and `AirtableGraduateData` (`src/types/index.ts`) need `rto`/`oldTrackingNumber`/`reasonForRto` added (parsed by field name per table — the reason field's Airtable column name differs between FMAS and MMAS, see above).
+- `parseAirtableRecord` and `getAirtableDataMap` (`src/lib/airtable.ts`) currently discard which table (FMAS vs MMAS) and which Airtable record `id` a graduate came from once merged into the combined map. Both need to be preserved on `AirtableGraduateData` (`airtableRecordId`, `airtableTableId`) so the admin action can `PATCH` the correct record without a second lookup.
 - **New Tito API function** in `src/lib/tito.ts`: `deleteCheckin(checkinListSlug, checkinUuid)` — wraps the DELETE endpoint.
 - `RawCheckin` (`src/lib/tito.ts:398`) currently only captures `ticket_id`, `created_at`, `deleted_at`. Add `uuid` to this interface (Tito's list response already includes it; it's just not read today) so the "find this ticket's checkin" lookups used by §3 can get the UUID needed for deletion without an extra request shape.
 
