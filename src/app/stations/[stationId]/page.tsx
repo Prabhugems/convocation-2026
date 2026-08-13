@@ -978,12 +978,28 @@ export default function StationPage() {
                           if (station.printType === '4x6-badge') {
                             await handlePrintBadge4x6(lastScanned);
                           } else if (station.printType === '4x6-label') {
+                            if (lastScanned.status.certificateCollected) {
+                              const collectionScan = lastScanned.scans?.find(
+                                (s) => s.station === 'certificate-collection'
+                              );
+                              const collectionDate = collectionScan
+                                ? new Date(collectionScan.timestamp).toLocaleDateString()
+                                : null;
+                              const proceed = window.confirm(
+                                `Dr. ${lastScanned.name} already collected their certificate in person` +
+                                  `${collectionDate ? ` on ${collectionDate}` : ''}. Print a mailing label anyway?`
+                              );
+                              if (!proceed) return;
+                            }
                             handlePrintAddressLabel4x6(lastScanned);
                           } else {
                             printLabel(lastScanned, 'packing', printRef.current);
                           }
                         }}
-                        disabled={currentPrintState === 'printing'}
+                        disabled={
+                          currentPrintState === 'printing' ||
+                          (station.printType === '4x6-label' && lastScanned.status.finalDispatched)
+                        }
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-white text-sm transition-all ${
                           currentPrintState === 'printing'
                             ? 'bg-blue-500/30 cursor-wait'
@@ -1107,6 +1123,34 @@ export default function StationPage() {
               </div>
             </GlassCard>
           )}
+
+          {/* Already Dispatched Warning - hard block, no override in the UI.
+              Shown at both stations that touch dispatch: Address Label (where
+              it disables the Print button above) and Final Dispatch (where the
+              server has already rejected the check-in and this card explains
+              why, since the result banner above auto-dismisses after 5s). */}
+          {(stationId === 'address-label' || stationId === 'final-dispatch') &&
+            lastScanned &&
+            lastScanned.status.finalDispatched && (
+              <GlassCard className="p-6 border-2 border-red-500/50 bg-red-500/10">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-6 h-6 text-red-400 shrink-0" />
+                  <div>
+                    <p className="font-semibold text-red-400">Already Dispatched</p>
+                    <p className="text-white/70 text-sm mt-1">
+                      {lastScanned.trackingNumber
+                        ? `Tracking ${lastScanned.trackingNumber}${
+                            lastScanned.dispatchMethod ? ` (${lastScanned.dispatchMethod})` : ''
+                          }. `
+                        : ''}
+                      Cannot create a duplicate dispatch record. If this parcel was returned by the
+                      courier, use &quot;Mark as Returned&quot; in Admin to allow a resend with a new
+                      tracking number.
+                    </p>
+                  </div>
+                </div>
+              </GlassCard>
+            )}
 
           {/* Address Display for Address Label Station */}
           {stationId === 'address-label' && address && lastScanned && (
