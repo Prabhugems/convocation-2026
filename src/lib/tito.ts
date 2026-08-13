@@ -392,12 +392,17 @@ function mergeWithAirtableData(
     phone: graduate.phone || airtableData.mobile,
     // Always get address from Airtable if available
     address: airtableData.address.line1 ? airtableData.address : graduate.address,
+    // Tracking number lives only in Airtable — without this, admin/station UI
+    // that reads graduate.trackingNumber (e.g. the "already dispatched" checks)
+    // always sees undefined.
+    trackingNumber: airtableData.trackingNumber || graduate.trackingNumber,
   };
 }
 
 // A raw check-in record as returned by the Tito Check-in API
 interface RawCheckin {
   ticket_id: number;
+  uuid: string;
   created_at: string;
   deleted_at: string | null;
 }
@@ -445,6 +450,63 @@ async function fetchAllCheckinsForList(checkinListSlug: string): Promise<RawChec
   }
 
   return all;
+}
+
+// Delete a specific check-in by UUID. Used to "unlock" a station for a
+// legitimate second visit — e.g. a courier-returned parcel being resent —
+// since Tito otherwise refuses a second check-in on a list that already has
+// one for that ticket, regardless of any app-level status flag.
+export async function deleteCheckin(
+  checkinListSlug: string,
+  uuid: string
+): Promise<ApiResponse<{ success: boolean }>> {
+  const url = `https://checkin.tito.io/checkin_lists/${checkinListSlug}/checkins/${uuid}`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: { 'Accept': 'application/json' },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Tito Check-in API] Delete failed: ${response.status} - ${errorText}`);
+      return { success: false, error: `Delete check-in failed: ${response.status}` };
+    }
+
+    return { success: true, data: { success: true } };
+  } catch (error) {
+    console.error('[Tito Check-in API] Delete network error:', error);
+    return { success: false, error: `Network error: ${error instanceof Error ? error.message : 'Unknown error'}` };
+  }
+}
+
+// Find and delete a ticket's check-in at a given station, so it can be
+// legitimately checked in there again. Returns { deleted: false } (not an
+// error) if the ticket had no check-in at that station — nothing to unlock.
+export async function unlockStationForResend(
+  ticketId: number,
+  stationId: StationId
+): Promise<ApiResponse<{ deleted: boolean }>> {
+  const checkinListSlug = STATION_CHECKIN_MAPPING[stationId];
+
+  if (!checkinListSlug) {
+    return { success: false, error: `No checkin list configured for station: ${stationId}` };
+  }
+
+  const checkins = await fetchAllCheckinsForList(checkinListSlug);
+  const existing = checkins.find((c) => c.ticket_id === ticketId && !c.deleted_at);
+
+  if (!existing) {
+    return { success: true, data: { deleted: false } };
+  }
+
+  const result = await deleteCheckin(checkinListSlug, existing.uuid);
+  if (!result.success) {
+    return { success: false, error: result.error };
+  }
+
+  return { success: true, data: { deleted: true } };
 }
 
 // Fetch all check-ins from all check-in lists and build a status map
