@@ -133,11 +133,13 @@ export async function POST(request: NextRequest) {
     // reality (previously this endpoint always returned an all-false status,
     // unlike /api/search) and so the duplicate-dispatch check below can see
     // whether this ticket was already fully dispatched.
+    let checkinsVerified = false;
     if (graduate.ticketId) {
       const checkinsResult = await getTicketCheckins(graduate.ticketId);
       if (checkinsResult.success && checkinsResult.data) {
         graduate.status = checkinsResult.data.status;
         graduate.scans = checkinsResult.data.scans;
+        checkinsVerified = true;
       }
     }
 
@@ -145,17 +147,34 @@ export async function POST(request: NextRequest) {
     // not be reused by printing/checking in a second address label or a
     // second final-dispatch record. The only way past this is the admin
     // "Mark as Returned" action, which deletes the underlying check-ins.
-    if (
-      (stationId === 'address-label' || stationId === 'final-dispatch') &&
-      graduate.status.finalDispatched
-    ) {
-      return NextResponse.json({
-        success: false,
-        error: graduate.trackingNumber
-          ? `Already dispatched — Tracking ${graduate.trackingNumber}. Cannot create a duplicate dispatch record.`
-          : 'Already dispatched. Cannot create a duplicate dispatch record.',
-        data: graduate,
-      });
+    //
+    // getTicketCheckins fails open internally (a failed per-list fetch is
+    // reported back as a default-false status, not as an error), so a
+    // transient Tito failure could otherwise make an already-dispatched
+    // ticket look un-dispatched. For these two stations only, refuse to
+    // proceed unless we actually managed to read real check-in status —
+    // fail closed rather than risk a duplicate dispatch record. The other
+    // seven stations don't guard anything irreversible, so they keep the
+    // existing lenient behavior (proceed even if enrichment failed).
+    if (stationId === 'address-label' || stationId === 'final-dispatch') {
+      if (!checkinsVerified) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Could not verify dispatch status — please retry. Refusing to risk a duplicate dispatch record.',
+          },
+          { status: 503 }
+        );
+      }
+      if (graduate.status.finalDispatched) {
+        return NextResponse.json({
+          success: false,
+          error: graduate.trackingNumber
+            ? `Already dispatched — Tracking ${graduate.trackingNumber}. Cannot create a duplicate dispatch record.`
+            : 'Already dispatched. Cannot create a duplicate dispatch record.',
+          data: graduate,
+        });
+      }
     }
 
     // Create check-in at the station
