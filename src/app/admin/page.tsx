@@ -82,6 +82,10 @@ export default function AdminPage() {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
   const [emailResult, setEmailResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [showMarkReturnedPopover, setShowMarkReturnedPopover] = useState(false);
+  const [markReturnedNote, setMarkReturnedNote] = useState('');
+  const [markingReturned, setMarkingReturned] = useState(false);
+  const [markReturnedResult, setMarkReturnedResult] = useState<{ success: boolean; message: string } | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeNav, setActiveNav] = useState('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -441,6 +445,9 @@ export default function AdminPage() {
     setGraduateAddress(null);
     setShowEmailModal(false);
     setEmailResult(null);
+    setShowMarkReturnedPopover(false);
+    setMarkReturnedNote('');
+    setMarkReturnedResult(null);
   }
 
   // Send email to graduate
@@ -510,6 +517,47 @@ export default function AdminPage() {
     } finally {
       setEmailSending(false);
       setShowEmailModal(false);
+    }
+  }
+
+  // Mark a dispatched certificate as returned (RTO) and unlock Address Label
+  // + Final Dispatch for a resend with a new tracking number.
+  async function handleMarkReturned() {
+    if (!selectedGraduate?.convocationNumber || !selectedGraduate.ticketId) return;
+
+    setMarkingReturned(true);
+    setMarkReturnedResult(null);
+
+    try {
+      const response = await fetch('/api/admin/mark-returned', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          convocationNumber: selectedGraduate.convocationNumber,
+          ticketId: selectedGraduate.ticketId,
+          note: markReturnedNote.trim() || undefined,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setMarkReturnedResult({
+          success: true,
+          message: `Marked as returned. ${selectedGraduate.name} can now be scanned through Address Label and Final Dispatch again.`,
+        });
+        setShowMarkReturnedPopover(false);
+        setMarkReturnedNote('');
+        await fetchData();
+        closeGraduateDetail();
+      } else {
+        setMarkReturnedResult({ success: false, message: result.error || 'Failed to mark as returned' });
+      }
+    } catch (err) {
+      console.error('Failed to mark certificate returned:', err);
+      setMarkReturnedResult({ success: false, message: 'Failed to mark as returned. Please try again.' });
+    } finally {
+      setMarkingReturned(false);
     }
   }
 
@@ -1761,6 +1809,55 @@ export default function AdminPage() {
                           <p className="text-slate-400 text-sm">
                             {selectedGraduate.dispatchMethod}: <span className="font-mono text-white">{selectedGraduate.trackingNumber}</span>
                           </p>
+                          <div className="relative mt-3">
+                            <button
+                              onClick={() => setShowMarkReturnedPopover(!showMarkReturnedPopover)}
+                              disabled={markingReturned}
+                              className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 disabled:opacity-50 text-red-400 rounded-lg transition-all text-sm font-medium"
+                            >
+                              {markingReturned ? <Loader2 className="w-4 h-4 animate-spin" /> : <Undo2 className="w-4 h-4" />}
+                              {markingReturned ? 'Marking as Returned...' : 'Mark as Returned — Allow Resend'}
+                            </button>
+                            {showMarkReturnedPopover && (
+                              <div className="absolute top-full left-0 right-0 mt-2 bg-slate-700 border border-slate-600 rounded-xl shadow-xl overflow-hidden z-20 p-3 space-y-3 animate-fade-in-up">
+                                <p className="text-xs text-slate-300">
+                                  This archives tracking <span className="font-mono">{selectedGraduate.trackingNumber}</span> as
+                                  the returned attempt and clears it, so the next Final Dispatch entry requires a genuinely new
+                                  tracking number. Confirm the parcel actually came back before doing this.
+                                </p>
+                                <textarea
+                                  value={markReturnedNote}
+                                  onChange={(e) => setMarkReturnedNote(e.target.value)}
+                                  placeholder="Optional note (e.g. bad address, refused delivery)"
+                                  className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm placeholder:text-slate-500 focus:outline-none focus:border-red-500"
+                                  rows={2}
+                                />
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => setShowMarkReturnedPopover(false)}
+                                    className="flex-1 py-2 px-3 bg-slate-600/50 hover:bg-slate-600 text-white rounded-lg text-sm"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    onClick={handleMarkReturned}
+                                    className="flex-1 py-2 px-3 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium"
+                                  >
+                                    Confirm Return
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {markReturnedResult && (
+                        <div
+                          className={`mt-3 pt-3 border-t border-slate-700/50 text-sm ${
+                            markReturnedResult.success ? 'text-green-400' : 'text-red-400'
+                          }`}
+                        >
+                          {markReturnedResult.message}
                         </div>
                       )}
                     </div>
