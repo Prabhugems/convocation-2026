@@ -80,7 +80,7 @@ function parseAddress(record: AirtableRecord): Address {
 }
 
 // Parse Airtable record to graduate data
-function parseAirtableRecord(record: AirtableRecord): AirtableGraduateData | null {
+function parseAirtableRecord(record: AirtableRecord, tableId: string): AirtableGraduateData | null {
   const fields = record.fields;
   const convocationNumber = fields['CONVOCATION NUMBER'];
 
@@ -102,6 +102,12 @@ function parseAirtableRecord(record: AirtableRecord): AirtableGraduateData | nul
     trackingNumber: (fields['Tracking Number'] || '').trim() || undefined,
     dtdcAvailable,
     formAUrl: (fields['Form A'] || '').trim() || undefined,
+    airtableRecordId: record.id,
+    airtableTableId: tableId,
+    rto: fields['RTO'] === true,
+    oldTrackingNumber: (fields['old Tracking Number'] || '').trim() || undefined,
+    // Master-FMAS calls this "reason for RTO"; Master-MMAS calls the same-purpose field "RTO Remarks".
+    reasonForRto: (fields['reason for RTO'] || fields['RTO Remarks'] || '').trim() || undefined,
   };
 }
 
@@ -154,7 +160,7 @@ export async function getAirtableDataMap(): Promise<ApiResponse<Map<string, Airt
     console.log(`Fetched ${fmasRecords.length} FMAS records`);
 
     for (const record of fmasRecords) {
-      const parsed = parseAirtableRecord(record);
+      const parsed = parseAirtableRecord(record, fmasTableId);
       if (parsed) {
         dataMap.set(parsed.convocationNumber, parsed);
       }
@@ -167,7 +173,7 @@ export async function getAirtableDataMap(): Promise<ApiResponse<Map<string, Airt
       console.log(`Fetched ${mmasRecords.length} MMAS records`);
 
       for (const record of mmasRecords) {
-        const parsed = parseAirtableRecord(record);
+        const parsed = parseAirtableRecord(record, mmasTableId);
         if (parsed && !dataMap.has(parsed.convocationNumber)) {
           dataMap.set(parsed.convocationNumber, parsed);
         }
@@ -331,6 +337,42 @@ export async function updateRegistrationCheckResult(
   }
 
   const response = await airtableFetch<unknown>(tableId, `/${recordId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ fields }),
+  });
+
+  if (!response.success) {
+    return { success: false, error: response.error };
+  }
+
+  return { success: true };
+}
+
+// Archives the current tracking number into "old Tracking Number", flags RTO,
+// records an optional reason, and blanks "Tracking Number" so the next Final
+// Dispatch entry can't accidentally prefill (and thus reuse) the returned number.
+export async function markCertificateReturned(
+  airtableTableId: string,
+  airtableRecordId: string,
+  currentTrackingNumber: string,
+  reason: string | undefined
+): Promise<ApiResponse<void>> {
+  const fields: Record<string, unknown> = {
+    'RTO': true,
+    'old Tracking Number': currentTrackingNumber,
+    'Tracking Number': '',
+  };
+
+  if (reason) {
+    // Master-MMAS's RTO note field is named "RTO Remarks" instead of "reason for RTO".
+    if (airtableTableId === process.env.AIRTABLE_MMAS_TABLE) {
+      fields['RTO Remarks'] = reason;
+    } else {
+      fields['reason for RTO'] = reason;
+    }
+  }
+
+  const response = await airtableFetch<unknown>(airtableTableId, `/${airtableRecordId}`, {
     method: 'PATCH',
     body: JSON.stringify({ fields }),
   });
