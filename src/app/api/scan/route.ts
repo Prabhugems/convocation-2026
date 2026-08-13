@@ -4,9 +4,11 @@ import {
   registrationToGraduate,
   checkinAtStation,
   getTicketBySlug,
-  ticketToGraduate
+  ticketToGraduate,
+  getTicketCheckins
 } from '@/lib/tito';
 import { getAddressByConvocationNumber, getAirtableDataByConvocationNumber } from '@/lib/airtable';
+import { getStationStatus } from '@/lib/stations';
 import { StationId, Graduate } from '@/types';
 
 // Extract ticket slug from Tito URL or direct slug
@@ -72,6 +74,7 @@ export async function POST(request: NextRequest) {
             if (airtableResult.data.address.line1) {
               graduate.address = airtableResult.data.address;
             }
+            graduate.trackingNumber = airtableResult.data.trackingNumber;
           }
         }
       } else {
@@ -114,6 +117,7 @@ export async function POST(request: NextRequest) {
           if (airtableResult.data.address.line1) {
             graduate.address = airtableResult.data.address;
           }
+          graduate.trackingNumber = airtableResult.data.trackingNumber;
         }
       }
     }
@@ -123,6 +127,35 @@ export async function POST(request: NextRequest) {
         { success: false, error: 'Could not find graduate' },
         { status: 404 }
       );
+    }
+
+    // Read real check-in status before acting, both so the response reflects
+    // reality (previously this endpoint always returned an all-false status,
+    // unlike /api/search) and so the duplicate-dispatch check below can see
+    // whether this ticket was already fully dispatched.
+    if (graduate.ticketId) {
+      const checkinsResult = await getTicketCheckins(graduate.ticketId);
+      if (checkinsResult.success && checkinsResult.data) {
+        graduate.status = checkinsResult.data.status;
+        graduate.scans = checkinsResult.data.scans;
+      }
+    }
+
+    // Hard block: a tracking number already assigned to this graduate must
+    // not be reused by printing/checking in a second address label or a
+    // second final-dispatch record. The only way past this is the admin
+    // "Mark as Returned" action, which deletes the underlying check-ins.
+    if (
+      (stationId === 'address-label' || stationId === 'final-dispatch') &&
+      graduate.status.finalDispatched
+    ) {
+      return NextResponse.json({
+        success: false,
+        error: graduate.trackingNumber
+          ? `Already dispatched — Tracking ${graduate.trackingNumber}. Cannot create a duplicate dispatch record.`
+          : 'Already dispatched. Cannot create a duplicate dispatch record.',
+        data: graduate,
+      });
     }
 
     // Create check-in at the station
@@ -142,6 +175,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Reflect the check-in that just succeeded, without a second Tito round trip.
+    graduate.status = { ...graduate.status, [getStationStatus(stationId as StationId)]: true };
 
     // For address-label station, try to fetch address from Airtable
     if (stationId === 'address-label' && graduate.convocationNumber) {
