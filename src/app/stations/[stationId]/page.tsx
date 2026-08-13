@@ -95,6 +95,10 @@ export default function StationPage() {
   // Animation state
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
 
+  // Confirmation dialog state for already-collected certificates
+  const [showCertificateConfirm, setShowCertificateConfirm] = useState(false);
+  const [pendingGraduateForPrint, setPendingGraduateForPrint] = useState<Graduate | null>(null);
+
   const printRef = useRef<HTMLDivElement>(null);
 
   // Zebra printer direct print (legacy)
@@ -654,6 +658,68 @@ export default function StationPage() {
         </div>
       )}
 
+      {/* Certificate Already Collected Confirmation Dialog */}
+      {showCertificateConfirm && pendingGraduateForPrint && (() => {
+        const collectionScan = pendingGraduateForPrint.scans?.find(
+          (s) => s.station === 'certificate-collection'
+        );
+        const collectionDate = collectionScan
+          ? new Date(collectionScan.timestamp).toLocaleDateString()
+          : null;
+
+        return (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 max-w-md w-full">
+              <div className="flex items-center gap-3 mb-4">
+                <AlertTriangle className="w-6 h-6 text-amber-400" />
+                <h3 className="text-lg font-semibold text-white">Certificate Already Collected</h3>
+              </div>
+
+              <div className="space-y-2 mb-6 p-4 bg-slate-900/50 rounded-lg">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">Graduate:</span>
+                  <span className="text-white">Dr. {pendingGraduateForPrint.name}</span>
+                </div>
+                {collectionDate && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400">Collected:</span>
+                    <span className="text-amber-300">{collectionDate}</span>
+                  </div>
+                )}
+              </div>
+
+              <p className="text-sm text-slate-300 mb-6">
+                This graduate has already collected their certificate in person. Do you still want to print a mailing label?
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowCertificateConfirm(false);
+                    setPendingGraduateForPrint(null);
+                  }}
+                  className="flex-1 py-2.5 px-4 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors text-white font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowCertificateConfirm(false);
+                    if (pendingGraduateForPrint) {
+                      handlePrintAddressLabel4x6(pendingGraduateForPrint);
+                    }
+                    setPendingGraduateForPrint(null);
+                  }}
+                  className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-white font-medium"
+                >
+                  Print Label
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Money Alerts */}
       {(station.collectMoney || station.refundMoney) && (
         <div className="mb-8">
@@ -979,17 +1045,9 @@ export default function StationPage() {
                             await handlePrintBadge4x6(lastScanned);
                           } else if (station.printType === '4x6-label') {
                             if (lastScanned.status.certificateCollected) {
-                              const collectionScan = lastScanned.scans?.find(
-                                (s) => s.station === 'certificate-collection'
-                              );
-                              const collectionDate = collectionScan
-                                ? new Date(collectionScan.timestamp).toLocaleDateString()
-                                : null;
-                              const proceed = window.confirm(
-                                `Dr. ${lastScanned.name} already collected their certificate in person` +
-                                  `${collectionDate ? ` on ${collectionDate}` : ''}. Print a mailing label anyway?`
-                              );
-                              if (!proceed) return;
+                              setPendingGraduateForPrint(lastScanned);
+                              setShowCertificateConfirm(true);
+                              return;
                             }
                             handlePrintAddressLabel4x6(lastScanned);
                           } else {
