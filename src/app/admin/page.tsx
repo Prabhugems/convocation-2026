@@ -542,10 +542,6 @@ export default function AdminPage() {
       const result = await response.json();
 
       if (result.success) {
-        setMarkReturnedResult({
-          success: true,
-          message: `Marked as returned. ${selectedGraduate.name} can now be scanned through Address Label and Final Dispatch again.`,
-        });
         setShowMarkReturnedPopover(false);
         setMarkReturnedNote('');
         await fetchData();
@@ -1834,16 +1830,21 @@ export default function AdminPage() {
                                 />
                                 <div className="flex gap-2">
                                   <button
-                                    onClick={() => setShowMarkReturnedPopover(false)}
+                                    onClick={() => {
+                                      setShowMarkReturnedPopover(false);
+                                      setMarkReturnedNote('');
+                                      setMarkReturnedResult(null);
+                                    }}
                                     className="flex-1 py-2 px-3 bg-slate-600/50 hover:bg-slate-600 text-white rounded-lg text-sm"
                                   >
                                     Cancel
                                   </button>
                                   <button
                                     onClick={handleMarkReturned}
-                                    className="flex-1 py-2 px-3 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium"
+                                    disabled={markingReturned}
+                                    className="flex-1 py-2 px-3 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white rounded-lg text-sm font-medium"
                                   >
-                                    Confirm Return
+                                    {markingReturned ? 'Confirming...' : 'Confirm Return'}
                                   </button>
                                 </div>
                               </div>
