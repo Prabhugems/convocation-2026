@@ -1,15 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { unlockStationForResend, clearGraduatesCache } from '@/lib/tito';
 import { getAirtableDataByConvocationNumber, markCertificateReturned, clearAirtableCache } from '@/lib/airtable';
+import { ADMIN_ACTION_PASSCODE } from '@/lib/adminPasscode';
 
 export async function POST(request: NextRequest) {
   try {
+    const passcode = request.headers.get('x-admin-passcode');
+    if (passcode !== ADMIN_ACTION_PASSCODE) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { convocationNumber, ticketId, note } = body;
 
-    if (!convocationNumber || !ticketId) {
+    if (!convocationNumber || typeof ticketId !== 'number' || !ticketId) {
       return NextResponse.json(
-        { success: false, error: 'convocationNumber and ticketId are required' },
+        { success: false, error: 'convocationNumber and a numeric ticketId are required' },
         { status: 400 }
       );
     }
@@ -22,16 +28,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { airtableRecordId, airtableTableId, trackingNumber } = airtableResult.data;
+    const { airtableRecordId, airtableTableId, trackingNumber, rto } = airtableResult.data;
 
-    if (!trackingNumber) {
+    if (!trackingNumber && !rto) {
       return NextResponse.json(
         { success: false, error: 'This graduate has no tracking number on file — nothing to mark as returned' },
         { status: 400 }
       );
     }
 
-    // Unlock Tito stations BEFORE writing to Airtable, ensuring the operation is safely retryable
+    // A fresh request has a tracking number to archive; a retry of a stuck
+    // prior attempt (Airtable already updated, Tito unlock never completed)
+    // has rto=true and an already-blank tracking number instead. Only the
+    // fresh case writes to Airtable — retrying must not re-run this, or it
+    // would overwrite the already-archived old number with an empty string.
+    const isFreshAttempt = !!trackingNumber;
+
+    if (isFreshAttempt) {
+      // Write to Airtable BEFORE unlocking Tito. This closes a race where a
+      // graduate could be re-scanned and a label reprinted with the still-
+      // live old tracking number in the moment between a Tito unlock and
+      // this write.
+      const markResult = await markCertificateReturned(airtableTableId, airtableRecordId, trackingNumber, note);
+      if (!markResult.success) {
+        return NextResponse.json({ success: false, error: markResult.error }, { status: 500 });
+      }
+    }
+
     const [finalDispatchResult, addressLabelResult] = await Promise.all([
       unlockStationForResend(ticketId, 'final-dispatch'),
       unlockStationForResend(ticketId, 'address-label'),
@@ -41,21 +64,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: finalDispatchResult.error || addressLabelResult.error || 'Failed to unlock stations for resend',
+          error: `final-dispatch: ${finalDispatchResult.error || 'ok'}; address-label: ${addressLabelResult.error || 'ok'}`,
         },
         { status: 500 }
       );
     }
 
-    // Only after Tito unlocks succeed, mark the certificate as returned in Airtable
-    const markResult = await markCertificateReturned(
-      airtableTableId,
-      airtableRecordId,
-      trackingNumber,
-      note
-    );
-    if (!markResult.success) {
-      return NextResponse.json({ success: false, error: markResult.error }, { status: 500 });
+    // On a fresh attempt, both stations should have had a check-in to
+    // delete — if either reports nothing was found, that's an anomaly
+    // (Tito may be lagging or erroring), not silent success. Airtable has
+    // already been updated at this point, so this is now a retryable stuck
+    // state, not a lost cause: calling this route again will skip the
+    // Airtable write above (isFreshAttempt will be false) and just retry
+    // these unlocks. On a retry, a deleted:false result is expected for
+    // whichever station already got unlocked on the prior attempt, so it's
+    // not flagged here.
+    if (isFreshAttempt && (finalDispatchResult.data?.deleted === false || addressLabelResult.data?.deleted === false)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Expected an existing check-in to unlock but found none for at least one station. Airtable has already been updated — try again in a moment to retry unlocking Tito.',
+        },
+        { status: 502 }
+      );
     }
 
     clearGraduatesCache();

@@ -351,7 +351,7 @@ export default function StationPage() {
         if (stationId === 'address-label' && data.data) {
           const convNum = data.data.convocationNumber || graduate.convocationNumber;
           if (convNum) {
-            const addrResponse = await fetch(`/api/airtable/address?registrationNumber=${convNum}&fullData=true`);
+            const addrResponse = await fetch(`/api/airtable/address?registrationNumber=${convNum}&fullData=true&refresh=true`);
             const addrData = await addrResponse.json();
             if (addrData.success && addrData.data) {
               setAirtableData(addrData.data);

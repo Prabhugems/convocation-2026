@@ -5,6 +5,7 @@ import StatusBadge from '@/components/StatusBadge';
 import CircularProgress from '@/components/CircularProgress';
 import { DashboardStats, Graduate, Address } from '@/types';
 import { stations } from '@/lib/stations';
+import { ADMIN_ACTION_PASSCODE } from '@/lib/adminPasscode';
 import { ArrowRight, CheckCircle2, Clock, TrendingUp, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, LayoutDashboard, Users as UsersIcon, BarChart3, Settings, Bell, Menu, GraduationCap, List, ArrowUpDown, Sun, Moon } from 'lucide-react';
 import {
   Users,
@@ -87,6 +88,7 @@ export default function AdminPage() {
   const [markingReturned, setMarkingReturned] = useState(false);
   const [markReturnedResult, setMarkReturnedResult] = useState<{ success: boolean; message: string } | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [toast, setToast] = useState<{ success: boolean; message: string } | null>(null);
   const [activeNav, setActiveNav] = useState('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [graduatesView, setGraduatesView] = useState<'all' | 'by-course'>('all');
@@ -162,6 +164,13 @@ export default function AdminPage() {
   useEffect(() => {
     localStorage.setItem('amasi_theme', theme);
   }, [theme]);
+
+  // Auto-dismiss the toast banner
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 6000);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   // Get base URL for station links
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
@@ -531,7 +540,7 @@ export default function AdminPage() {
     try {
       const response = await fetch('/api/admin/mark-returned', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-admin-passcode': ADMIN_ACTION_PASSCODE },
         body: JSON.stringify({
           convocationNumber: selectedGraduate.convocationNumber,
           ticketId: selectedGraduate.ticketId,
@@ -542,6 +551,10 @@ export default function AdminPage() {
       const result = await response.json();
 
       if (result.success) {
+        setToast({
+          success: true,
+          message: `Marked as returned. ${selectedGraduate.name} can now be scanned through Address Label and Final Dispatch again. The list below may take up to a minute to fully reflect this.`,
+        });
         setShowMarkReturnedPopover(false);
         setMarkReturnedNote('');
         await fetchData();
@@ -612,6 +625,17 @@ export default function AdminPage() {
 
   return (
     <div className={`min-h-screen ${themeClasses.bg} flex transition-colors duration-300`}>
+      {toast && (
+        <div
+          className={`fixed top-4 right-4 z-50 max-w-md p-4 rounded-xl border shadow-xl ${
+            toast.success
+              ? 'bg-green-500/10 border-green-500/30 text-green-300'
+              : 'bg-red-500/10 border-red-500/30 text-red-300'
+          }`}
+        >
+          {toast.message}
+        </div>
+      )}
       {/* Sidebar */}
       <aside
         className={`fixed lg:relative z-40 h-screen backdrop-blur-xl border-r transition-all duration-300 ease-in-out flex flex-col ${themeClasses.sidebar} ${
