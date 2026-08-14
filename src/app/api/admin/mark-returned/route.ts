@@ -53,6 +53,15 @@ export async function POST(request: NextRequest) {
       if (!markResult.success) {
         return NextResponse.json({ success: false, error: markResult.error }, { status: 500 });
       }
+
+      // Clear the Airtable cache the moment the write succeeds, not only at
+      // the very end — every return path below this point (including the
+      // error ones) must see the just-written data on a retry, or a retry
+      // would re-read the stale pre-write record and incorrectly treat
+      // itself as a fresh attempt again (re-running this write, then
+      // re-arming the anomaly check below against a station that was
+      // already unlocked).
+      clearAirtableCache();
     }
 
     const [finalDispatchResult, addressLabelResult] = await Promise.all([
@@ -69,6 +78,12 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Clear the Tito-derived status cache the moment the unlocks succeed,
+    // for the same reason as above — the admin list and any retry should
+    // see the newly-unlocked station(s) immediately, not after the
+    // anomaly check below (which can still return an error response).
+    clearGraduatesCache();
 
     // On a fresh attempt, both stations should have had a check-in to
     // delete — if either reports nothing was found, that's an anomaly
@@ -88,9 +103,6 @@ export async function POST(request: NextRequest) {
         { status: 502 }
       );
     }
-
-    clearGraduatesCache();
-    clearAirtableCache();
 
     return NextResponse.json({ success: true });
   } catch (error) {
