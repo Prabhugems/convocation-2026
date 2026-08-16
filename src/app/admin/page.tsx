@@ -37,6 +37,8 @@ import {
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { format } from 'date-fns';
+import * as XLSX from 'xlsx';
+import { Upload } from 'lucide-react';
 
 // Sidebar navigation items
 const navItems = [
@@ -103,8 +105,15 @@ export default function AdminPage() {
     return 'dark';
   });
 
+  // Delegate payment report (uploaded Excel, cross-referenced by email)
+  const [paidMap, setPaidMap] = useState<Map<string, boolean> | null>(null);
+  const [delegateFileName, setDelegateFileName] = useState<string | null>(null);
+  const [delegateUploadError, setDelegateUploadError] = useState<string | null>(null);
+  const [delegateUploading, setDelegateUploading] = useState(false);
+
   // Refs
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const delegateFileInputRef = useRef<HTMLInputElement>(null);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -235,6 +244,78 @@ export default function AdminPage() {
     fetchData();
   }, []);
 
+  // Parse an uploaded delegate payment report (.xlsx) into an email -> paid map.
+  // Matches the AMASICON delegate report format: 'Email' and 'Paid?' columns.
+  function handleDelegateFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setDelegateUploading(true);
+    setDelegateUploadError(null);
+
+    file.arrayBuffer()
+      .then((buffer) => {
+        const workbook = XLSX.read(buffer, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        if (!firstSheetName) {
+          throw new Error('No sheets found in file');
+        }
+        const sheet = workbook.Sheets[firstSheetName];
+        const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' });
+
+        if (rows.length === 0) {
+          throw new Error('No rows found in sheet');
+        }
+
+        // Column names are matched case-insensitively since report exports vary slightly.
+        const sampleKeys = Object.keys(rows[0]);
+        const emailKey = sampleKeys.find((k) => k.trim().toLowerCase() === 'email');
+        const paidKey = sampleKeys.find((k) => k.trim().toLowerCase() === 'paid?' || k.trim().toLowerCase() === 'paid');
+
+        if (!emailKey || !paidKey) {
+          throw new Error('Could not find "Email" and "Paid?" columns in this file');
+        }
+
+        const map = new Map<string, boolean>();
+        for (const row of rows) {
+          const email = String(row[emailKey] || '').toLowerCase().trim();
+          if (!email) continue;
+          const isPaid = String(row[paidKey] || '').toLowerCase().trim() === 'yes';
+          // If the same email appears more than once, a single paid row wins.
+          if (!map.has(email) || isPaid) {
+            map.set(email, isPaid || (map.get(email) ?? false));
+          }
+        }
+
+        setPaidMap(map);
+        setDelegateFileName(file.name);
+      })
+      .catch((err) => {
+        setDelegateUploadError(err instanceof Error ? err.message : 'Failed to parse file');
+        setPaidMap(null);
+        setDelegateFileName(null);
+      })
+      .finally(() => {
+        setDelegateUploading(false);
+        // Allow re-uploading the same file name after clearing
+        if (delegateFileInputRef.current) delegateFileInputRef.current.value = '';
+      });
+  }
+
+  function clearDelegateReport() {
+    setPaidMap(null);
+    setDelegateFileName(null);
+    setDelegateUploadError(null);
+  }
+
+  // Look up payment status for a graduate's email against the uploaded report
+  const getPaidStatus = useCallback((email: string): 'yes' | 'no' | 'unknown' => {
+    if (!paidMap) return 'unknown';
+    const key = (email || '').toLowerCase().trim();
+    if (!paidMap.has(key)) return 'unknown';
+    return paidMap.get(key) ? 'yes' : 'no';
+  }, [paidMap]);
+
   // Universal search function - searches across all fields
   const searchGraduates = useCallback((graduates: Graduate[], query: string): Graduate[] => {
     if (!query.trim()) return graduates;
@@ -272,6 +353,12 @@ export default function AdminPage() {
             return !g.status.certificateCollected && !g.status.finalDispatched;
           case 'not-packed':
             return !g.status.packed;
+          case 'paid-not-packed':
+            return getPaidStatus(g.email) === 'yes' && !g.status.packed;
+          case 'paid-not-at-venue':
+            return getPaidStatus(g.email) === 'yes' && g.status.packed && !g.status.dispatchedToVenue;
+          case 'paid-pending-dispatch':
+            return getPaidStatus(g.email) === 'yes' && !g.status.certificateCollected && !g.status.finalDispatched;
           // Pipeline statuses
           case 'packed':
             return g.status.packed;
@@ -323,7 +410,7 @@ export default function AdminPage() {
     }
 
     return result;
-  }, [graduates, searchQuery, filterStatus, filterColor, searchGraduates]);
+  }, [graduates, searchQuery, filterStatus, filterColor, searchGraduates, getPaidStatus]);
 
   // Group graduates by course
   const graduatesByCourse = useMemo(() => {
@@ -1214,6 +1301,13 @@ export default function AdminPage() {
                   <option value="dispatched">Dispatched</option>
                   <option value="uncollected">Uncollected</option>
                   <option value="pending-gown">Pending Gown</option>
+                  {paidMap && (
+                    <>
+                      <option value="paid-not-packed">Paid &amp; Not Packed</option>
+                      <option value="paid-not-at-venue">Paid &amp; Not Dispatched to Venue</option>
+                      <option value="paid-pending-dispatch">Paid &amp; Pending Final Dispatch</option>
+                    </>
+                  )}
                 </select>
                 <select
                   value={filterColor}
@@ -1226,8 +1320,52 @@ export default function AdminPage() {
                   <option value="Pink">Pink (101-150)</option>
                   <option value="White">White (151+)</option>
                 </select>
+                <input
+                  ref={delegateFileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleDelegateFileUpload}
+                  className="hidden"
+                  id="delegate-report-upload"
+                />
+                <label
+                  htmlFor="delegate-report-upload"
+                  className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg sm:rounded-xl text-white text-xs sm:text-sm hover:bg-slate-700 hover:border-slate-500 transition-all duration-300 cursor-pointer"
+                  title="Upload delegate payment report (.xlsx) to cross-reference Paid status against pack/dispatch status"
+                >
+                  {delegateUploading ? (
+                    <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
+                  ) : (
+                    <Upload className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  )}
+                  {delegateFileName ? 'Replace Report' : 'Upload Delegate Report'}
+                </label>
               </div>
             </div>
+
+            {(delegateFileName || delegateUploadError) && (
+              <div className="mb-4 flex items-center justify-between gap-3 px-3 sm:px-4 py-2 rounded-lg sm:rounded-xl bg-slate-900/40 border border-slate-700/50 text-xs sm:text-sm">
+                {delegateUploadError ? (
+                  <span className="text-red-400 flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    {delegateUploadError}
+                  </span>
+                ) : (
+                  <span className="text-slate-300 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+                    <span className="font-medium text-white">{delegateFileName}</span>
+                    &mdash; {paidMap?.size || 0} delegates loaded,{' '}
+                    {Array.from(paidMap?.values() || []).filter(Boolean).length} paid
+                  </span>
+                )}
+                <button
+                  onClick={clearDelegateReport}
+                  className="text-slate-400 hover:text-white transition-colors shrink-0"
+                >
+                  <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                </button>
+              </div>
+            )}
 
             {/* All Graduates Table View */}
             {graduatesView === 'all' && (
@@ -1273,12 +1411,15 @@ export default function AdminPage() {
                         {getSortIcon('status')}
                       </div>
                     </th>
+                    {paidMap && (
+                      <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Payment</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
                   {loading && graduates.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="text-center py-12">
+                      <td colSpan={paidMap ? 6 : 5} className="text-center py-12">
                         <div className="flex flex-col items-center justify-center gap-3">
                           <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
                           <span className="text-slate-400">Loading {stats?.totalGraduates || ''} graduates from Tito...</span>
@@ -1288,7 +1429,7 @@ export default function AdminPage() {
                     </tr>
                   ) : sortedGraduates.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="text-center py-12">
+                      <td colSpan={paidMap ? 6 : 5} className="text-center py-12">
                         <div className="text-slate-400 space-y-2">
                           <p className="font-medium">No graduates found</p>
                         </div>
@@ -1348,6 +1489,24 @@ export default function AdminPage() {
                             </span>
                           )}
                         </td>
+                        {paidMap && (
+                          <td className="py-3 px-4">
+                            {getPaidStatus(graduate.email) === 'yes' ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
+                                <CheckCircle className="w-3 h-3" />
+                                Paid
+                              </span>
+                            ) : getPaidStatus(graduate.email) === 'no' ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-600/30 text-slate-400 border border-slate-500/30">
+                                Unpaid
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400/80 border border-amber-500/20">
+                                Not in report
+                              </span>
+                            )}
+                          </td>
+                        )}
                       </tr>
                     ))
                   )}
