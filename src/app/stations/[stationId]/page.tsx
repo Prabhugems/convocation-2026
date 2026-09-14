@@ -105,6 +105,15 @@ export default function StationPage() {
   // certificate-already-collected confirmation instead of printing silently.
   const [autoPrintEnabled, setAutoPrintEnabled] = useState(false);
   const [autoPrintPending, setAutoPrintPending] = useState(false);
+  // processGraduate is invoked through handleSearch, which is memoized with a
+  // dependency array that doesn't include autoPrintEnabled — so a plain
+  // closure read of the state there can be one toggle behind. Mirror it into
+  // a ref so processGraduate always sees the live value regardless of which
+  // stale closure called it.
+  const autoPrintEnabledRef = useRef(false);
+  useEffect(() => {
+    autoPrintEnabledRef.current = autoPrintEnabled;
+  }, [autoPrintEnabled]);
 
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -412,7 +421,7 @@ export default function StationPage() {
             if (addrData.success && addrData.data) {
               setAirtableData(addrData.data);
               setAddress(addrData.data.address);
-              if (autoPrintEnabled) {
+              if (autoPrintEnabledRef.current) {
                 setAutoPrintPending(true);
               }
             }
