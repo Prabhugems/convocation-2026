@@ -99,6 +99,13 @@ export default function StationPage() {
   const [showCertificateConfirm, setShowCertificateConfirm] = useState(false);
   const [pendingGraduateForPrint, setPendingGraduateForPrint] = useState<Graduate | null>(null);
 
+  // Auto-print (address-label station only): when enabled, the print dialog
+  // fires automatically once address data loads after a successful scan,
+  // skipping the manual Print click. Still routes through the
+  // certificate-already-collected confirmation instead of printing silently.
+  const [autoPrintEnabled, setAutoPrintEnabled] = useState(false);
+  const [autoPrintPending, setAutoPrintPending] = useState(false);
+
   const printRef = useRef<HTMLDivElement>(null);
 
   // Zebra printer direct print (legacy)
@@ -180,6 +187,28 @@ export default function StationPage() {
     const interval = setInterval(fetchStationStats, 30000);
     return () => clearInterval(interval);
   }, [fetchStationStats]);
+
+  // Load persisted auto-print preference (per-device, address-label station only)
+  useEffect(() => {
+    if (stationId !== 'address-label') return;
+    try {
+      setAutoPrintEnabled(localStorage.getItem('address-label-autoprint') === 'true');
+    } catch {
+      // localStorage unavailable — leave auto-print off
+    }
+  }, [stationId]);
+
+  const toggleAutoPrint = () => {
+    setAutoPrintEnabled(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('address-label-autoprint', String(next));
+      } catch {
+        // ignore persistence failure — toggle still works for this session
+      }
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (result) {
@@ -303,6 +332,32 @@ export default function StationPage() {
     }
   };
 
+  // Fire the print once address data has loaded after a scan, when auto-print
+  // is on. Runs as an effect (not inline in processGraduate) so it sees the
+  // committed address/airtableData state that printRef's hidden template
+  // reads from — calling the print function synchronously right after
+  // setState would still see the stale DOM.
+  useEffect(() => {
+    if (!autoPrintPending || stationId !== 'address-label' || !lastScanned || !address || !airtableData) {
+      return;
+    }
+
+    setAutoPrintPending(false);
+
+    if (lastScanned.status.finalDispatched) {
+      return;
+    }
+
+    if (lastScanned.status.certificateCollected) {
+      setPendingGraduateForPrint(lastScanned);
+      setShowCertificateConfirm(true);
+      return;
+    }
+
+    handlePrintAddressLabel4x6(lastScanned);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPrintPending, stationId, lastScanned, address, airtableData]);
+
   // Process a graduate at this station
   const processGraduate = async (graduate: Graduate) => {
     setLoading(true);
@@ -347,7 +402,8 @@ export default function StationPage() {
         // Refresh stats after successful scan
         fetchStationStats();
 
-        // Fetch address data for address-label station (no auto-print — RFID handles printing)
+        // Fetch address data for address-label station, then optionally auto-print
+        // (RFID desktop-reader stations have their own separate auto-print path).
         if (stationId === 'address-label' && data.data) {
           const convNum = data.data.convocationNumber || graduate.convocationNumber;
           if (convNum) {
@@ -356,6 +412,9 @@ export default function StationPage() {
             if (addrData.success && addrData.data) {
               setAirtableData(addrData.data);
               setAddress(addrData.data.address);
+              if (autoPrintEnabled) {
+                setAutoPrintPending(true);
+              }
             }
           }
         }
@@ -772,6 +831,32 @@ export default function StationPage() {
               loading={loading}
               placeholder="Name, Conv. No, Mobile, or scan QR/Barcode"
             />
+
+            {stationId === 'address-label' && (
+              <div className="mt-4 flex items-center justify-between gap-4 p-3 bg-white/5 rounded-xl border border-white/10">
+                <div>
+                  <p className="text-white text-sm font-medium">Auto-print label</p>
+                  <p className="text-white/40 text-xs mt-0.5">
+                    Opens the print dialog automatically after each successful scan — no need to tap Print
+                  </p>
+                </div>
+                <button
+                  onClick={toggleAutoPrint}
+                  role="switch"
+                  aria-checked={autoPrintEnabled}
+                  aria-label="Toggle auto-print"
+                  className={`relative w-12 h-7 shrink-0 rounded-full transition-colors ${
+                    autoPrintEnabled ? 'bg-blue-500' : 'bg-white/20'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white transition-transform ${
+                      autoPrintEnabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
           </GlassCard>
 
           {/* Print Status - Registration Station Only */}
