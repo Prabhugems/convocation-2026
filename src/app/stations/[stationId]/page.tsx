@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import GlassCard from '@/components/GlassCard';
-import UniversalScanner, { SearchInputType } from '@/components/UniversalScanner';
+import UniversalScanner, { SearchInputType, UniversalScannerHandle } from '@/components/UniversalScanner';
 import StatusBadge from '@/components/StatusBadge';
 import { Sticker3x2, Badge4x6, AddressLabel4x6, AddressLabelData, printElement, printSticker3x2, printAddressLabel4x6, printBadge4x6 } from '@/components/PrintTemplates';
 import { printBadge4x6PDF, generateQRDataUrl } from '@/lib/pdfPrint';
@@ -116,6 +116,7 @@ export default function StationPage() {
   }, [autoPrintEnabled]);
 
   const printRef = useRef<HTMLDivElement>(null);
+  const scannerRef = useRef<UniversalScannerHandle>(null);
 
   // Zebra printer direct print (legacy)
   const { printLabel, status: printStatus } = usePrinter();
@@ -338,6 +339,11 @@ export default function StationPage() {
       setNativePrintState('error');
     } finally {
       setTimeout(() => setNativePrintState('idle'), 2000);
+      // The hidden print iframe (and any OS print dialog) steals document
+      // focus. Bring it back to the search input so the next scan/keystroke
+      // is captured immediately — no click needed to resume scanning.
+      scannerRef.current?.focus();
+      setTimeout(() => scannerRef.current?.focus(), 300);
     }
   };
 
@@ -835,6 +841,7 @@ export default function StationPage() {
             </div>
 
             <UniversalScanner
+              ref={scannerRef}
               onSearch={handleSearch}
               onError={(error) => console.log('[Station] Scanner error:', error)}
               loading={loading}

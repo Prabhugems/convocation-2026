@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { Html5Qrcode, Html5QrcodeSupportedFormats, CameraDevice } from 'html5-qrcode';
 import {
   Camera,
@@ -22,6 +22,12 @@ interface UniversalScannerProps {
   className?: string;
   placeholder?: string;
   loading?: boolean;
+}
+
+// Lets a parent (e.g. after a print action steals focus) put the cursor
+// back in the search field so the next scan/keystroke is captured again.
+export interface UniversalScannerHandle {
+  focus: () => void;
 }
 
 export type SearchInputType =
@@ -142,13 +148,13 @@ function getCameraType(camera: CameraDevice): 'back' | 'front' | 'external' | 'v
   return 'other';
 }
 
-export default function UniversalScanner({
+const UniversalScanner = forwardRef<UniversalScannerHandle, UniversalScannerProps>(function UniversalScanner({
   onSearch,
   onError,
   className = '',
   placeholder = 'Enter Name, Conv. No, Mobile, or scan QR/Barcode',
   loading = false,
-}: UniversalScannerProps) {
+}, ref) {
   const [cameraStatus, setCameraStatus] = useState<CameraStatus>('idle');
   const [cameras, setCameras] = useState<CameraDevice[]>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string>('');
@@ -168,6 +174,10 @@ export default function UniversalScanner({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const barcodeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useImperativeHandle(ref, () => ({
+    focus: () => inputRef.current?.focus(),
+  }), []);
 
   // Load saved camera preference
   useEffect(() => {
@@ -804,4 +814,8 @@ export default function UniversalScanner({
       )}
     </div>
   );
-}
+});
+
+UniversalScanner.displayName = 'UniversalScanner';
+
+export default UniversalScanner;
