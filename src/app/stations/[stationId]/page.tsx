@@ -95,16 +95,24 @@ export default function StationPage() {
   // Animation state
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
 
+  // A specific scan's address-label data, locked together so a print action
+  // can never mix one graduate's name with another graduate's address/phone/
+  // tracking number if two scans happen close together.
+  type AddressLabelPrintSnapshot = {
+    graduate: Graduate;
+    address: Address;
+    airtableData: AirtableGraduateData;
+  };
+
   // Confirmation dialog state for already-collected certificates
   const [showCertificateConfirm, setShowCertificateConfirm] = useState(false);
-  const [pendingGraduateForPrint, setPendingGraduateForPrint] = useState<Graduate | null>(null);
+  const [pendingPrintSnapshot, setPendingPrintSnapshot] = useState<AddressLabelPrintSnapshot | null>(null);
 
   // Auto-print (address-label station only): when enabled, the print dialog
   // fires automatically once address data loads after a successful scan,
   // skipping the manual Print click. Still routes through the
   // certificate-already-collected confirmation instead of printing silently.
   const [autoPrintEnabled, setAutoPrintEnabled] = useState(false);
-  const [autoPrintPending, setAutoPrintPending] = useState(false);
   // processGraduate is invoked through handleSearch, which is memoized with a
   // dependency array that doesn't include autoPrintEnabled — so a plain
   // closure read of the state there can be one toggle behind. Mirror it into
@@ -114,6 +122,22 @@ export default function StationPage() {
   useEffect(() => {
     autoPrintEnabledRef.current = autoPrintEnabled;
   }, [autoPrintEnabled]);
+
+  // Holds the exact address/tracking data fetched for the scan currently
+  // queued to auto-print. A ref (not state) because it's written and
+  // consumed as one atomic unit tied to autoPrintTick, never read as
+  // "whatever the page's current address/airtableData state happens to be"
+  // — that's what let two rapid scans cross-contaminate each other's labels.
+  const pendingAutoPrintRef = useRef<AddressLabelPrintSnapshot | null>(null);
+  const [autoPrintTick, setAutoPrintTick] = useState(0);
+
+  // Blocks a second scan from starting while one is still being processed.
+  // A ref (not the `loading` state) because the camera scanner's decode
+  // callback can hold a stale closure over an older handleSearch — which
+  // would read a stale (always-false) `loading` and never actually block
+  // concurrent scans. A ref's .current is always live regardless of which
+  // closure checks it.
+  const processingRef = useRef(false);
 
   const printRef = useRef<HTMLDivElement>(null);
   const scannerRef = useRef<UniversalScannerHandle>(null);
@@ -305,18 +329,19 @@ export default function StationPage() {
     });
   };
 
-  // Print the 4x6 address label with the real address fetched from Airtable.
+  // Print the 4x6 address label. address/airtableData are required
+  // parameters — deliberately NOT read from page state — so a print action
+  // always uses the exact data fetched for this specific graduate, and can
+  // never pick up another graduate's address/phone/tracking number if a
+  // second scan started before this one finished settling.
   // Browser print only (no direct-ZPL path) — same native-print approach
   // handlePrintBadge4x6 uses for registration, works with any installed
   // printer/driver without vendor software.
-  const handlePrintAddressLabel4x6 = (graduate: Graduate) => {
-    if (!address || !airtableData) {
-      console.warn('[Address Label] No address data loaded yet — cannot print');
-      setNativePrintState('error');
-      setTimeout(() => setNativePrintState('idle'), 2000);
-      return;
-    }
-
+  const handlePrintAddressLabel4x6 = (
+    graduate: Graduate,
+    addressForLabel: Address,
+    airtableDataForLabel: AirtableGraduateData
+  ) => {
     setNativePrintState('printing');
     try {
       printAddressLabel4x6(
@@ -326,10 +351,10 @@ export default function StationPage() {
           convocationNumber: graduate.convocationNumber,
           ticketSlug: graduate.ticketSlug,
           registrationNumber: graduate.registrationNumber,
-          address,
-          phone: airtableData.mobile,
-          trackingNumber: airtableData.trackingNumber,
-          dtdcAvailable: airtableData.dtdcAvailable,
+          address: addressForLabel,
+          phone: airtableDataForLabel.mobile,
+          trackingNumber: airtableDataForLabel.trackingNumber,
+          dtdcAvailable: airtableDataForLabel.dtdcAvailable,
         },
         printRef.current
       );
@@ -347,34 +372,41 @@ export default function StationPage() {
     }
   };
 
-  // Fire the print once address data has loaded after a scan, when auto-print
-  // is on. Runs as an effect (not inline in processGraduate) so it sees the
-  // committed address/airtableData state that printRef's hidden template
-  // reads from — calling the print function synchronously right after
-  // setState would still see the stale DOM.
+  // Fire the print once a scan has queued one via pendingAutoPrintRef. Reads
+  // the locked-in snapshot for THAT scan, not whatever address/airtableData
+  // state currently holds — see the ref's own comment for why that matters.
   useEffect(() => {
-    if (!autoPrintPending || stationId !== 'address-label' || !lastScanned || !address || !airtableData) {
+    const pending = pendingAutoPrintRef.current;
+    if (!pending || stationId !== 'address-label') {
+      return;
+    }
+    pendingAutoPrintRef.current = null;
+
+    if (pending.graduate.status.finalDispatched) {
       return;
     }
 
-    setAutoPrintPending(false);
-
-    if (lastScanned.status.finalDispatched) {
-      return;
-    }
-
-    if (lastScanned.status.certificateCollected) {
-      setPendingGraduateForPrint(lastScanned);
+    if (pending.graduate.status.certificateCollected) {
+      setPendingPrintSnapshot(pending);
       setShowCertificateConfirm(true);
       return;
     }
 
-    handlePrintAddressLabel4x6(lastScanned);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoPrintPending, stationId, lastScanned, address, airtableData]);
+    handlePrintAddressLabel4x6(pending.graduate, pending.address, pending.airtableData);
+  }, [autoPrintTick, stationId]);
 
   // Process a graduate at this station
   const processGraduate = async (graduate: Graduate) => {
+    // Ref-based guard (see processingRef's own comment) so an overlapping
+    // scan — even one arriving through a stale closure that bypasses the
+    // `loading` state check — can never interleave with this one's
+    // check-in/address-fetch and corrupt which data belongs to whom.
+    if (processingRef.current) {
+      console.warn('[processGraduate] Already processing a scan — ignoring', graduate.name);
+      return;
+    }
+    processingRef.current = true;
+
     setLoading(true);
     setResult(null);
     setShowResults(false);
@@ -428,7 +460,16 @@ export default function StationPage() {
               setAirtableData(addrData.data);
               setAddress(addrData.data.address);
               if (autoPrintEnabledRef.current) {
-                setAutoPrintPending(true);
+                // Snapshot exactly this scan's graduate + address + tracking
+                // data together — the auto-print effect prints from this,
+                // not from address/airtableData state, so it can't be
+                // clobbered by whatever the next scan does in the meantime.
+                pendingAutoPrintRef.current = {
+                  graduate: data.data,
+                  address: addrData.data.address,
+                  airtableData: addrData.data,
+                };
+                setAutoPrintTick(t => t + 1);
               }
             }
           }
@@ -455,6 +496,7 @@ export default function StationPage() {
       });
     } finally {
       setLoading(false);
+      processingRef.current = false;
     }
   };
 
@@ -733,8 +775,8 @@ export default function StationPage() {
       )}
 
       {/* Certificate Already Collected Confirmation Dialog */}
-      {showCertificateConfirm && pendingGraduateForPrint && (() => {
-        const collectionScan = pendingGraduateForPrint.scans?.find(
+      {showCertificateConfirm && pendingPrintSnapshot && (() => {
+        const collectionScan = pendingPrintSnapshot.graduate.scans?.find(
           (s) => s.station === 'certificate-collection'
         );
         const collectionDate = collectionScan
@@ -752,7 +794,7 @@ export default function StationPage() {
               <div className="space-y-2 mb-6 p-4 bg-slate-900/50 rounded-lg">
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-400">Graduate:</span>
-                  <span className="text-white">Dr. {pendingGraduateForPrint.name}</span>
+                  <span className="text-white">Dr. {pendingPrintSnapshot.graduate.name}</span>
                 </div>
                 {collectionDate && (
                   <div className="flex justify-between text-sm">
@@ -770,7 +812,7 @@ export default function StationPage() {
                 <button
                   onClick={() => {
                     setShowCertificateConfirm(false);
-                    setPendingGraduateForPrint(null);
+                    setPendingPrintSnapshot(null);
                   }}
                   className="flex-1 py-2.5 px-4 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors text-white font-medium"
                 >
@@ -779,10 +821,14 @@ export default function StationPage() {
                 <button
                   onClick={() => {
                     setShowCertificateConfirm(false);
-                    if (pendingGraduateForPrint) {
-                      handlePrintAddressLabel4x6(pendingGraduateForPrint);
+                    if (pendingPrintSnapshot) {
+                      handlePrintAddressLabel4x6(
+                        pendingPrintSnapshot.graduate,
+                        pendingPrintSnapshot.address,
+                        pendingPrintSnapshot.airtableData
+                      );
                     }
-                    setPendingGraduateForPrint(null);
+                    setPendingPrintSnapshot(null);
                   }}
                   className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-white font-medium"
                 >
@@ -1145,12 +1191,18 @@ export default function StationPage() {
                           if (station.printType === '4x6-badge') {
                             await handlePrintBadge4x6(lastScanned);
                           } else if (station.printType === '4x6-label') {
+                            if (!address || !airtableData) {
+                              console.warn('[Address Label] No address data loaded yet — cannot print');
+                              setNativePrintState('error');
+                              setTimeout(() => setNativePrintState('idle'), 2000);
+                              return;
+                            }
                             if (lastScanned.status.certificateCollected) {
-                              setPendingGraduateForPrint(lastScanned);
+                              setPendingPrintSnapshot({ graduate: lastScanned, address, airtableData });
                               setShowCertificateConfirm(true);
                               return;
                             }
-                            handlePrintAddressLabel4x6(lastScanned);
+                            handlePrintAddressLabel4x6(lastScanned, address, airtableData);
                           } else {
                             printLabel(lastScanned, 'packing', printRef.current);
                           }
