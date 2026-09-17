@@ -108,6 +108,7 @@ function parseAirtableRecord(record: AirtableRecord, tableId: string): AirtableG
     oldTrackingNumber: (fields['old Tracking Number'] || '').trim() || undefined,
     // Master-FMAS calls this "reason for RTO"; Master-MMAS calls the same-purpose field "RTO Remarks".
     reasonForRto: (fields['reason for RTO'] || fields['RTO Remarks'] || '').trim() || undefined,
+    dtdcDispatchEmailSent: fields['DTDC Dispatch Email Sent'] === true,
   };
 }
 
@@ -375,6 +376,24 @@ export async function markCertificateReturned(
   const response = await airtableFetch<unknown>(airtableTableId, `/${airtableRecordId}`, {
     method: 'PATCH',
     body: JSON.stringify({ fields }),
+  });
+
+  if (!response.success) {
+    return { success: false, error: response.error };
+  }
+
+  return { success: true };
+}
+
+// Marks a record so the automated DTDC dispatch-notification email is never
+// re-sent to it on a later run of the same batch job.
+export async function markDtdcDispatchEmailSent(
+  airtableTableId: string,
+  airtableRecordId: string
+): Promise<ApiResponse<void>> {
+  const response = await airtableFetch<unknown>(airtableTableId, `/${airtableRecordId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ fields: { 'DTDC Dispatch Email Sent': true } }),
   });
 
   if (!response.success) {

@@ -6,7 +6,8 @@ export type EmailTemplateType =
   | 'CERTIFICATE_READY_NOT_ATTENDING'
   | 'DISPATCHED_COURIER'
   | 'CERTIFICATE_COLLECTED'
-  | 'CERTIFICATE_DELIVERED';
+  | 'CERTIFICATE_DELIVERED'
+  | 'DTDC_DISPATCH_NOTIFICATION';
 
 // Template data interfaces
 export interface CertificateReadyAttendingData {
@@ -35,6 +36,21 @@ export interface DispatchedCourierData {
   courierName: string; // DTDC or India Post
   trackingNumber: string;
   address?: {
+    line1: string;
+    line2?: string;
+    city: string;
+    state: string;
+    pincode: string;
+  };
+}
+
+export interface DtdcDispatchData {
+  name: string;
+  convocationNumber: string;
+  course: string;
+  trackingNumber: string;
+  dispatchDate: string; // pre-formatted, e.g. "17.09.2026"
+  address: {
     line1: string;
     line2?: string;
     city: string;
@@ -512,6 +528,89 @@ export function dispatchedCourier(data: DispatchedCourierData): { subject: strin
   };
 }
 
+// Template: DTDC Dispatch Notification (automated, sent right after address-label scan)
+export function dtdcDispatchNotification(data: DtdcDispatchData): { subject: string; html: string } {
+  const content = `
+    <div class="header">
+      <h1>Convocation 2026</h1>
+      <p>AMASI Certificate Management</p>
+    </div>
+    <div class="content">
+      <p class="greeting">Dear Dr. ${data.name},</p>
+
+      <p>Greetings from AMASI!</p>
+
+      <p>We are pleased to inform you that your <strong>FMAS Certificate</strong> has been dispatched today via <strong>DTDC Courier Services</strong>.</p>
+
+      <div class="info-box">
+        <h4 style="margin: 0 0 12px; color: #1e3a8a;">Dispatch Details</h4>
+        <div class="info-row">
+          <span class="info-label">Tracking Number</span>
+          <span class="info-value">${data.trackingNumber}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Courier Service</span>
+          <span class="info-value">DTDC</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Dispatch Date</span>
+          <span class="info-value">${data.dispatchDate}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Expected Delivery</span>
+          <span class="info-value">10-15 business days</span>
+        </div>
+      </div>
+
+      <div class="info-box">
+        <h4 style="margin: 0 0 12px; color: #1e3a8a;">Your Address</h4>
+        <p style="margin: 0; color: #334155;">
+          ${data.address.line1}<br>
+          ${data.address.line2 ? `${data.address.line2}<br>` : ''}
+          ${data.address.city}, ${data.address.state}<br>
+          <strong>${data.address.pincode}</strong>
+        </p>
+      </div>
+
+      <div class="highlight-box">
+        <h3>⚠️ Critical: Do Not Accept If Folded Or Damaged</h3>
+        <p>We have specifically instructed the courier service to handle your certificate with care and <strong>NOT to fold</strong> the package during transit. Your certificate should arrive in pristine condition.</p>
+      </div>
+
+      <h4 style="color: #1e3a8a; margin: 24px 0 12px;">What to do upon delivery:</h4>
+      <ol style="color: #334155; padding-left: 20px; margin: 0 0 24px;">
+        <li style="margin-bottom: 8px;"><strong>Inspect the package</strong> before accepting delivery</li>
+        <li style="margin-bottom: 8px;"><strong>Check</strong> that the certificate is not folded, bent, or damaged</li>
+        <li style="margin-bottom: 8px;"><strong>Accept delivery only if</strong> the certificate is in perfect condition</li>
+        <li style="margin-bottom: 8px;"><strong>Refuse delivery if</strong> you notice any folding, creasing, or damage</li>
+        <li style="margin-bottom: 0;"><strong>Contact us immediately</strong> if you refuse delivery due to damage</li>
+      </ol>
+
+      <p style="text-align: center;">
+        <a href="https://www.dtdc.in/tracking.asp" class="button">Track Your Certificate</a>
+      </p>
+
+      <p>If you encounter any issues with delivery or need to refuse a damaged certificate, please contact us immediately at <a href="mailto:amasi.india@gmail.com">amasi.india@gmail.com</a>.</p>
+
+      <p>Congratulations once again on achieving your FMAS certification!</p>
+
+      <p>Best regards,<br><strong>AMASI Office</strong></p>
+    </div>
+    <div class="footer">
+      <p>Association of Minimal Access Surgeons of India</p>
+      <p>Email: <a href="mailto:amasi.india@gmail.com">amasi.india@gmail.com</a></p>
+      <p style="color: #94a3b8; font-size: 11px; margin-top: 16px;">
+        This is an automated message. Please do not reply to this email.
+      </p>
+    </div>
+  `;
+
+  return {
+    subject: `Your FMAS Certificate Has Been Dispatched via DTDC - Tracking: ${data.trackingNumber}`,
+    html: emailWrapper(content, `Dr. ${data.name}, your FMAS certificate has been dispatched via DTDC. Tracking: ${data.trackingNumber}`),
+  };
+}
+
 // Template: Certificate Collected (In-Person)
 export function certificateCollected(data: CertificateCollectedData): { subject: string; html: string } {
   const collectedByHtml = data.collectedBy ? `
@@ -664,7 +763,7 @@ export function certificateDelivered(data: CertificateDeliveredData): { subject:
 // Get template by type
 export function getEmailTemplate(
   type: EmailTemplateType,
-  data: CertificateReadyAttendingData | CertificateReadyNotAttendingData | DispatchedCourierData | CertificateCollectedData | CertificateDeliveredData
+  data: CertificateReadyAttendingData | CertificateReadyNotAttendingData | DispatchedCourierData | CertificateCollectedData | CertificateDeliveredData | DtdcDispatchData
 ): { subject: string; html: string } {
   switch (type) {
     case 'CERTIFICATE_READY_ATTENDING':
@@ -677,6 +776,8 @@ export function getEmailTemplate(
       return certificateCollected(data as CertificateCollectedData);
     case 'CERTIFICATE_DELIVERED':
       return certificateDelivered(data as CertificateDeliveredData);
+    case 'DTDC_DISPATCH_NOTIFICATION':
+      return dtdcDispatchNotification(data as DtdcDispatchData);
     default:
       throw new Error(`Unknown email template type: ${type}`);
   }

@@ -166,6 +166,20 @@ export async function GET(request: NextRequest) {
           pincode: '400001',
         },
       },
+      DTDC_DISPATCH_NOTIFICATION: {
+        name: 'Sample Graduate',
+        convocationNumber: '119AEC1001',
+        course: '119 FMAS Chandigarh',
+        trackingNumber: 'C1002554185',
+        dispatchDate: '17.09.2026',
+        address: {
+          line1: '123 Sample Street',
+          line2: 'Apartment 4B',
+          city: 'Mumbai',
+          state: 'Maharashtra',
+          pincode: '400001',
+        },
+      },
     };
 
     const data = sampleData[template];

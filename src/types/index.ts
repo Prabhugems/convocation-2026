@@ -147,6 +147,7 @@ export interface AirtableRecord {
     'reason for RTO'?: string; // Master-FMAS's RTO note field
     'RTO Remarks'?: string; // Master-MMAS's RTO note field (same purpose, different name)
     'old Tracking Number'?: string; // previous tracking number, preserved on resend
+    'DTDC Dispatch Email Sent'?: boolean; // set after the automated dispatch-notification email is sent
   };
 }
 
@@ -166,6 +167,7 @@ export interface AirtableGraduateData {
   rto?: boolean; // true if this certificate was returned by the courier and is pending resend
   oldTrackingNumber?: string; // previous tracking number, preserved when a returned parcel is resent
   reasonForRto?: string; // free-text note about the return (from 'reason for RTO' on FMAS, 'RTO Remarks' on MMAS)
+  dtdcDispatchEmailSent?: boolean; // true once the automated dispatch-notification email has been sent
 }
 
 export interface ApiResponse<T> {
