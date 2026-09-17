@@ -528,6 +528,22 @@ export function dispatchedCourier(data: DispatchedCourierData): { subject: strin
   };
 }
 
+// Renders one label/value row as an HTML table row with inline styles.
+// The rest of this file's label/value pairs use a flexbox `.info-row`
+// class, but flexbox is unreliably supported in email clients (Gmail in
+// particular) — it silently collapses, running the label and value
+// together with no gap. Tables with inline styles are the actually
+// portable way to lay out rows in HTML email.
+function dtdcInfoRow(label: string, value: string, isLast = false): string {
+  const borderStyle = isLast ? '' : 'border-bottom: 1px solid #e2e8f0;';
+  return `
+    <tr>
+      <td style="padding: 8px 0; ${borderStyle} color: #64748b; font-size: 14px; text-align: left;">${label}</td>
+      <td style="padding: 8px 0; ${borderStyle} color: #1e293b; font-weight: 600; font-size: 14px; text-align: right;">${value}</td>
+    </tr>
+  `;
+}
+
 // Template: DTDC Dispatch Notification (automated, sent right after address-label scan)
 export function dtdcDispatchNotification(data: DtdcDispatchData): { subject: string; html: string } {
   const content = `
@@ -544,22 +560,12 @@ export function dtdcDispatchNotification(data: DtdcDispatchData): { subject: str
 
       <div class="info-box">
         <h4 style="margin: 0 0 12px; color: #1e3a8a;">Dispatch Details</h4>
-        <div class="info-row">
-          <span class="info-label">Tracking Number</span>
-          <span class="info-value">${data.trackingNumber}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Courier Service</span>
-          <span class="info-value">DTDC</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Dispatch Date</span>
-          <span class="info-value">${data.dispatchDate}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Expected Delivery</span>
-          <span class="info-value">10-15 business days</span>
-        </div>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+          ${dtdcInfoRow('Tracking Number', data.trackingNumber)}
+          ${dtdcInfoRow('Courier Service', 'DTDC')}
+          ${dtdcInfoRow('Dispatch Date', data.dispatchDate)}
+          ${dtdcInfoRow('Expected Delivery', '10-15 business days', true)}
+        </table>
       </div>
 
       <div class="info-box">
@@ -587,7 +593,11 @@ export function dtdcDispatchNotification(data: DtdcDispatchData): { subject: str
       </ol>
 
       <p style="text-align: center;">
-        <a href="https://www.dtdc.in/tracking.asp" class="button">Track Your Certificate</a>
+        <a href="https://www.dtdc.com/track-your-shipment/" class="button">Track Your Certificate</a>
+      </p>
+
+      <p style="text-align: center; color: #64748b; font-size: 13px; margin-top: -12px;">
+        Enter your tracking number (<strong>${data.trackingNumber}</strong>) as the Shipment Number on the DTDC page.
       </p>
 
       <p>If you encounter any issues with delivery or need to refuse a damaged certificate, please contact us immediately at <a href="mailto:amasi.india@gmail.com">amasi.india@gmail.com</a>.</p>
