@@ -82,6 +82,12 @@ export default function StationPage() {
   const [dispatchMethod, setDispatchMethod] = useState<'DTDC' | 'India Post'>('DTDC');
   const [address, setAddress] = useState<Address | null>(null);
   const [airtableData, setAirtableData] = useState<AirtableGraduateData | null>(null);
+  // Which convocation number `address`/`airtableData` actually belong to.
+  // Printing (and the on-screen address panel) must never trust those two
+  // state values on their own — only when this tag matches the currently
+  // scanned graduate, so a stale fetch from a previous scan can never be
+  // paired with a different graduate's name/QR on a physical label.
+  const [addressOwnerConv, setAddressOwnerConv] = useState<string | null>(null);
   const [searchResults, setSearchResults] = useState<Graduate[]>([]);
   const [showResults, setShowResults] = useState(false);
 
@@ -459,6 +465,7 @@ export default function StationPage() {
             if (addrData.success && addrData.data) {
               setAirtableData(addrData.data);
               setAddress(addrData.data.address);
+              setAddressOwnerConv(convNum);
               if (autoPrintEnabledRef.current) {
                 // Snapshot exactly this scan's graduate + address + tracking
                 // data together — the auto-print effect prints from this,
@@ -486,6 +493,29 @@ export default function StationPage() {
         });
         if (data.data) {
           setLastScanned(data.data);
+        }
+
+        // A blocked/duplicate scan (already dispatched, already scanned at
+        // this station, etc.) must never leave the PREVIOUS graduate's
+        // address/tracking data on screen looking like it belongs to this
+        // one. Clear it immediately, then — for address-label — fetch this
+        // graduate's own real address so the panel (and any subsequent
+        // print, once the ownership tag matches) reflects them, not leftover
+        // state from whoever was scanned before.
+        setAddress(null);
+        setAirtableData(null);
+        setAddressOwnerConv(null);
+        if (stationId === 'address-label' && data.data) {
+          const convNum = data.data.convocationNumber || graduate.convocationNumber;
+          if (convNum) {
+            const addrResponse = await fetch(`/api/airtable/address?registrationNumber=${convNum}&fullData=true&refresh=true`);
+            const addrData = await addrResponse.json();
+            if (addrData.success && addrData.data) {
+              setAirtableData(addrData.data);
+              setAddress(addrData.data.address);
+              setAddressOwnerConv(convNum);
+            }
+          }
         }
       }
     } catch (error) {
@@ -1185,14 +1215,26 @@ export default function StationPage() {
                       ? nativePrintState
                       : printStatus;
 
+                    // Only ever true when `address`/`airtableData` were
+                    // fetched for THIS exact graduate — never trust them on
+                    // their own, since they're page-level state that a
+                    // previous scan (successful or blocked) could have set.
+                    // This is what stops a name/QR from ever being paired
+                    // with a different person's address on a printed label.
+                    const addressMatchesScanned = !!(
+                      address &&
+                      airtableData &&
+                      addressOwnerConv === lastScanned.convocationNumber
+                    );
+
                     return (
                       <button
                         onClick={async () => {
                           if (station.printType === '4x6-badge') {
                             await handlePrintBadge4x6(lastScanned);
                           } else if (station.printType === '4x6-label') {
-                            if (!address || !airtableData) {
-                              console.warn('[Address Label] No address data loaded yet — cannot print');
+                            if (!address || !airtableData || addressOwnerConv !== lastScanned.convocationNumber) {
+                              console.warn('[Address Label] No verified address data for this graduate — cannot print');
                               setNativePrintState('error');
                               setTimeout(() => setNativePrintState('idle'), 2000);
                               return;
@@ -1209,7 +1251,8 @@ export default function StationPage() {
                         }}
                         disabled={
                           currentPrintState === 'printing' ||
-                          (station.printType === '4x6-label' && lastScanned.status.finalDispatched)
+                          (station.printType === '4x6-label' &&
+                            (lastScanned.status.finalDispatched || !addressMatchesScanned))
                         }
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-white text-sm transition-all ${
                           currentPrintState === 'printing'
@@ -1363,8 +1406,14 @@ export default function StationPage() {
               </GlassCard>
             )}
 
-          {/* Address Display for Address Label Station */}
-          {stationId === 'address-label' && address && lastScanned && (
+          {/* Address Display for Address Label Station. Gated on
+              addressOwnerConv matching the currently scanned graduate so
+              this can never show a previous graduate's leftover address
+              next to the current graduate's name. */}
+          {stationId === 'address-label' &&
+            address &&
+            lastScanned &&
+            addressOwnerConv === lastScanned.convocationNumber && (
             <GlassCard className="p-6">
               <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-blue-400" />
