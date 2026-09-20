@@ -97,6 +97,7 @@ export function getStationStatus(stationId: StationId): keyof import('@/types').
     'return-ho': 'returnedToHO',
     'address-label': 'addressLabeled',
     'final-dispatch': 'finalDispatched',
+    'dispatch-india-post': 'finalDispatched',
   };
   return mapping[stationId];
 }

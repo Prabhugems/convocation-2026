@@ -42,7 +42,8 @@ export type StationId =
   | 'certificate-collection'
   | 'return-ho'
   | 'address-label'
-  | 'final-dispatch';
+  | 'final-dispatch'
+  | 'dispatch-india-post';
 
 export interface Station {
   id: StationId;
@@ -201,7 +202,7 @@ export const CHECKIN_LIST_MAPPING: Record<string, StationId> = {
   'chk_p6NMnIGFZY8EAf1SMwIUmvA': 'return-ho',
   'chk_pDyuhvsdtTqBv1kfMVB3LxA': 'address-label',
   'chk_p1QwHGjQdVZXdWw2TRkhXWA': 'final-dispatch', // DTDC
-  'chk_pExuj2TOmyhsjP5mFWQuz1g': 'final-dispatch', // India Post
+  'chk_pExuj2TOmyhsjP5mFWQuz1g': 'dispatch-india-post', // India Post
 };
 
 export const STATION_CHECKIN_MAPPING: Record<StationId, string> = {
@@ -213,5 +214,6 @@ export const STATION_CHECKIN_MAPPING: Record<StationId, string> = {
   'certificate-collection': 'chk_pIn2aaw0MjiC2jdABMN1dsQ',
   'return-ho': 'chk_p6NMnIGFZY8EAf1SMwIUmvA',
   'address-label': 'chk_pDyuhvsdtTqBv1kfMVB3LxA',
-  'final-dispatch': 'chk_p1QwHGjQdVZXdWw2TRkhXWA',
+  'final-dispatch': 'chk_p1QwHGjQdVZXdWw2TRkhXWA', // DTDC
+  'dispatch-india-post': 'chk_pExuj2TOmyhsjP5mFWQuz1g', // India Post
 };

@@ -177,8 +177,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Final dispatch fans out to two separate Tito check-in lists —
+    // "Dispatched DTDC" vs "Dispatched India Post" — so courier-wise
+    // reporting in Tito stays accurate. Route by explicit dispatchMethod
+    // (the manual station UI always sends one), falling back to whether a
+    // DTDC tracking number is known (from metadata or Airtable) for
+    // programmatic/bulk callers that don't send metadata at all.
+    let actualStationId = stationId as StationId;
+    if (stationId === 'final-dispatch') {
+      const method =
+        (metadata?.dispatchMethod as string | undefined) ||
+        (metadata?.trackingNumber || graduate.trackingNumber ? 'DTDC' : 'India Post');
+      actualStationId = method === 'India Post' ? 'dispatch-india-post' : 'final-dispatch';
+    }
+
     // Create check-in at the station
-    const checkinResult = await checkinAtStation(graduate.ticketId, stationId as StationId);
+    const checkinResult = await checkinAtStation(graduate.ticketId, actualStationId);
 
     if (!checkinResult.success) {
       // If already checked in, still return the graduate info
@@ -206,10 +220,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Update tracking info for final dispatch
-    if (stationId === 'final-dispatch' && metadata?.trackingNumber) {
-      graduate.trackingNumber = metadata.trackingNumber as string;
-      graduate.dispatchMethod = metadata.dispatchMethod as 'DTDC' | 'India Post';
+    // Update tracking info for final dispatch, and always reflect which
+    // list we actually routed to (even for bulk/programmatic callers that
+    // send no metadata) so the response accurately shows DTDC vs India Post.
+    if (stationId === 'final-dispatch') {
+      if (metadata?.trackingNumber) {
+        graduate.trackingNumber = metadata.trackingNumber as string;
+      }
+      graduate.dispatchMethod = actualStationId === 'dispatch-india-post' ? 'India Post' : 'DTDC';
     }
 
     return NextResponse.json({

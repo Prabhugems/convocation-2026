@@ -184,15 +184,31 @@ export default function StationPage() {
           'return-ho': 'Dispatch to Head Office',
           'address-label': 'Address Label Printed',
           'final-dispatch': 'Dispatched DTDC',
+          'dispatch-india-post': 'Dispatched India Post',
         };
 
-        const listName = stationMapping[stationId];
-        const list = data.meta.checkinLists.find((l: { title: string }) => l.title === listName);
+        if (stationId === 'final-dispatch') {
+          // Final dispatch spans two Tito lists (DTDC + India Post) — combine both.
+          const lists = data.meta.checkinLists.filter((l: { title: string }) =>
+            l.title === 'Dispatched DTDC' || l.title === 'Dispatched India Post'
+          );
+          if (lists.length > 0) {
+            setStationStats({
+              checkedIn: lists.reduce((sum: number, l: { checked_in: number }) => sum + l.checked_in, 0),
+              total: lists[0].total,
+            });
+          } else if (data.data) {
+            setStationStats({ checkedIn: 0, total: data.data.totalGraduates });
+          }
+        } else {
+          const listName = stationMapping[stationId];
+          const list = data.meta.checkinLists.find((l: { title: string }) => l.title === listName);
 
-        if (list) {
-          setStationStats({ checkedIn: list.checked_in, total: list.total });
-        } else if (data.data) {
-          setStationStats({ checkedIn: 0, total: data.data.totalGraduates });
+          if (list) {
+            setStationStats({ checkedIn: list.checked_in, total: list.total });
+          } else if (data.data) {
+            setStationStats({ checkedIn: 0, total: data.data.totalGraduates });
+          }
         }
       }
       setLastSync(new Date());

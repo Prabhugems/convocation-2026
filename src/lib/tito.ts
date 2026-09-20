@@ -525,6 +525,7 @@ async function getAllCheckinsMap(): Promise<Map<number, ScanStatus>> {
     'return-ho': 'returnedToHO',
     'address-label': 'addressLabeled',
     'final-dispatch': 'finalDispatched',
+    'dispatch-india-post': 'finalDispatched',
   };
 
   // Fetch check-ins from all check-in lists in parallel.
@@ -803,6 +804,7 @@ export async function getTicketCheckins(ticketId: number): Promise<ApiResponse<{
     'return-ho': 'returnedToHO',
     'address-label': 'addressLabeled',
     'final-dispatch': 'finalDispatched',
+    'dispatch-india-post': 'finalDispatched',
   };
 
   // Fetch checkins from each station's checkin list in parallel.
