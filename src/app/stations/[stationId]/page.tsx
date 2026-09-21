@@ -1243,6 +1243,19 @@ export default function StationPage() {
                       addressOwnerConv === lastScanned.convocationNumber
                     );
 
+                    // Already-dispatched / no-verified-address block this button from
+                    // ever actually printing (see `disabled` below). It must look
+                    // visibly inert too — not just be functionally blocked — so
+                    // staff scanning fast at a live event don't mistake it for a
+                    // normal clickable Print button.
+                    const alreadyDispatchedBlock =
+                      station.printType === '4x6-label' && lastScanned.status.finalDispatched;
+                    const noAddressBlock =
+                      station.printType === '4x6-label' &&
+                      !alreadyDispatchedBlock &&
+                      !addressMatchesScanned;
+                    const isBlocked = alreadyDispatchedBlock || noAddressBlock;
+
                     return (
                       <button
                         onClick={async () => {
@@ -1265,13 +1278,11 @@ export default function StationPage() {
                             printLabel(lastScanned, 'packing', printRef.current);
                           }
                         }}
-                        disabled={
-                          currentPrintState === 'printing' ||
-                          (station.printType === '4x6-label' &&
-                            (lastScanned.status.finalDispatched || !addressMatchesScanned))
-                        }
+                        disabled={currentPrintState === 'printing' || isBlocked}
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-white text-sm transition-all ${
-                          currentPrintState === 'printing'
+                          isBlocked
+                            ? 'bg-white/5 text-white/40 cursor-not-allowed'
+                            : currentPrintState === 'printing'
                             ? 'bg-blue-500/30 cursor-wait'
                             : currentPrintState === 'success'
                             ? 'bg-green-500/30'
@@ -1280,7 +1291,9 @@ export default function StationPage() {
                             : 'bg-white/10 hover:bg-white/20'
                         }`}
                       >
-                        {currentPrintState === 'printing' ? (
+                        {isBlocked ? (
+                          <XCircle className="w-4 h-4" />
+                        ) : currentPrintState === 'printing' ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : currentPrintState === 'success' ? (
                           <Check className="w-4 h-4 text-green-400" />
@@ -1289,7 +1302,11 @@ export default function StationPage() {
                         ) : (
                           <Printer className="w-4 h-4" />
                         )}
-                        {currentPrintState === 'printing'
+                        {alreadyDispatchedBlock
+                          ? 'Already Sent'
+                          : noAddressBlock
+                          ? 'No Address'
+                          : currentPrintState === 'printing'
                           ? 'Printing...'
                           : currentPrintState === 'success'
                           ? 'Printed!'
