@@ -64,16 +64,21 @@ export async function POST(request: NextRequest) {
       clearAirtableCache();
     }
 
-    const [finalDispatchResult, addressLabelResult] = await Promise.all([
+    // A dispatched graduate's check-in lives in exactly one of these two
+    // stations depending on courier — DTDC via 'final-dispatch', India Post
+    // via 'dispatch-india-post' — never both. Unlock both unconditionally;
+    // whichever one the graduate never used simply has nothing to delete.
+    const [finalDispatchResult, indiaPostResult, addressLabelResult] = await Promise.all([
       unlockStationForResend(ticketId, 'final-dispatch'),
+      unlockStationForResend(ticketId, 'dispatch-india-post'),
       unlockStationForResend(ticketId, 'address-label'),
     ]);
 
-    if (!finalDispatchResult.success || !addressLabelResult.success) {
+    if (!finalDispatchResult.success || !indiaPostResult.success || !addressLabelResult.success) {
       return NextResponse.json(
         {
           success: false,
-          error: `final-dispatch: ${finalDispatchResult.error || 'ok'}; address-label: ${addressLabelResult.error || 'ok'}`,
+          error: `final-dispatch: ${finalDispatchResult.error || 'ok'}; dispatch-india-post: ${indiaPostResult.error || 'ok'}; address-label: ${addressLabelResult.error || 'ok'}`,
         },
         { status: 500 }
       );
@@ -85,16 +90,20 @@ export async function POST(request: NextRequest) {
     // anomaly check below (which can still return an error response).
     clearGraduatesCache();
 
-    // On a fresh attempt, both stations should have had a check-in to
-    // delete — if either reports nothing was found, that's an anomaly
-    // (Tito may be lagging or erroring), not silent success. Airtable has
-    // already been updated at this point, so this is now a retryable stuck
-    // state, not a lost cause: calling this route again will skip the
-    // Airtable write above (isFreshAttempt will be false) and just retry
-    // these unlocks. On a retry, a deleted:false result is expected for
-    // whichever station already got unlocked on the prior attempt, so it's
-    // not flagged here.
-    if (isFreshAttempt && (finalDispatchResult.data?.deleted === false || addressLabelResult.data?.deleted === false)) {
+    // On a fresh attempt, address-label should have had a check-in to
+    // delete, and exactly one of final-dispatch/dispatch-india-post should
+    // have too (whichever courier this graduate actually used) — if
+    // address-label found nothing, or NEITHER dispatch station found
+    // anything, that's an anomaly (Tito may be lagging or erroring), not
+    // silent success. Airtable has already been updated at this point, so
+    // this is now a retryable stuck state, not a lost cause: calling this
+    // route again will skip the Airtable write above (isFreshAttempt will
+    // be false) and just retry these unlocks. On a retry, a deleted:false
+    // result is expected for whichever station(s) already got unlocked on
+    // the prior attempt, so it's not flagged here.
+    const dispatchStationHadCheckin =
+      finalDispatchResult.data?.deleted === true || indiaPostResult.data?.deleted === true;
+    if (isFreshAttempt && (!dispatchStationHadCheckin || addressLabelResult.data?.deleted === false)) {
       return NextResponse.json(
         {
           success: false,
