@@ -174,6 +174,12 @@ const UniversalScanner = forwardRef<UniversalScannerHandle, UniversalScannerProp
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const barcodeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Tracks keystroke timestamps in the visible search input so we can tell a
+  // hardware scanner's burst-typed input (e.g. a Zebra DS2208 with no CR/Enter
+  // suffix configured) apart from a human typing a name, and auto-submit the
+  // former without waiting for an Enter keystroke that may never come.
+  const inputKeystrokeTimesRef = useRef<number[]>([]);
+  const inputAutoSubmitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useImperativeHandle(ref, () => ({
     focus: () => inputRef.current?.focus(),
@@ -476,6 +482,11 @@ const UniversalScanner = forwardRef<UniversalScannerHandle, UniversalScannerProp
     }
 
     setSearchInput('');
+    inputKeystrokeTimesRef.current = [];
+    if (inputAutoSubmitTimeoutRef.current) {
+      clearTimeout(inputAutoSubmitTimeoutRef.current);
+      inputAutoSubmitTimeoutRef.current = null;
+    }
   }, [searchInput, loading, onSearch]);
 
   // External barcode scanner support (keyboard input)
@@ -525,6 +536,9 @@ const UniversalScanner = forwardRef<UniversalScannerHandle, UniversalScannerProp
   useEffect(() => {
     return () => {
       stopScanner();
+      if (inputAutoSubmitTimeoutRef.current) {
+        clearTimeout(inputAutoSubmitTimeoutRef.current);
+      }
     };
   }, [stopScanner]);
 
@@ -775,6 +789,54 @@ const UniversalScanner = forwardRef<UniversalScannerHandle, UniversalScannerProp
               if ((trimmed.length === 24 || trimmed.length === 32) && /^[0-9A-Fa-f]+$/.test(trimmed)) {
                 onSearch(trimmed, 'rfid_epc');
                 setSearchInput('');
+                return;
+              }
+
+              // Hardware barcode scanners (e.g. Zebra DS2208) fire this
+              // onChange with a full burst of characters far faster than any
+              // human can type. If the scanner isn't configured to send a
+              // trailing Enter/CR suffix, the form never auto-submits and the
+              // operator has to press Enter manually every time. Detect that
+              // burst pattern by keystroke timing and auto-submit after a
+              // short pause, independent of whether Enter ever arrives.
+              const now = Date.now();
+              if (val.length === 0) {
+                inputKeystrokeTimesRef.current = [];
+              } else {
+                inputKeystrokeTimesRef.current.push(now);
+              }
+
+              if (inputAutoSubmitTimeoutRef.current) {
+                clearTimeout(inputAutoSubmitTimeoutRef.current);
+                inputAutoSubmitTimeoutRef.current = null;
+              }
+
+              if (trimmed.length >= 3) {
+                inputAutoSubmitTimeoutRef.current = setTimeout(() => {
+                  const times = inputKeystrokeTimesRef.current;
+                  if (times.length < 3) return;
+                  const span = times[times.length - 1] - times[0];
+                  const avgIntervalMs = span / (times.length - 1);
+                  const scannerLike = avgIntervalMs < 30;
+                  const type = detectInputType(trimmed);
+                  const autoSubmitTypes: SearchInputType[] = [
+                    'convocation_number',
+                    'reference',
+                    'barcode',
+                    'tito_ticket_id',
+                    'tito_url',
+                  ];
+                  if (scannerLike && autoSubmitTypes.includes(type)) {
+                    if (type === 'tito_url') {
+                      const ticketId = extractTicketFromUrl(trimmed);
+                      onSearch(ticketId || trimmed, ticketId ? 'tito_ticket_id' : type);
+                    } else {
+                      onSearch(trimmed, type);
+                    }
+                    setSearchInput('');
+                    inputKeystrokeTimesRef.current = [];
+                  }
+                }, 150);
               }
             }}
             placeholder={placeholder}
