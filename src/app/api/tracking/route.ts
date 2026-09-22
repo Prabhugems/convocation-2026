@@ -3,12 +3,21 @@ import { trackShipment, checkDeliveryStatus, DTDCTrackingResult } from '@/lib/dt
 import { getAirtableDataMap } from '@/lib/airtable';
 import { getEmailTemplate } from '@/lib/email/templates';
 import { sendEmail } from '@/lib/email/send';
+import { ADMIN_ACTION_PASSCODE } from '@/lib/adminPasscode';
 
 /**
  * GET /api/tracking?number=XXXX
  * Track a single shipment
+ *
+ * Admin-gated: DTDC's response includes the receiver's name and delivery
+ * GPS coordinates, which is real PII, not something to expose publicly.
  */
 export async function GET(request: NextRequest) {
+  const passcode = request.headers.get('x-admin-passcode');
+  if (passcode !== ADMIN_ACTION_PASSCODE) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const trackingNumber = searchParams.get('number');
 
@@ -29,8 +38,16 @@ export async function GET(request: NextRequest) {
  * POST /api/tracking/check-deliveries
  * Check all dispatched shipments for delivery status
  * and send confirmation emails for newly delivered ones
+ *
+ * Admin-gated: can trigger a bulk check across every graduate and send real
+ * delivery-confirmation emails.
  */
 export async function POST(request: NextRequest) {
+  const passcode = request.headers.get('x-admin-passcode');
+  if (passcode !== ADMIN_ACTION_PASSCODE) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const body = await request.json().catch(() => ({}));
     const { sendEmails = false, trackingNumbers: providedNumbers } = body;
@@ -38,7 +55,7 @@ export async function POST(request: NextRequest) {
     console.log('[Tracking API] Checking delivery statuses...');
 
     // Get tracking numbers to check
-    let trackingNumbers: string[] = providedNumbers || [];
+    const trackingNumbers: string[] = providedNumbers || [];
 
     // If no tracking numbers provided, get from Airtable
     if (trackingNumbers.length === 0) {
