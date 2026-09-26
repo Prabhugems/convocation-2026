@@ -7,7 +7,8 @@ export type EmailTemplateType =
   | 'DISPATCHED_COURIER'
   | 'CERTIFICATE_COLLECTED'
   | 'CERTIFICATE_DELIVERED'
-  | 'DTDC_DISPATCH_NOTIFICATION';
+  | 'DTDC_DISPATCH_NOTIFICATION'
+  | 'ADDRESS_REQUEST';
 
 // Template data interfaces
 export interface CertificateReadyAttendingData {
@@ -57,6 +58,13 @@ export interface DtdcDispatchData {
     state: string;
     pincode: string;
   };
+}
+
+export interface AddressRequestData {
+  name: string;
+  convocationNumber: string;
+  course: string;
+  formUrl: string;
 }
 
 export interface CertificateCollectedData {
@@ -781,10 +789,56 @@ export function certificateDelivered(data: CertificateDeliveredData): { subject:
   };
 }
 
+// Template: Address Request (no address on file, needed before dispatch)
+export function addressRequest(data: AddressRequestData): { subject: string; html: string } {
+  const certLabel = certificateLabel(data.convocationNumber);
+  const content = `
+    <div class="header">
+      <h1>Convocation 2026</h1>
+      <p>AMASI Certificate Management</p>
+    </div>
+    <div class="content">
+      <p class="greeting">Dear Dr. ${data.name},</p>
+
+      <p>Congratulations on your achievement! We are ready to dispatch your <strong>${certLabel} Certificate</strong>, but we do not have a mailing address on file for you yet.</p>
+
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">Convocation Number</span>
+          <span class="info-value">${data.convocationNumber}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Course</span>
+          <span class="info-value">${data.course}</span>
+        </div>
+      </div>
+
+      <p>Please submit your complete address so we can courier your certificate to you as soon as possible.</p>
+
+      <p style="text-align: center;">
+        <a href="${data.formUrl}" class="button">Submit My Address</a>
+      </p>
+
+      <p style="font-size: 13px; color: #64748b;">If the button above doesn't work, copy and paste this link into your browser:<br>${data.formUrl}</p>
+
+      <p>Warm regards,<br><strong>AMASI Convocation Team</strong></p>
+    </div>
+    <div class="footer">
+      <p>Association of Minimal Access Surgeons of India</p>
+      <p>Email: <a href="mailto:${config.contact.email}">${config.contact.email}</a></p>
+    </div>
+  `;
+
+  return {
+    subject: `Action Required: Address Needed to Dispatch Your Certificate - ${data.convocationNumber}`,
+    html: emailWrapper(content, `Dr. ${data.name}, please submit your address so we can dispatch your certificate.`),
+  };
+}
+
 // Get template by type
 export function getEmailTemplate(
   type: EmailTemplateType,
-  data: CertificateReadyAttendingData | CertificateReadyNotAttendingData | DispatchedCourierData | CertificateCollectedData | CertificateDeliveredData | DtdcDispatchData
+  data: CertificateReadyAttendingData | CertificateReadyNotAttendingData | DispatchedCourierData | CertificateCollectedData | CertificateDeliveredData | DtdcDispatchData | AddressRequestData
 ): { subject: string; html: string } {
   switch (type) {
     case 'CERTIFICATE_READY_ATTENDING':
@@ -799,6 +853,8 @@ export function getEmailTemplate(
       return certificateDelivered(data as CertificateDeliveredData);
     case 'DTDC_DISPATCH_NOTIFICATION':
       return dtdcDispatchNotification(data as DtdcDispatchData);
+    case 'ADDRESS_REQUEST':
+      return addressRequest(data as AddressRequestData);
     default:
       throw new Error(`Unknown email template type: ${type}`);
   }

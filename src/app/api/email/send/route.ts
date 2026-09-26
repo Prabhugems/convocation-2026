@@ -8,13 +8,14 @@ import {
   DispatchedCourierData,
   CertificateCollectedData,
   CertificateDeliveredData,
+  AddressRequestData,
 } from '@/lib/email/templates';
 import config from '@/lib/config';
 
 interface SendEmailRequest {
   to: string;
   template: EmailTemplateType;
-  data: CertificateReadyAttendingData | CertificateReadyNotAttendingData | DispatchedCourierData | CertificateCollectedData | CertificateDeliveredData;
+  data: CertificateReadyAttendingData | CertificateReadyNotAttendingData | DispatchedCourierData | CertificateCollectedData | CertificateDeliveredData | AddressRequestData;
   attachBadge?: boolean;
   convocationNumber?: string;
 }
@@ -179,6 +180,12 @@ export async function GET(request: NextRequest) {
           state: 'Maharashtra',
           pincode: '400001',
         },
+      },
+      ADDRESS_REQUEST: {
+        name: 'Sample Graduate',
+        convocationNumber: 'MHER1001',
+        course: 'MMAS Hernia',
+        formUrl: 'https://forms.fillout.com/t/pwZQD9HwQFus?id=recSAMPLE',
       },
     };
 
