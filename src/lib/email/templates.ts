@@ -82,6 +82,14 @@ export interface CertificateDeliveredData {
   };
 }
 
+// MMAS convocation numbers are letters-first (e.g. MHPB1018, MHER1001),
+// the opposite order from FMAS's digits-first format (e.g. 125AEC1038) —
+// same distinction UniversalScanner's detectInputType uses. Used so these
+// certificate emails say the right cohort instead of always "FMAS".
+function certificateLabel(convocationNumber: string): 'FMAS' | 'MMAS' {
+  return /^[a-zA-Z]{2,4}\d{3,5}$/.test(convocationNumber.trim()) ? 'MMAS' : 'FMAS';
+}
+
 // Common email wrapper
 function emailWrapper(content: string, preheader: string = ''): string {
   return `
@@ -546,6 +554,7 @@ function dtdcInfoRow(label: string, value: string, isLast = false): string {
 
 // Template: DTDC Dispatch Notification (automated, sent right after address-label scan)
 export function dtdcDispatchNotification(data: DtdcDispatchData): { subject: string; html: string } {
+  const certLabel = certificateLabel(data.convocationNumber);
   const content = `
     <div class="header">
       <h1>Convocation 2026</h1>
@@ -556,7 +565,7 @@ export function dtdcDispatchNotification(data: DtdcDispatchData): { subject: str
 
       <p>Greetings from AMASI!</p>
 
-      <p>We are pleased to inform you that your <strong>FMAS Certificate</strong> has been dispatched today via <strong>DTDC Courier Services</strong>.</p>
+      <p>We are pleased to inform you that your <strong>${certLabel} Certificate</strong> has been dispatched today via <strong>DTDC Courier Services</strong>.</p>
 
       <div class="info-box">
         <h4 style="margin: 0 0 12px; color: #1e3a8a;">Dispatch Details</h4>
@@ -602,7 +611,7 @@ export function dtdcDispatchNotification(data: DtdcDispatchData): { subject: str
 
       <p>If you encounter any issues with delivery or need to refuse a damaged certificate, please contact us immediately at <a href="mailto:amasi.india@gmail.com">amasi.india@gmail.com</a>.</p>
 
-      <p>Congratulations once again on achieving your FMAS certification!</p>
+      <p>Congratulations once again on achieving your ${certLabel} certification!</p>
 
       <p>Best regards,<br><strong>AMASI Office</strong></p>
     </div>
@@ -616,13 +625,14 @@ export function dtdcDispatchNotification(data: DtdcDispatchData): { subject: str
   `;
 
   return {
-    subject: `Your FMAS Certificate Has Been Dispatched via DTDC - Tracking: ${data.trackingNumber}`,
-    html: emailWrapper(content, `Dr. ${data.name}, your FMAS certificate has been dispatched via DTDC. Tracking: ${data.trackingNumber}`),
+    subject: `Your ${certLabel} Certificate Has Been Dispatched via DTDC - Tracking: ${data.trackingNumber}`,
+    html: emailWrapper(content, `Dr. ${data.name}, your ${certLabel} certificate has been dispatched via DTDC. Tracking: ${data.trackingNumber}`),
   };
 }
 
 // Template: Certificate Collected (In-Person)
 export function certificateCollected(data: CertificateCollectedData): { subject: string; html: string } {
+  const certLabel = certificateLabel(data.convocationNumber);
   const collectedByHtml = data.collectedBy ? `
     <div class="info-row">
       <span class="info-label">Collected By</span>
@@ -640,7 +650,7 @@ export function certificateCollected(data: CertificateCollectedData): { subject:
 
       <p>Greetings from AMASI!</p>
 
-      <p>We are pleased to confirm that your <strong>FMAS Certificate</strong> has been successfully collected.</p>
+      <p>We are pleased to confirm that your <strong>${certLabel} Certificate</strong> has been successfully collected.</p>
 
       <div class="tracking-box" style="background: #f0fdf4; border-color: #22c55e;">
         <h3 style="color: #166534;">✓ Collection Confirmed</h3>
@@ -669,7 +679,7 @@ export function certificateCollected(data: CertificateCollectedData): { subject:
         <p>Please keep your certificate safe. In case of any damage or loss, contact us for assistance.</p>
       </div>
 
-      <p>Congratulations once again on achieving your FMAS certification!</p>
+      <p>Congratulations once again on achieving your ${certLabel} certification!</p>
 
       <p>Best regards,<br><strong>AMASI Office</strong></p>
     </div>
@@ -677,19 +687,20 @@ export function certificateCollected(data: CertificateCollectedData): { subject:
       <p>Association of Minimal Access Surgeons of India</p>
       <p>Email: <a href="mailto:${config.contact.email}">${config.contact.email}</a></p>
       <p style="color: #94a3b8; font-size: 11px; margin-top: 16px;">
-        This is a confirmation email for your FMAS certificate collection.
+        This is a confirmation email for your ${certLabel} certificate collection.
       </p>
     </div>
   `;
 
   return {
-    subject: `Certificate Collection Confirmed - FMAS ${data.convocationNumber}`,
-    html: emailWrapper(content, `Dr. ${data.name}, your FMAS certificate collection has been confirmed.`),
+    subject: `Certificate Collection Confirmed - ${certLabel} ${data.convocationNumber}`,
+    html: emailWrapper(content, `Dr. ${data.name}, your ${certLabel} certificate collection has been confirmed.`),
   };
 }
 
 // Template: Certificate Delivered (Courier Delivery Confirmed)
 export function certificateDelivered(data: CertificateDeliveredData): { subject: string; html: string } {
+  const certLabel = certificateLabel(data.convocationNumber);
   const addressHtml = data.address ? `
     <div class="info-box">
       <h4 style="margin: 0 0 12px; color: #1e3a8a;">Delivered To</h4>
@@ -719,7 +730,7 @@ export function certificateDelivered(data: CertificateDeliveredData): { subject:
 
       <p>Greetings from AMASI!</p>
 
-      <p>We are pleased to inform you that your <strong>FMAS Certificate</strong> has been successfully delivered to your registered address.</p>
+      <p>We are pleased to inform you that your <strong>${certLabel} Certificate</strong> has been successfully delivered to your registered address.</p>
 
       <div class="tracking-box" style="background: #f0fdf4; border-color: #22c55e;">
         <h3 style="color: #166534;">✓ Delivery Confirmed</h3>
@@ -751,7 +762,7 @@ export function certificateDelivered(data: CertificateDeliveredData): { subject:
         <p style="color: #7f1d1d; font-size: 13px; margin-top: 12px;">No response within 48 hours will be considered as confirmation that the delivery is satisfactory and the certificate is in good condition.</p>
       </div>
 
-      <p>Congratulations once again on achieving your FMAS certification!</p>
+      <p>Congratulations once again on achieving your ${certLabel} certification!</p>
 
       <p>Best regards,<br><strong>AMASI Office</strong></p>
     </div>
@@ -759,14 +770,14 @@ export function certificateDelivered(data: CertificateDeliveredData): { subject:
       <p>Association of Minimal Access Surgeons of India</p>
       <p>Email: <a href="mailto:${config.contact.email}">${config.contact.email}</a></p>
       <p style="color: #94a3b8; font-size: 11px; margin-top: 16px;">
-        This is a confirmation email for your FMAS certificate delivery.
+        This is a confirmation email for your ${certLabel} certificate delivery.
       </p>
     </div>
   `;
 
   return {
-    subject: `Certificate Delivered Successfully - FMAS ${data.convocationNumber}`,
-    html: emailWrapper(content, `Dr. ${data.name}, your FMAS certificate has been delivered. Please report any issues within 48 hours.`),
+    subject: `Certificate Delivered Successfully - ${certLabel} ${data.convocationNumber}`,
+    html: emailWrapper(content, `Dr. ${data.name}, your ${certLabel} certificate has been delivered. Please report any issues within 48 hours.`),
   };
 }
 

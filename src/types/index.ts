@@ -140,7 +140,8 @@ export interface AirtableRecord {
     'AMASI Number'?: number;
     'Category'?: string;
     'Tracking Number'?: string;
-    'DTDC Service available'?: string; // YES or NO
+    'DTDC Service available'?: string; // YES or NO (Master-FMAS)
+    'Service Available'?: string; // Yes or No (Master-MMAS's same-purpose field)
     'Form A'?: string; // Fillout form URL for address update
     'Registered for AMASICON'?: boolean;
     'AMASICON Last Checked'?: string;

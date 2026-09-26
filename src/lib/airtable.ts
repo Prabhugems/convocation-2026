@@ -88,8 +88,10 @@ function parseAirtableRecord(record: AirtableRecord, tableId: string): AirtableG
     return null;
   }
 
-  // Parse DTDC service availability
-  const dtdcField = fields['DTDC Service available'];
+  // Parse DTDC service availability. Master-FMAS calls this field
+  // "DTDC Service available" (free text); Master-MMAS calls the
+  // same-purpose field "Service Available" (single select, Yes/No).
+  const dtdcField = fields['DTDC Service available'] || fields['Service Available'];
   const dtdcAvailable = dtdcField?.toUpperCase().trim() === 'YES';
 
   return {

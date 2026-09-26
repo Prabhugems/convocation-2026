@@ -67,6 +67,14 @@ export function detectInputType(input: string): SearchInputType {
     return 'convocation_number';
   }
 
+  // MMAS convocation numbers are letters-first (e.g. MHPB1018, MHER1001) —
+  // the opposite order from FMAS's digits-first format above. Without this,
+  // they fall through to 'unknown', which is still searchable but misses
+  // the barcode-scanner no-Enter auto-submit path (see autoSubmitTypes).
+  if (/^[a-zA-Z]{2,4}\d{3,5}$/i.test(trimmed)) {
+    return 'convocation_number';
+  }
+
   if (/^[A-Z0-9]{3,6}$/i.test(trimmed) && trimmed.length <= 6) {
     return 'reference';
   }
