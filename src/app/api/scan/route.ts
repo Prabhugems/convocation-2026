@@ -7,7 +7,7 @@ import {
   ticketToGraduate,
   getTicketCheckins
 } from '@/lib/tito';
-import { getAddressByConvocationNumber, getAirtableDataByConvocationNumber } from '@/lib/airtable';
+import { getAddressByConvocationNumber, getAirtableDataByConvocationNumber, findTrackingNumberConflict } from '@/lib/airtable';
 import { getStationStatus } from '@/lib/stations';
 import { StationId, Graduate } from '@/types';
 
@@ -172,6 +172,29 @@ export async function POST(request: NextRequest) {
           error: graduate.trackingNumber
             ? `Already dispatched — Tracking ${graduate.trackingNumber}. Cannot create a duplicate dispatch record.`
             : 'Already dispatched. Cannot create a duplicate dispatch record.',
+          data: graduate,
+        });
+      }
+    }
+
+    // A tracking number already on another graduate — live or archived from a
+    // returned parcel — must never be assigned again. Fail closed if Airtable
+    // can't be checked.
+    if (stationId === 'final-dispatch' && metadata?.trackingNumber) {
+      const conflict = await findTrackingNumberConflict(
+        String(metadata.trackingNumber),
+        graduate.convocationNumber
+      );
+      if (!conflict.success) {
+        return NextResponse.json(
+          { success: false, error: `Could not verify tracking number — please retry. ${conflict.error || ''}`.trim() },
+          { status: 503 }
+        );
+      }
+      if (conflict.data) {
+        return NextResponse.json({
+          success: false,
+          error: `Tracking number ${String(metadata.trackingNumber).trim()} is already assigned to ${conflict.data.name || 'another graduate'} (${conflict.data.convocationNumber}). Check the parcel and re-enter.`,
           data: graduate,
         });
       }

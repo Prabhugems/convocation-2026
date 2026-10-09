@@ -251,6 +251,55 @@ export async function getMobileByConvocationNumber(
   return { success: true, data: null };
 }
 
+// Looks for another graduate that already holds this tracking number, either
+// as their live "Tracking Number" or archived in "old Tracking Number" (a
+// returned parcel's number must never be reused for someone else). Always
+// queries Airtable fresh rather than the 10-minute cache, so a number
+// assigned moments ago is still caught. Fails closed: an Airtable error is
+// reported as an error, never as "no conflict".
+export async function findTrackingNumberConflict(
+  trackingNumber: string,
+  excludeConvocationNumber?: string
+): Promise<ApiResponse<{ convocationNumber: string; name: string } | null>> {
+  const tracking = trackingNumber.trim();
+  if (!tracking) return { success: true, data: null };
+
+  // Tracking numbers are alphanumeric AWBs; reject anything else outright so
+  // the value can never alter the filter formula it is interpolated into.
+  if (!/^[A-Za-z0-9-]{4,40}$/.test(tracking)) {
+    return { success: false, error: 'Invalid tracking number format' };
+  }
+
+  const tableIds = [process.env.AIRTABLE_FMAS_TABLE, process.env.AIRTABLE_MMAS_TABLE].filter(
+    (t): t is string => !!t
+  );
+  if (tableIds.length === 0) {
+    return { success: false, error: 'Airtable tables not configured' };
+  }
+
+  const upper = tracking.toUpperCase();
+  const formula = `OR(UPPER(TRIM({Tracking Number}))="${upper}",UPPER(TRIM({old Tracking Number}))="${upper}")`;
+  const exclude = excludeConvocationNumber?.toUpperCase().trim();
+
+  for (const tableId of tableIds) {
+    const response = await airtableFetch<{ records: AirtableRecord[] }>(
+      tableId,
+      `?filterByFormula=${encodeURIComponent(formula)}`
+    );
+    if (!response.success || !response.data) {
+      return { success: false, error: response.error };
+    }
+    for (const record of response.data.records) {
+      const fields = record.fields as Record<string, string | undefined>;
+      const conv = (fields['CONVOCATION NUMBER'] || '').toUpperCase().trim();
+      if (exclude && conv === exclude) continue;
+      return { success: true, data: { convocationNumber: conv, name: (fields['Name'] || '').trim() } };
+    }
+  }
+
+  return { success: true, data: null };
+}
+
 // Clear the cache (useful for refreshing)
 export function clearAirtableCache(): void {
   airtableCache = null;
