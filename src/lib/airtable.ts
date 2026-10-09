@@ -253,14 +253,14 @@ export async function getMobileByConvocationNumber(
 
 // Looks for another graduate that already holds this tracking number, either
 // as their live "Tracking Number" or archived in "old Tracking Number" (a
-// returned parcel's number must never be reused for someone else). Always
+// returned parcel's number must never be reused, not even for the same graduate). Always
 // queries Airtable fresh rather than the 10-minute cache, so a number
 // assigned moments ago is still caught. Fails closed: an Airtable error is
 // reported as an error, never as "no conflict".
 export async function findTrackingNumberConflict(
   trackingNumber: string,
   excludeConvocationNumber?: string
-): Promise<ApiResponse<{ convocationNumber: string; name: string } | null>> {
+): Promise<ApiResponse<{ convocationNumber: string; name: string; ownReturned?: boolean } | null>> {
   const tracking = trackingNumber.trim();
   if (!tracking) return { success: true, data: null };
 
@@ -292,8 +292,15 @@ export async function findTrackingNumberConflict(
     for (const record of response.data.records) {
       const fields = record.fields as Record<string, string | undefined>;
       const conv = (fields['CONVOCATION NUMBER'] || '').toUpperCase().trim();
-      if (exclude && conv === exclude) continue;
-      return { success: true, data: { convocationNumber: conv, name: (fields['Name'] || '').trim() } };
+      const name = (fields['Name'] || '').trim();
+      if (exclude && conv === exclude) {
+        // The graduate's own live number is fine. Their own archived (returned)
+        // number is not: DTDC has closed that consignment.
+        const live = (fields['Tracking Number'] || '').trim().toUpperCase() === upper;
+        if (live) continue;
+        return { success: true, data: { convocationNumber: conv, name, ownReturned: true } };
+      }
+      return { success: true, data: { convocationNumber: conv, name } };
     }
   }
 

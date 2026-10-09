@@ -197,13 +197,15 @@ export async function POST(request: NextRequest) {
         );
       }
       if (conflict.data) {
-        const holder = `${conflict.data.name || 'another graduate'} (${conflict.data.convocationNumber})`;
+        const holder = conflict.data.ownReturned
+          ? `this graduate's own returned parcel (${conflict.data.convocationNumber}), which DTDC has closed — a new tracking number is needed`
+          : `${conflict.data.name || 'another graduate'} (${conflict.data.convocationNumber})`;
         return NextResponse.json({
           success: false,
           error:
             stationId === 'address-label'
-              ? `Label NOT printed: tracking number ${trackingToCheck} on this graduate's record is also assigned to ${holder}. Fix the tracking number in Airtable first.`
-              : `Tracking number ${trackingToCheck} is already assigned to ${holder}. Check the parcel and re-enter.`,
+              ? `Label NOT printed: tracking number ${trackingToCheck} on this graduate's record is already used by ${holder}. Fix the tracking number in Airtable first.`
+              : `Tracking number ${trackingToCheck} is already used by ${holder}. Check the parcel and re-enter.`,
           data: graduate,
         });
       }
