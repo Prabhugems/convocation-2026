@@ -178,13 +178,18 @@ export async function POST(request: NextRequest) {
     }
 
     // A tracking number already on another graduate — live or archived from a
-    // returned parcel — must never be assigned again. Fail closed if Airtable
-    // can't be checked.
-    if (stationId === 'final-dispatch' && metadata?.trackingNumber) {
-      const conflict = await findTrackingNumberConflict(
-        String(metadata.trackingNumber),
-        graduate.convocationNumber
-      );
+    // returned parcel — must never be used twice. Two entry points: the number
+    // typed at final-dispatch, and the number already saved on this graduate's
+    // Airtable record, which the address label prints as text and barcode.
+    // Fail closed if Airtable can't be checked.
+    const trackingToCheck =
+      stationId === 'final-dispatch'
+        ? String(metadata?.trackingNumber ?? '').trim()
+        : stationId === 'address-label'
+          ? (graduate.trackingNumber ?? '').trim()
+          : '';
+    if (trackingToCheck) {
+      const conflict = await findTrackingNumberConflict(trackingToCheck, graduate.convocationNumber);
       if (!conflict.success) {
         return NextResponse.json(
           { success: false, error: `Could not verify tracking number — please retry. ${conflict.error || ''}`.trim() },
@@ -192,9 +197,13 @@ export async function POST(request: NextRequest) {
         );
       }
       if (conflict.data) {
+        const holder = `${conflict.data.name || 'another graduate'} (${conflict.data.convocationNumber})`;
         return NextResponse.json({
           success: false,
-          error: `Tracking number ${String(metadata.trackingNumber).trim()} is already assigned to ${conflict.data.name || 'another graduate'} (${conflict.data.convocationNumber}). Check the parcel and re-enter.`,
+          error:
+            stationId === 'address-label'
+              ? `Label NOT printed: tracking number ${trackingToCheck} on this graduate's record is also assigned to ${holder}. Fix the tracking number in Airtable first.`
+              : `Tracking number ${trackingToCheck} is already assigned to ${holder}. Check the parcel and re-enter.`,
           data: graduate,
         });
       }
